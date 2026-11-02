@@ -17,6 +17,7 @@ object NeonColor {
     val ink = Color(0xFFE6ECFF)       // #E6ECFF Texto principal
     val muted = Color(0xFF8FA0C4)     // #8FA0C4 Texto secundario
     val chipText = Color(0xFFC7D2F0)  // #C7D2F0 Texto de chips sin seleccionar
+    val navBar = Color(0xFF0B1020)    // #0B1020 Fondo de la barra inferior (sección 8)
 
     // Acentos neón
     val neonCyan = Color(0xFF22D3EE)    // #22D3EE Acento principal, tarjeta, pestaña activa

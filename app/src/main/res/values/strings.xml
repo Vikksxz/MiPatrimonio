@@ -13,4 +13,14 @@
     <string name="showcase_chip_card">Tarjeta</string>
     <string name="showcase_chip_subscription">Suscripción</string>
     <string name="showcase_chip_income">Ingreso</string>
+
+    <!-- T1.3: navegación -->
+    <string name="tab_home">Inicio</string>
+    <string name="tab_transactions">Movimientos</string>
+    <string name="tab_savings">Ahorro</string>
+    <string name="tab_wallet">Cartera</string>
+    <string name="home_title">Resumen</string>
+    <string name="add_movement">Añadir movimiento</string>
+    <string name="add_sheet_title">Añadir</string>
+    <string name="placeholder_under_construction">En construcción</string>
 </resources>
