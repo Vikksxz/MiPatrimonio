@@ -1,5 +1,6 @@
 package com.mipatrimonio.app.core.ui.components
 
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -13,11 +14,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Star
@@ -33,12 +34,15 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.mipatrimonio.app.R
 import com.mipatrimonio.app.core.ui.navigation.Routes
 import com.mipatrimonio.app.core.ui.theme.MiPatrimonioTheme
@@ -48,18 +52,19 @@ import com.mipatrimonio.app.core.ui.theme.NeonColor
 data class NeonTab(
     val route: String,
     @param:StringRes val labelRes: Int,
-    val icon: ImageVector,
+    val icon: ImageVector? = null,
+    @param:DrawableRes val iconRes: Int? = null,
 )
 
 /** Orden visual: Inicio, Movimientos, +, Ahorro, Cartera (sección 8). */
 val neonTabs = listOf(
-    NeonTab(Routes.HOME, R.string.tab_home, Icons.Filled.Home),
-    NeonTab(Routes.TRANSACTIONS, R.string.tab_transactions, Icons.AutoMirrored.Filled.List),
+    NeonTab(Routes.HOME, R.string.tab_home, icon = Icons.Filled.Home),
+    NeonTab(Routes.TRANSACTIONS, R.string.tab_transactions, icon = Icons.AutoMirrored.Filled.List),
 )
 
 val neonTabsRight = listOf(
-    NeonTab(Routes.SAVINGS, R.string.tab_savings, Icons.Filled.Star),
-    NeonTab(Routes.WALLET, R.string.tab_wallet, Icons.Filled.AccountBox),
+    NeonTab(Routes.SAVINGS, R.string.tab_savings, icon = Icons.Filled.Star),
+    NeonTab(Routes.WALLET, R.string.tab_wallet, iconRes = R.drawable.ic_wallet),
 )
 
 /**
@@ -134,7 +139,7 @@ private fun RowScope.TabItem(
                 .background(if (selected) color else androidx.compose.ui.graphics.Color.Transparent),
         )
         Icon(
-            imageVector = tab.icon,
+            imageVector = tab.icon ?: ImageVector.vectorResource(tab.iconRes!!),
             contentDescription = null,
             tint = color,
             modifier = Modifier
@@ -146,6 +151,7 @@ private fun RowScope.TabItem(
             color = color,
             style = MaterialTheme.typography.labelSmall.copy(
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                letterSpacing = 0.sp,
                 shadow = if (selected) {
                     Shadow(color = NeonColor.neonCyan, blurRadius = 8f)
                 } else {
@@ -165,7 +171,7 @@ private fun RowScope.TabItem(
 private fun RowScope.AddButton(onClick: () -> Unit) {
     Box(
         modifier = Modifier
-            .weight(1f)
+            .width(56.dp)
             .heightIn(min = 64.dp),
         contentAlignment = Alignment.Center,
     ) {
