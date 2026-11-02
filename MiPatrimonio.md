@@ -696,7 +696,7 @@ Exportar/importar `.mpbak` con el selector de archivos del sistema (`CreateDocum
 Cada tarea termina con la app **compilando**. Marca `[x]` al completar.
 
 ### Fase 1
-- [ ] **T1.1 Proyecto base.** Crear proyecto Android (Kotlin, Compose, Material 3, `minSdk 26`), version catalog, KSP, Hilt, Room, DataStore, Navigation Compose. Clase `MiPatrimonioApp`. *Aceptación:* la app arranca y muestra una pantalla vacía oscura.
+- [x] **T1.1 Proyecto base.** Crear proyecto Android (Kotlin, Compose, Material 3, `minSdk 26`), version catalog, KSP, Hilt, Room, DataStore, Navigation Compose. Clase `MiPatrimonioApp`. *Aceptación:* la app arranca y muestra una pantalla vacía oscura.
 - [ ] **T1.2 Tema neón.** `Color.kt`, `Type.kt` (fuentes Orbitron y Space Grotesk en `res/font`), `Theme.kt` oscuro, `Shape.kt`. Componentes: `NeonCard`, `NeonButton` (primario/secundario), `NeonChip`, `ScreenTitle`. *Aceptación:* pantalla de muestra con todos los componentes.
 - [ ] **T1.3 Navegación.** Barra inferior con 4 pestañas + botón central +, `AppNavHost` con 4 pantallas vacías. *Aceptación:* se navega entre pestañas; el + abre una hoja vacía.
 - [ ] **T1.4 Base de datos.** Entidades, enums, `TypeConverters`, DAOs (`TransactionDao`, `CardDao`, `CategoryDao`, `RecurringDao`, `SavingsDao`, `BudgetDao`, `DocumentDao`, `TagDao`), `AppDatabase` con `exportSchema = true`, seed de categorías. Módulo Hilt. *Aceptación:* tests de DAO pasan.

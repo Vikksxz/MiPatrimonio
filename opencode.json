@@ -1,0 +1,135 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  "model": "opencode/glm-5.3-flash-free",
+
+  "agent": {
+    "architect": {
+      "description": "Arquitecto y planificador del proyecto. Analiza requisitos, estructura, arquitectura y riesgos antes de implementar. No debe modificar archivos.",
+      "mode": "primary",
+      "model": "opencode/mimo-v2.6-flash-free",
+      "permission": {
+        "edit": "deny",
+        "bash": "allow"
+      }
+    },
+
+    "developer": {
+      "description": "Desarrollador principal. Implementa funcionalidades completas, backend, frontend, APIs, base de datos y lógica de negocio.",
+      "mode": "primary",
+      "model": "opencode/glm-5.3-flash-free",
+      "permission": {
+        "edit": "allow",
+        "bash": "allow",
+        "task": {
+          "architect": "allow",
+          "debugger": "allow",
+          "code-reviewer": "allow",
+          "financial-auditor": "allow",
+          "fast-worker": "allow",
+          "ui-reviewer": "allow"
+        }
+      }
+    },
+
+    "deepseek-developer": {
+      "description": "Especialista en implementar funcionalidades grandes, analizar múltiples archivos y realizar refactorizaciones extensas.",
+      "mode": "primary",
+      "model": "opencode/deepseek-v4.1-flash-free",
+      "permission": {
+        "edit": "allow",
+        "bash": "allow"
+      }
+    },
+
+    "debugger": {
+      "description": "Especialista en debugging y análisis de causa raíz. Investiga errores complejos antes de proponer modificaciones.",
+      "mode": "subagent",
+      "model": "opencode/mimo-v2.6-flash-free",
+      "permission": {
+        "edit": "deny",
+        "bash": "allow"
+      }
+    },
+
+    "code-reviewer": {
+      "description": "Revisor independiente de código. Busca bugs, errores de arquitectura, problemas de seguridad, inconsistencias y código mejorable. No modifica archivos.",
+      "mode": "subagent",
+      "model": "opencode/deepseek-v4.1-flash-free",
+      "permission": {
+        "edit": "deny",
+        "bash": "deny"
+      }
+    },
+
+    "financial-auditor": {
+      "description": "Auditor especializado en lógica financiera. Revisa cálculos de balances, ingresos, gastos, presupuestos, redondeos, precisión decimal, duplicados y casos límite. Nunca modifica código.",
+      "mode": "subagent",
+      "model": "opencode/mimo-v2.6-flash-free",
+      "permission": {
+        "edit": "deny",
+        "bash": "deny"
+      }
+    },
+
+    "fast-worker": {
+      "description": "Agente rápido para tareas pequeñas: buscar código, localizar funciones, realizar cambios sencillos y resolver tareas repetitivas.",
+      "mode": "subagent",
+      "model": "opencode/nemotron-3.5-lightning-free",
+      "permission": {
+        "edit": "allow",
+        "bash": "allow"
+      }
+    },
+
+    "ui-reviewer": {
+      "description": "Especialista en interfaces visuales y UX. Analiza capturas de pantalla, dashboards, gráficos financieros, jerarquía visual, legibilidad y experiencia de usuario. No modifica archivos.",
+      "mode": "subagent",
+      "model": "opencode/nemotron-3.5-super-vl-free",
+      "permission": {
+        "edit": "deny",
+        "bash": "deny"
+      }
+    },
+
+    "visual-analyst": {
+      "description": "Analista multimodal alternativo para interpretar imágenes, capturas, interfaces y documentación visual.",
+      "mode": "subagent",
+      "model": "opencode/jev-1.13-free",
+      "permission": {
+        "edit": "deny",
+        "bash": "deny"
+      }
+    },
+
+    "reasoning-expert": {
+      "description": "Especialista en análisis profundo, decisiones complejas y resolución de problemas antes de modificar código.",
+      "mode": "subagent",
+      "model": "opencode/big-pickle",
+      "permission": {
+        "edit": "deny",
+        "bash": "allow"
+      }
+    },
+
+    "utility-developer": {
+      "description": "Desarrollador auxiliar para scripts, funciones pequeñas, utilidades, tests y tareas aisladas.",
+      "mode": "subagent",
+      "model": "opencode/flint-40b-free",
+      "permission": {
+        "edit": "allow",
+        "bash": "allow"
+      }
+    },
+
+    "general-assistant": {
+      "description": "Agente generalista de respaldo para análisis, explicaciones y tareas de desarrollo no críticas.",
+      "mode": "subagent",
+      "model": "opencode/beam-free",
+      "permission": {
+        "edit": "allow",
+        "bash": "allow"
+      }
+    }
+  }
+}

@@ -2,6 +2,7 @@
 
 > Este archivo va en la **raíz del repositorio**, junto a `MiPatrimonio.md`. OpenCode lo carga automáticamente como instrucciones del proyecto.
 > `MiPatrimonio.md` es la **especificación**. Este archivo define **cómo se trabaja**: el bucle de comprobación y qué modelo hace qué.
+> `opencode.json` define los **agentes, modelos y permisos** disponibles. Los nombres de agente usados aquí (`@developer`, `@architect`, etc.) deben coincidir con ese archivo.
 
 ---
 
@@ -19,23 +20,61 @@
 
 ---
 
-## 2. Reparto de modelos
+## 2. Reparto de modelos y agentes de OpenCode
 
-Los modelos son gratuitos, tienen límites de uso y contexto, y su calidad relativa todavía no está contrastada en este proyecto. El reparto es un punto de partida: **se revisa después de la tarea T1.5** (prueba comparativa, sección 6).
+Este proyecto utiliza un archivo `opencode.json` en la **raíz del repositorio** para definir los agentes y asignarles los modelos gratuitos disponibles.
 
-| Modelo | Rol | Úsalo para | No lo uses para |
-|---|---|---|---|
-| **GLM-5.3-Flash** | Implementador principal | Tareas con varios archivos: Room, ViewModels, navegación, Compose, workers, OCR, backups; arreglar errores de compilación | Redacción larga de documentación |
-| **Big Pickle** | Revisor y segunda opinión | Revisión cruzada de lo que implementa otro modelo; errores que GLM no resuelve tras 2 intentos; seguridad y cifrado; cálculos de dinero | Tareas largas de implementación (puede cambiar o desaparecer sin aviso) |
-| **Nemotron 3.5** | Tareas ligeras | `strings.xml`, tests sencillos, KDoc/documentación, refactors mecánicos, mover o renombrar archivos, datos de ejemplo para tests | Lógica de negocio, cifrado, migraciones de base de datos |
-| **NVIDIA NIM (reserva)** | Respaldo | Cuando OpenCode alcance su límite o un modelo no responda. Elegir en el catálogo un modelo orientado a código con soporte de herramientas | Bucles largos de agente (límite aproximado de 40 peticiones por minuto: puede devolver errores 429) |
+**Importante:** `opencode.json` es la fuente de verdad para los IDs de modelo y la configuración de cada agente. Este `AGENTS.md` define **cuándo y cómo usar cada agente**.
 
-**Reglas del reparto:**
-- Quien implementa **no** revisa su propio trabajo. La revisión la hace otro modelo.
-- Las tareas de **seguridad, cifrado, dinero y cálculos** (marcadas con 🔒 en la tabla) siempre pasan revisión de Big Pickle.
-- Si un modelo falla 3 veces seguidas con el mismo error, **se cambia de modelo** usando la plantilla de traspaso (sección 5).
-- No cambies de modelo a mitad de una tarea sin traspaso por escrito.
+### Agentes disponibles
 
+| Agente | Modelo | Rol principal |
+|---|---|---|
+| `@developer` | GLM-5.3-Flash | Implementador principal y orquestador |
+| `@architect` | MiMo-V2.6-Flash | Planificación, arquitectura y análisis previo |
+| `@deepseek-developer` | DeepSeek V4.1 Flash | Implementaciones grandes y refactorizaciones |
+| `@debugger` | MiMo-V2.6-Flash | Causa raíz y debugging complejo |
+| `@code-reviewer` | DeepSeek V4.1 Flash | Revisión independiente de código |
+| `@financial-auditor` | MiMo-V2.6-Flash | Auditoría de dinero, balances y cálculos |
+| `@fast-worker` | Nemotron 3.5 Lightning | Tareas pequeñas y repetitivas |
+| `@ui-reviewer` | Nemotron 3.5 Super VL | UI/UX, capturas y análisis visual |
+| `@visual-analyst` | Jev 1.13 | Análisis visual alternativo |
+| `@reasoning-expert` | Big Pickle | Segunda opinión y problemas complejos |
+| `@utility-developer` | Flint 40B | Scripts, tests y cambios aislados |
+| `@general-assistant` | Beam | Respaldo generalista |
+
+### Reglas del reparto
+
+1. **Planificar antes de implementar:** para tareas medianas, grandes, críticas o que afecten a arquitectura, usa primero `@architect`.
+2. **Implementación normal:** usa `@developer` como primera opción.
+3. **Cambios grandes o refactorizaciones:** usa `@deepseek-developer` cuando la tarea afecte a muchos archivos o módulos.
+4. **Errores difíciles:** usa `@debugger` para encontrar la causa raíz antes de seguir modificando código.
+5. **Revisión cruzada:** quien implementa **no revisa su propio trabajo**. Usa `@code-reviewer` o el revisor indicado en la sección 6.
+6. **Dinero y datos críticos:** toda lógica marcada con 🔒 pasa obligatoriamente por `@financial-auditor` y por la revisión indicada en la sección 6.
+7. **UI y capturas:** usa `@ui-reviewer` cuando haya que analizar una captura, diseño, dashboard o gráfico.
+8. **Tareas mecánicas:** usa `@fast-worker` o `@utility-developer` para cambios pequeños, búsquedas, tests sencillos o refactors mecánicos.
+9. **Segunda opinión:** usa `@reasoning-expert` cuando haya dudas de arquitectura, seguridad, cifrado o un problema que otro agente no haya resuelto.
+10. **Respaldo:** usa `@general-assistant` solo como alternativa para tareas no críticas.
+
+### Delegación y uso
+
+El agente principal `@developer` puede delegar en los subagentes definidos en `opencode.json`. Cuando la tarea requiera una especialidad, debe delegar explícitamente en el agente adecuado.
+
+Ejemplos:
+
+- `@architect`: «Analiza la tarea y crea un plan. No modifiques archivos.»
+- `@developer`: «Implementa la tarea siguiendo el plan aprobado.»
+- `@debugger`: «Encuentra la causa raíz. No modifiques código todavía.»
+- `@financial-auditor`: «Audita los cálculos y casos límite. No modifiques archivos.»
+- `@code-reviewer`: «Revisa el diff de forma independiente.»
+- `@ui-reviewer`: «Analiza esta captura desde el punto de vista de UI/UX.»
+
+### Reglas ante límites o indisponibilidad
+
+- Si un modelo devuelve un error de límite, no reintentes en bucle: usa el agente alternativo apropiado.
+- Si un agente falla 3 veces seguidas con el mismo error, aplica el escalado de la sección 5.
+- No cambies de modelo a mitad de una tarea sin dejar un traspaso por escrito.
+- Tras **T1.5**, revisa si el reparto real de agentes debe ajustarse según los resultados obtenidos.
 ---
 
 ## 3. Bucle de comprobación (se ejecuta en CADA tarea)
@@ -158,89 +197,113 @@ Pasa al modelo **solo** estas secciones de `MiPatrimonio.md` (más la sección 0
 
 ---
 
-## 5. Escalado y traspaso entre modelos
+## 5. Escalado y traspaso entre agentes
+
+### Orden de escalado recomendado
+
+El escalado depende del tipo de problema:
+
+| Situación | Primer agente | Escalado recomendado |
+|---|---|---|
+| Implementación normal | `@developer` | `@deepseek-developer` |
+| Arquitectura o diseño | `@architect` | `@reasoning-expert` |
+| Bug complejo | `@debugger` | `@reasoning-expert` |
+| Cálculos financieros | `@financial-auditor` | `@reasoning-expert` + `@code-reviewer` |
+| Revisión de código | `@code-reviewer` | `@reasoning-expert` |
+| UI/capturas | `@ui-reviewer` | `@visual-analyst` |
+| Tarea pequeña | `@fast-worker` | `@utility-developer` |
+| Agente no disponible | Agente equivalente | `@general-assistant` solo si la tarea no es crítica |
 
 ### Cuándo escalar
-- **3 fallos de compilación o de tests** con el mismo error → cambiar de modelo.
-- **Mismo error dos veces** tras "arreglarlo" → pedir al modelo que cite la documentación oficial antes de seguir.
-- **Error 429 / límite de uso** → esperar unos minutos o pasar al proveedor de reserva (NVIDIA NIM). No reintentar en bucle.
-- **El modelo propone algo que contradice `MiPatrimonio.md`** → parar, citar la sección y pedir que lo corrija.
-- **El modelo inventa una librería o función** → pedir enlace a la documentación; si no lo da, descartar la propuesta.
 
-### Plantilla de traspaso (pegar al nuevo modelo)
-```
+- **3 fallos de compilación o de tests** con el mismo error → cambiar al agente de escalado correspondiente.
+- **Mismo error dos veces** tras «arreglarlo» → usar `@debugger` para analizar la causa raíz y pedir documentación oficial si interviene una API o dependencia.
+- **Error 429 / límite de uso** → cambiar a un agente alternativo adecuado. No reintentar en bucle.
+- **El agente propone algo que contradice `MiPatrimonio.md`** → parar, citar la sección y pedir que lo corrija.
+- **El agente inventa una librería o función** → pedir enlace a la documentación oficial; si no lo aporta, descartar la propuesta.
+- **Una tarea 🔒 presenta dudas** → no cerrar la tarea hasta que `@financial-auditor` y el revisor asignado hayan terminado.
+
+### Plantilla de traspaso (pegar al nuevo agente)
+
+```text
 TRASPASO — Tarea <Tx.y>: <nombre>
+Agente anterior: <@agente>
+Agente nuevo: <@agente>
 Estado: <qué está hecho>
 Archivos tocados: <lista>
 Error actual (texto exacto, primeras 20 líneas): <...>
 Lo que ya se intentó: <1., 2., 3.>
+Resultado de compilación/tests: <...>
 Restricciones: leer MiPatrimonio.md sección 0 y esta tarea; no cambiar nombres de la sección 6.
 Qué necesito de ti: <arreglar el error / revisar / continuar desde X>
 ```
 
 ### Cuándo pedir ayuda a George
+
 - Decisiones de producto no recogidas en `MiPatrimonio.md` (sección 21 tiene las abiertas).
 - Configuración externa: Google Cloud/Drive (sección 13.3), firma del APK, permisos del móvil.
 - Cuando algo funciona en el emulador pero no en el RedMagic (posible ahorro de batería del sistema, sección 12).
-
 ---
 
-## 6. Reparto de tareas por modelo
+## 6. Reparto de tareas por agente
 
-Leyenda: **GLM** = GLM-5.3-Flash · **BP** = Big Pickle · **NEM** = Nemotron 3.5 · 🔒 = pasa siempre revisión de BP.
+Leyenda: **DEV** = `@developer` · **ARCH** = `@architect` · **DS** = `@deepseek-developer` · **DBG** = `@debugger` · **REV** = `@code-reviewer` · **FIN** = `@financial-auditor` · **FAST** = `@fast-worker` · **UI** = `@ui-reviewer` · **BP** = `@reasoning-expert` · 🔒 = auditoría financiera obligatoria.
 
 ### Fase 1 — Núcleo
-| Tarea | Implementa | Revisa | Notas |
-|---|---|---|---|
-| T1.1 Proyecto base | GLM | BP | Gradle y version catalog: cuidado con versiones y KSP |
-| T1.2 Tema neón | GLM | NEM | Verificar colores contra sección 5.1 |
-| T1.3 Navegación | GLM | NEM | |
-| T1.4 Base de datos 🔒 | GLM | BP | Entidades exactas de la sección 6; `exportSchema = true` |
-| **T1.5 `Money` — prueba comparativa** | **GLM, BP y NEM (por separado)** | George | Misma tarea a los tres; elige el que compile a la primera, escriba mejores tests y invente menos. **Ajusta esta tabla con el resultado** |
-| T1.6 Tarjetas | GLM | NEM | Foto con `PickVisualMedia`, copiada a almacenamiento privado |
-| T1.7 Añadir movimiento 🔒 | GLM | BP | Validación de importes |
-| T1.8 Lista de movimientos | GLM | NEM | |
-| T1.9 Inicio 🔒 | GLM | BP | Cálculo del saldo con tests |
-| T1.10 Bloqueo 🔒 | GLM | BP | |
+
+| Tarea | Planifica | Implementa | Revisa | Notas |
+|---|---|---|---|---|
+| T1.1 Proyecto base | ARCH | DEV | REV + BP | Gradle y version catalog: cuidado con versiones y KSP |
+| T1.2 Tema neón | ARCH | DEV | UI | Verificar colores contra sección 5.1 |
+| T1.3 Navegación | ARCH | DEV | REV | |
+| T1.4 Base de datos 🔒 | ARCH | DEV | REV + FIN | Entidades exactas de la sección 6; `exportSchema = true` |
+| **T1.5 `Money` — prueba comparativa** | ARCH | **DEV, DS y BP (por separado)** | George + FIN | Misma tarea a los tres; elegir por compilación, tests y respeto de la especificación. **Ajustar esta tabla con el resultado** |
+| T1.6 Tarjetas | ARCH | DEV | REV | Foto con `PickVisualMedia`, copiada a almacenamiento privado |
+| T1.7 Añadir movimiento 🔒 | ARCH | DEV | FIN + REV | Validación de importes |
+| T1.8 Lista de movimientos | ARCH | DEV | REV | |
+| T1.9 Inicio 🔒 | ARCH | DEV | FIN + REV | Cálculo del saldo con tests |
+| T1.10 Bloqueo 🔒 | ARCH | DEV | BP + REV | |
 
 ### Fase 2 — Captura
-| Tarea | Implementa | Revisa | Notas |
-|---|---|---|---|
-| T2.1 `CryptoManager` 🔒 | GLM | BP | No usar `security-crypto` (deprecada) |
-| T2.2 Documentos 🔒 | GLM | BP | Archivos temporales descifrados: borrarlos al salir |
-| T2.3 OCR base | GLM | BP | |
-| T2.4 `ReceiptParser` 🔒 | GLM (parser) + NEM (textos de ejemplo) | BP | ≥ 8 casos de test; los textos de ejemplo no deben contener datos reales |
-| T2.5 Escaneo de ticket | GLM | BP | |
-| T2.6 Compartir desde CamScanner 🔒 | GLM | BP | Copiar el archivo antes de mostrar nada |
-| T2.7 Etiquetas y notas | NEM | GLM | |
+
+| Tarea | Planifica | Implementa | Revisa | Notas |
+|---|---|---|---|---|
+| T2.1 `CryptoManager` 🔒 | ARCH | DEV | BP + REV | No usar `security-crypto` (deprecada) |
+| T2.2 Documentos 🔒 | ARCH | DEV | BP + REV | Archivos temporales descifrados: borrarlos al salir |
+| T2.3 OCR base | ARCH | DEV | REV | |
+| T2.4 `ReceiptParser` 🔒 | ARCH | DEV + FAST (textos de ejemplo) | FIN + REV | ≥ 8 casos de test; sin datos reales |
+| T2.5 Escaneo de ticket | ARCH | DEV | REV | |
+| T2.6 Compartir desde CamScanner 🔒 | ARCH | DEV | BP + REV | Copiar el archivo antes de mostrar nada |
+| T2.7 Etiquetas y notas | ARCH | FAST | REV | |
 
 ### Fase 3 — Planificación
-| Tarea | Implementa | Revisa | Notas |
-|---|---|---|---|
-| T3.1 Planes de ahorro 🔒 | GLM | BP | Objetivo de solo lectura en la tarjeta; se edita en "Editar plan" |
-| T3.2 `ProgressNeonBar` | GLM | NEM | Respetar reducción de movimiento |
-| T3.3 Varios planes y prioridad | NEM | GLM | |
-| T3.4 Presupuestos 🔒 | GLM | BP | Umbrales una vez al mes |
-| T3.5 Recurrentes y suscripciones 🔒 | GLM | BP | Probar huecos de varios días |
-| T3.6 Notificaciones | GLM | NEM | Permiso en Android 13+ |
-| T3.7 Análisis 🔒 | GLM | BP | |
-| T3.8 Recordatorio nocturno | NEM | GLM | |
+
+| Tarea | Planifica | Implementa | Revisa | Notas |
+|---|---|---|---|---|
+| T3.1 Planes de ahorro 🔒 | ARCH | DEV | FIN + REV | Objetivo de solo lectura en la tarjeta; se edita en «Editar plan» |
+| T3.2 `ProgressNeonBar` | ARCH | DEV | UI | Respetar reducción de movimiento |
+| T3.3 Varios planes y prioridad | ARCH | DS | REV | |
+| T3.4 Presupuestos 🔒 | ARCH | DEV | FIN + REV | Umbrales una vez al mes |
+| T3.5 Recurrentes y suscripciones 🔒 | ARCH | DEV | FIN + REV | Probar huecos de varios días |
+| T3.6 Notificaciones | ARCH | DEV | REV | Permiso en Android 13+ |
+| T3.7 Análisis 🔒 | ARCH | DS | FIN + REV | |
+| T3.8 Recordatorio nocturno | ARCH | FAST | REV | |
 
 ### Fase 4 — Extras
-| Tarea | Implementa | Revisa | Notas |
-|---|---|---|---|
-| T4.1 Exportación CSV y PDF | NEM (CSV) + GLM (PDF) | BP | CSV con BOM y `;` |
-| T4.2 Copia local cifrada 🔒 | GLM | BP | Clave derivada de contraseña, no de Keystore |
-| T4.3 Copia en Drive 🔒 | GLM | BP | Requiere configuración de Google Cloud por George |
-| T4.4 Widget Glance | GLM | NEM | |
-| T4.5 Informe mensual | GLM | NEM | |
-| T4.6 Multimoneda 🔒 | NEM | BP | Redondeo en céntimos |
-| T4.7 Gastos compartidos 🔒 | GLM | BP | Algoritmo de saldos con tests |
-| T4.8 Dashboard personalizable y vencimientos | GLM | NEM | |
-| T4.9 Pulido y revisión global | BP | GLM | Accesibilidad, rendimiento, pruebas en Android 8/12/15 |
 
-**Si un modelo está no disponible o con límite:** sustituirlo por el siguiente de la lista GLM → BP → NEM → NVIDIA NIM, manteniendo la regla de que quien implementa no revisa.
+| Tarea | Planifica | Implementa | Revisa | Notas |
+|---|---|---|---|---|
+| T4.1 Exportación CSV y PDF | ARCH | FAST (CSV) + DEV (PDF) | REV + FIN | CSV con BOM y `;` |
+| T4.2 Copia local cifrada 🔒 | ARCH | DEV | BP + REV | Clave derivada de contraseña, no de Keystore |
+| T4.3 Copia en Drive 🔒 | ARCH | DEV | BP + REV | Requiere configuración de Google Cloud por George |
+| T4.4 Widget Glance | ARCH | DEV | REV | |
+| T4.5 Informe mensual | ARCH | DEV | FIN + REV | |
+| T4.6 Multimoneda 🔒 | ARCH | DS | FIN + REV | Redondeo en céntimos |
+| T4.7 Gastos compartidos 🔒 | ARCH | DEV | FIN + REV | Algoritmo de saldos con tests |
+| T4.8 Dashboard personalizable y vencimientos | ARCH | DEV | UI + REV | |
+| T4.9 Pulido y revisión global | ARCH | BP | REV + UI | Accesibilidad, rendimiento, pruebas en Android 8/12/15 |
 
+**Regla general de sustitución:** usa primero el agente indicado. Si no está disponible o alcanza su límite, aplica el orden de escalado de la sección 5, manteniendo siempre la regla de que quien implementa no revisa su propio trabajo.
 ---
 
 ## 7. `PROGRESS.md` (memoria del proyecto entre sesiones)
