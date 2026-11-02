@@ -1,4 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">MiPatrimonio</string>
+
+    <!-- T1.2: pantalla de muestra del tema -->
+    <string name="showcase_title">Tema neón</string>
+    <string name="showcase_amount">1.234,56 €</string>
+    <string name="showcase_card_title">Panel neón</string>
+    <string name="showcase_card_body">Tarjetas, paneles y bordes del tema</string>
+    <string name="showcase_button_primary">Botón primario</string>
+    <string name="showcase_button_secondary">Botón secundario</string>
+    <string name="showcase_chip_cash">Metálico</string>
+    <string name="showcase_chip_card">Tarjeta</string>
+    <string name="showcase_chip_subscription">Suscripción</string>
+    <string name="showcase_chip_income">Ingreso</string>
 </resources>

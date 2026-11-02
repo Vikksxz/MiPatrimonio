@@ -2,8 +2,8 @@
 
 ## Estado
 - Fase actual: 1
-- Última tarea cerrada: (ninguna)
-- Tarea en curso: T1.1 (cerrando ahora)
+- Última tarea cerrada: T1.2
+- Tarea en curso: T1.3 Navegación (por iniciar)
 
 ## Decisiones tomadas
 - (2026-11-02) Paquete: com.mipatrimonio.app
@@ -23,5 +23,7 @@
 - (ninguna)
 
 ## Notas para el próximo modelo
-- T1.1 cerrada: pantalla vacía oscura compilando. Siguiente: T1.2 Tema neón (sección 5 de MiPatrimonio.md).
+- (2026-11-02) T1.1 cerrada: pantalla vacía oscura compilando.
+- (2026-11-02) T1.2 cerrada: tema neón (Color.kt, Type.kt, Theme.kt, Shape.kt) + componentes NeonCard, NeonButton, NeonChip, ScreenTitle y ShowcaseScreen con @Preview. Fuentes variables Orbitron y Space Grotesk aplicadas con `FontVariation`. Revisión cruzada con @code-reviewer aplicada (tipografía completa, ColorScheme completo, accesibilidad de chips).
+- IMPORTANTE: los imports correctos de fuentes en Compose son `androidx.compose.ui.text.font.FontFamily` y `...text.font.Font` (no `androidx.compose.ui.text.FontFamily`).
 - No tocar archivos fuera del alcance de la tarea. local.properties ya está en .gitignore.

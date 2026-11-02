@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "com.mipatrimonio.app"
     compileSdk {
-        version = release(36)
+        version = release(37)
     }
 
     defaultConfig {
@@ -25,10 +25,6 @@ android {
 
     buildFeatures {
         compose = true
-    }
-
-    compileSdk {
-        version = release(37)
     }
 
     compileOptions {
