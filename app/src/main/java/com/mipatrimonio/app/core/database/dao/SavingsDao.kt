@@ -1,0 +1,57 @@
+package com.mipatrimonio.app.core.database.dao
+
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Embedded
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Relation
+import androidx.room.Transaction
+import androidx.room.Update
+import com.mipatrimonio.app.core.database.entity.PlanContributionEntity
+import com.mipatrimonio.app.core.database.entity.SavingsPlanEntity
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface SavingsDao {
+
+    @Query("SELECT * FROM savings_plans ORDER BY priority ASC, createdAt ASC")
+    fun observePlans(): Flow<List<SavingsPlanEntity>>
+
+    @Query("SELECT * FROM savings_plans WHERE isActive = 1 LIMIT 1")
+    fun observeActivePlan(): Flow<SavingsPlanEntity?>
+
+    @Query("SELECT * FROM savings_plans WHERE id = :id")
+    suspend fun getPlanById(id: Long): SavingsPlanEntity?
+
+    @Query("SELECT * FROM plan_contributions WHERE planId = :planId ORDER BY date DESC")
+    fun observeContributions(planId: Long): Flow<List<PlanContributionEntity>>
+
+    @Query("SELECT SUM(amountCents) FROM plan_contributions WHERE planId = :planId")
+    fun sumContributed(planId: Long): Flow<Long?>
+
+    @Query("SELECT SUM(amountCents) FROM plan_contributions WHERE date >= :from AND date < :to")
+    fun observeMonthlyContributed(from: Long, to: Long): Flow<Long?>
+
+    @Insert
+    suspend fun insertPlan(plan: SavingsPlanEntity): Long
+
+    @Insert
+    suspend fun insertContribution(contribution: PlanContributionEntity): Long
+
+    @Update
+    suspend fun updatePlan(plan: SavingsPlanEntity): Int
+
+    @Transaction
+    suspend fun deletePlanWithContributions(planId: Long) {
+        deleteContributionsForPlan(planId)
+        deletePlan(planId)
+    }
+
+    @Query("DELETE FROM plan_contributions WHERE planId = :planId")
+    suspend fun deleteContributionsForPlan(planId: Long)
+
+    @Query("DELETE FROM savings_plans WHERE id = :id")
+    suspend fun deletePlan(id: Long)
+}

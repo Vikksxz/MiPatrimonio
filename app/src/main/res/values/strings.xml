@@ -23,4 +23,18 @@
     <string name="add_movement">Añadir movimiento</string>
     <string name="add_sheet_title">Añadir</string>
     <string name="placeholder_under_construction">En construcción</string>
+
+    <!-- T1.4: categorías seed (10 gastos + 2 ingresos) -->
+    <string name="cat_food">Alimentación</string>
+    <string name="cat_dining">Restauración</string>
+    <string name="cat_transport">Transporte y coche</string>
+    <string name="cat_home">Hogar</string>
+    <string name="cat_leisure">Ocio</string>
+    <string name="cat_health">Salud</string>
+    <string name="cat_shopping">Compras</string>
+    <string name="cat_subscriptions">Suscripciones</string>
+    <string name="cat_travel">Viajes</string>
+    <string name="cat_other_expense">Otros gastos</string>
+    <string name="cat_payroll">Nómina</string>
+    <string name="cat_other_income">Otros ingresos</string>
 </resources>
