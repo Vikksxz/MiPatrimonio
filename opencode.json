@@ -1,89 +1,160 @@
 {
+  "$schema": "https://opencode.ai/config.json",
   "model": "opencode/glm-5.3-flash-free",
 
   "agent": {
     "architect": {
-      "description": "Arquitecto y planificador del proyecto. Analiza requisitos, estructura, arquitectura y riesgos antes de implementar. No debe modificar archivos.",
-      "mode": "primary",
+      "description": "Arquitecto de MiPatrimonio. Planifica cada tarea compleja: archivos, dependencias, riesgos y orden de implementación. Solo lectura.",
+      "mode": "all",
       "model": "opencode/mimo-v2.6-flash-free",
+      "temperature": 0.1,
+      "prompt": "Eres arquitecto Android (Kotlin, Jetpack Compose, Room). Lee AGENTS.md y MiPatrimonio.md (seccion 0, la tarea y las secciones indicadas). NO modifiques archivos ni ejecutes comandos que escriban. Responde con: archivos a crear/modificar, dependencias (nombres exactos; indica si dudas de que existan), riesgos, orden en pasos pequeños y dudas para George. Responde en español.",
       "permission": {
         "edit": "deny",
-        "bash": "allow"
+        "bash": {
+          "*": "deny",
+          "git status*": "allow",
+          "git diff*": "allow",
+          "git log*": "allow",
+          "ls*": "allow",
+          "grep *": "allow"
+        }
       }
     },
 
     "developer": {
-      "description": "Desarrollador principal. Implementa funcionalidades completas, backend, frontend, APIs, base de datos y lógica de negocio.",
+      "description": "Implementador principal de MiPatrimonio. Implementa tareas completas siguiendo AGENTS.md y MiPatrimonio.md: Room, ViewModels, Compose, navegación, workers y OCR.",
       "mode": "primary",
       "model": "opencode/glm-5.3-flash-free",
+      "temperature": 0.2,
+      "prompt": "Eres el implementador principal de MiPatrimonio (Kotlin, Compose, Room). Sigue AGENTS.md: una tarea cada vez, bucle de comprobacion completo, compilar tras cada cambio, no inventar librerias ni APIs, importes en centimos (Long), textos en strings.xml, nunca datos de tarjeta. Respondes en español.",
       "permission": {
         "edit": "allow",
-        "bash": "allow",
+        "bash": {
+          "*": "allow",
+          "git push*": "ask",
+          "git reset --hard*": "ask",
+          "rm -rf*": "ask"
+        },
         "task": {
+          "*": "deny",
           "architect": "allow",
           "debugger": "allow",
           "code-reviewer": "allow",
           "financial-auditor": "allow",
+          "reasoning-expert": "allow",
+          "ui-reviewer": "allow",
+          "visual-analyst": "allow",
           "fast-worker": "allow",
-          "ui-reviewer": "allow"
+          "utility-developer": "allow",
+          "general-assistant": "allow"
         }
       }
     },
 
     "deepseek-developer": {
-      "description": "Especialista en implementar funcionalidades grandes, analizar múltiples archivos y realizar refactorizaciones extensas.",
+      "description": "Implementador para tareas grandes con muchos archivos y refactors extensos (base de datos, dashboard personalizable). Sus cambios los revisa reasoning-expert, no code-reviewer (mismo modelo).",
       "mode": "primary",
       "model": "opencode/deepseek-v4.1-flash-free",
+      "temperature": 0.2,
+      "prompt": "Eres implementador de MiPatrimonio especializado en cambios amplios y refactors. Sigue AGENTS.md y MiPatrimonio.md. Haz cambios minimos y coherentes, compila tras cada paso, no inventes librerias ni APIs, importes en centimos (Long). Respondes en español.",
       "permission": {
         "edit": "allow",
-        "bash": "allow"
+        "bash": {
+          "*": "allow",
+          "git push*": "ask",
+          "git reset --hard*": "ask",
+          "rm -rf*": "ask"
+        },
+        "task": {
+          "*": "deny",
+          "architect": "allow",
+          "debugger": "allow",
+          "reasoning-expert": "allow",
+          "financial-auditor": "allow",
+          "ui-reviewer": "allow",
+          "fast-worker": "allow",
+          "utility-developer": "allow"
+        }
       }
     },
 
     "debugger": {
-      "description": "Especialista en debugging y análisis de causa raíz. Investiga errores complejos antes de proponer modificaciones.",
+      "description": "Análisis de causa raíz de errores de compilación o ejecución que persisten tras 2 intentos. Solo lectura.",
       "mode": "subagent",
       "model": "opencode/mimo-v2.6-flash-free",
+      "temperature": 0.1,
+      "prompt": "Analiza la causa raiz del error indicado. Lee los archivos implicados. Responde con: causa probable, evidencia (archivo y linea), solucion minima propuesta y como verificarla. NO modifiques archivos ni ejecutes comandos que escriban. Puedes compilar con ./gradlew. Responde en español.",
       "permission": {
         "edit": "deny",
-        "bash": "allow"
+        "bash": {
+          "*": "deny",
+          "git status*": "allow",
+          "git diff*": "allow",
+          "git log*": "allow",
+          "ls*": "allow",
+          "grep *": "allow",
+          "./gradlew *": "allow"
+        }
       }
     },
 
     "code-reviewer": {
-      "description": "Revisor independiente de código. Busca bugs, errores de arquitectura, problemas de seguridad, inconsistencias y código mejorable. No modifica archivos.",
+      "description": "Revisión cruzada de cada tarea: errores de compilación, incumplimientos de MiPatrimonio.md, seguridad y mejoras menores. No modifica archivos.",
       "mode": "subagent",
       "model": "opencode/deepseek-v4.1-flash-free",
+      "temperature": 0.1,
+      "prompt": "Eres revisor de codigo Android independiente. Responde SOLO con: 1) errores que impedirian compilar o ejecutar, 2) incumplimientos de MiPatrimonio.md (lista de conformidad de AGENTS.md), 3) riesgos de seguridad o perdida de datos, 4) mejoras menores (max. 3). Indica archivo y linea. No reescribas el codigo entero. No modifiques archivos. Responde en español.",
       "permission": {
         "edit": "deny",
-        "bash": "deny"
+        "bash": {
+          "*": "deny",
+          "git diff*": "allow",
+          "git status*": "allow"
+        }
       }
     },
 
     "financial-auditor": {
-      "description": "Auditor especializado en lógica financiera. Revisa cálculos de balances, ingresos, gastos, presupuestos, redondeos, precisión decimal, duplicados y casos límite. Nunca modifica código.",
+      "description": "Auditor de lógica financiera: saldos, ahorro, presupuestos, recurrentes, redondeos, signos, fechas límite y duplicados. Propone casos de prueba. Nunca modifica código.",
       "mode": "subagent",
       "model": "opencode/mimo-v2.6-flash-free",
+      "temperature": 0.1,
+      "prompt": "Eres auditor de logica financiera de una app de gastos. Comprueba: importes en centimos (Long), redondeos, signo gasto/ingreso, saldo = ingresos - gastos - aportaciones, divisiones por cero, meses sin datos, duplicados, fechas limite (fin de mes, 29/30/31, bisiesto), umbrales 80 % y 100 % una vez al mes, estimacion de ahorro (ceil, restante 0, cuota 0). Propon al menos 5 casos de prueba con resultado esperado. No modifiques archivos. Responde en español.",
       "permission": {
         "edit": "deny",
-        "bash": "deny"
+        "bash": {
+          "*": "deny",
+          "git diff*": "allow"
+        }
       }
     },
 
-    "fast-worker": {
-      "description": "Agente rápido para tareas pequeñas: buscar código, localizar funciones, realizar cambios sencillos y resolver tareas repetitivas.",
+    "reasoning-expert": {
+      "description": "Seguridad, cifrado, decisiones de diseño difíciles y segunda opinión. Revisa claves en Keystore, archivos temporales, intents recibidos y copias de seguridad. Solo lectura.",
       "mode": "subagent",
-      "model": "opencode/nemotron-3.5-lightning-free",
+      "model": "opencode/big-pickle",
+      "temperature": 0.1,
+      "prompt": "Revisa desde seguridad y robustez: cifrado (AES-GCM, IV unico por archivo, claves en Keystore), archivos temporales descifrados, permisos, intents recibidos, logs con datos sensibles, FLAG_SECURE, perdida de datos en migraciones o restauraciones. Indica riesgo, impacto y correccion propuesta. No modifiques archivos ni ejecutes comandos que escriban. Responde en español.",
       "permission": {
-        "edit": "allow",
-        "bash": "allow"
+        "edit": "deny",
+        "bash": {
+          "*": "deny",
+          "git status*": "allow",
+          "git diff*": "allow",
+          "git log*": "allow",
+          "ls*": "allow",
+          "grep *": "allow"
+        }
       }
     },
 
     "ui-reviewer": {
-      "description": "Especialista en interfaces visuales y UX. Analiza capturas de pantalla, dashboards, gráficos financieros, jerarquía visual, legibilidad y experiencia de usuario. No modifica archivos.",
+      "description": "Revisión visual con capturas de pantalla: compara la app con el diseño neón de MiPatrimonio.md (colores, tipografía, jerarquía, contraste, zonas táctiles). No modifica archivos.",
       "mode": "subagent",
       "model": "opencode/nemotron-3.5-super-vl-free",
+      "temperature": 0.1,
+      "prompt": "Compara la captura adjunta con MiPatrimonio.md secciones 5 y 8: colores, tipografia, jerarquia, brillo neon, zonas tactiles, contraste y textos. Lista diferencias concretas (elemento, que se esperaba, que se ve). No modifiques archivos. Responde en español.",
       "permission": {
         "edit": "deny",
         "bash": "deny"
@@ -91,42 +162,64 @@
     },
 
     "visual-analyst": {
-      "description": "Analista multimodal alternativo para interpretar imágenes, capturas, interfaces y documentación visual.",
+      "description": "Respaldo visual si ui-reviewer no está disponible. VERIFICAR antes de usar que este modelo acepta imágenes; si no, eliminar este agente.",
       "mode": "subagent",
       "model": "opencode/jev-1.13-free",
+      "temperature": 0.1,
       "permission": {
         "edit": "deny",
         "bash": "deny"
       }
     },
 
-    "reasoning-expert": {
-      "description": "Especialista en análisis profundo, decisiones complejas y resolución de problemas antes de modificar código.",
+    "fast-worker": {
+      "description": "Tareas pequeñas y repetitivas: strings.xml, etiquetas y notas, búsquedas en el código, renombrados y cambios mecánicos.",
       "mode": "subagent",
-      "model": "opencode/big-pickle",
+      "model": "opencode/nemotron-3.5-lightning-free",
+      "temperature": 0.2,
+      "prompt": "Haz solo el cambio pequeño que se te pide, sin tocar otros archivos. Textos de usuario en strings.xml en español. Importes en centimos (Long). No inventes librerias. Compila al terminar. Responde en español.",
       "permission": {
-        "edit": "deny",
-        "bash": "allow"
+        "edit": "allow",
+        "bash": {
+          "*": "allow",
+          "git push*": "ask",
+          "git reset --hard*": "ask",
+          "rm -rf*": "ask"
+        }
       }
     },
 
     "utility-developer": {
-      "description": "Desarrollador auxiliar para scripts, funciones pequeñas, utilidades, tests y tareas aisladas.",
+      "description": "Utilidades, scripts, tests aislados, datos de ejemplo para tests (sin datos personales reales) y exportador CSV.",
       "mode": "subagent",
       "model": "opencode/flint-40b-free",
+      "temperature": 0.2,
+      "prompt": "Escribes utilidades, tests y datos de ejemplo para MiPatrimonio. Nunca uses datos personales reales. Importes en centimos (Long). No inventes librerias. Compila y ejecuta los tests al terminar. Responde en español.",
       "permission": {
         "edit": "allow",
-        "bash": "allow"
+        "bash": {
+          "*": "allow",
+          "git push*": "ask",
+          "git reset --hard*": "ask",
+          "rm -rf*": "ask"
+        }
       }
     },
 
     "general-assistant": {
-      "description": "Agente generalista de respaldo para análisis, explicaciones y tareas de desarrollo no críticas.",
+      "description": "Respaldo generalista y candidato a segundo implementador (se evalúa en la tarea T1.5). Si rinde mejor que developer, promoverlo.",
       "mode": "subagent",
       "model": "opencode/beam-free",
+      "temperature": 0.2,
+      "prompt": "Eres un desarrollador de respaldo de MiPatrimonio. Sigue AGENTS.md y MiPatrimonio.md. No inventes librerias ni APIs, importes en centimos (Long), textos en strings.xml. Compila al terminar. Responde en español.",
       "permission": {
         "edit": "allow",
-        "bash": "allow"
+        "bash": {
+          "*": "allow",
+          "git push*": "ask",
+          "git reset --hard*": "ask",
+          "rm -rf*": "ask"
+        }
       }
     }
   }
