@@ -51,6 +51,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.kotlinx.coroutines.android)
 
     // Navegación (se usa desde T1.3)
@@ -66,6 +67,7 @@ dependencies {
 
     // Inyección de dependencias
     implementation(libs.hilt.android)
+    implementation(libs.androidx.hilt.navigation.compose)
     ksp(libs.hilt.android.compiler)
 
     // Tests

@@ -42,25 +42,44 @@ fun NeonChip(
     selected: Boolean = false,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
-) {
-    val accent = when (type) {
+) = NeonChip(
+    text = text,
+    accent = when (type) {
         MovementChipType.CASH -> NeonColor.MovementType.cashAccent
         MovementChipType.CARD -> NeonColor.MovementType.cardAccent
         MovementChipType.SUBSCRIPTION -> NeonColor.MovementType.subscriptionAccent
         MovementChipType.INCOME -> NeonColor.MovementType.incomeAccent
-    }
-    val tint = when (type) {
+    },
+    tint = when (type) {
         MovementChipType.CASH -> NeonColor.MovementType.cashBg
         MovementChipType.CARD -> NeonColor.MovementType.cardBg
         MovementChipType.SUBSCRIPTION -> NeonColor.MovementType.subscriptionBg
         MovementChipType.INCOME -> NeonColor.MovementType.incomeBg
-    }
-    val labelColor = when (type) {
+    },
+    labelColor = when (type) {
         MovementChipType.CASH -> NeonColor.MovementType.cashText
         MovementChipType.CARD -> NeonColor.MovementType.cardText
         MovementChipType.SUBSCRIPTION -> NeonColor.MovementType.subscriptionText
         MovementChipType.INCOME -> NeonColor.MovementType.incomeText
-    }
+    },
+    selected = selected,
+    modifier = modifier,
+    onClick = onClick,
+)
+
+/**
+ * NeonChip genérico con colores personalizados.
+ */
+@Composable
+fun NeonChip(
+    text: String,
+    accent: androidx.compose.ui.graphics.Color,
+    tint: androidx.compose.ui.graphics.Color,
+    labelColor: androidx.compose.ui.graphics.Color,
+    selected: Boolean = false,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+) {
     val shape = RoundedCornerShape(NeonShape.chipRadius)
     val interactiveModifier = if (onClick != null) {
         Modifier.clickable(onClick = onClick)

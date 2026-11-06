@@ -37,4 +37,43 @@
     <string name="cat_other_expense">Otros gastos</string>
     <string name="cat_payroll">Nómina</string>
     <string name="cat_other_income">Otros ingresos</string>
+
+    <!-- T1.6: Cartera / Tarjetas -->
+    <string name="wallet_title">CARTERA</string>
+    <string name="wallet_empty_text">Toca una tarjeta para editarla o eliminarla. No se guardan números ni datos de la tarjeta.</string>
+    <string name="wallet_add_card">Añadir tarjeta</string>
+    <string name="card_form_title_new">Nueva tarjeta</string>
+    <string name="card_form_title_edit">Editar tarjeta</string>
+    <string name="card_form_bank">Banco</string>
+    <string name="card_form_variant">Variante (opcional)</string>
+    <string name="card_form_kind">Tipo</string>
+    <string name="card_form_alias">Nombre</string>
+    <string name="card_form_design">Diseño</string>
+    <string name="card_form_photo">Usar mi propia foto</string>
+    <string name="card_form_remove_photo">Quitar foto y volver al diseño</string>
+    <string name="card_form_save">Guardar tarjeta</string>
+    <string name="card_form_delete">Eliminar tarjeta</string>
+    <string name="card_form_delete_confirm">¿Eliminar esta tarjeta? Se perderán sus datos.</string>
+    <string name="card_kind_debit">Débito</string>
+    <string name="card_kind_credit">Crédito</string>
+    <string name="card_kind_prepaid">Prepago</string>
+    <string name="card_design_cyan">Cian</string>
+    <string name="card_design_magenta">Magenta</string>
+    <string name="card_design_green">Verde</string>
+    <string name="card_design_amber">Ámbar</string>
+    <string name="card_design_violet">Violeta</string>
+    <string name="card_design_graphite">Grafito</string>
+    <string name="card_preview_debit">Tarjeta de débito</string>
+    <string name="card_preview_credit">Tarjeta de crédito</string>
+    <string name="card_preview_prepaid">Tarjeta prepago</string>
+    <string name="bank_caixabank">CaixaBank</string>
+    <string name="bank_bbva">BBVA</string>
+    <string name="bank_santander">Santander</string>
+    <string name="bank_ing">ING</string>
+    <string name="bank_revolut">Revolut</string>
+    <string name="bank_other">Otro</string>
+    <string name="wallet_empty_title">Sin tarjetas todavía</string>
+    <string name="card_form_error_name">Escribe un nombre para la tarjeta</string>
+    <string name="card_item_action">Editar tarjeta %1$s</string>
+    <string name="common_cancel">Cancelar</string>
 </resources>
