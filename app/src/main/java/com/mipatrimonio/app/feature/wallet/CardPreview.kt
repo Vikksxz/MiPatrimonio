@@ -71,11 +71,11 @@ fun CardPreview(
             .fillMaxWidth()
             .height(height.dp)
             .shadow(
-                elevation = 12.dp,
+                elevation = 24.dp,
                 shape = shape,
                 clip = false,
-                ambientColor = accent.copy(alpha = 0.35f),
-                spotColor = accent.copy(alpha = 0.35f),
+                ambientColor = accent.copy(alpha = 0.55f),
+                spotColor = accent.copy(alpha = 0.55f),
             )
             .clip(shape)
             .background(
@@ -118,9 +118,9 @@ private fun CardPreviewContent(
     modifier: Modifier = Modifier,
 ) {
     val textShadow = Shadow(
-        color = Color.Black.copy(alpha = 0.8f),
-        offset = Offset(0f, 1f),
-        blurRadius = 6f,
+        color = Color.Black.copy(alpha = 0.95f),
+        offset = Offset(0f, 2f),
+        blurRadius = 10f,
     )
     val titleStyle = MaterialTheme.typography.headlineMedium.copy(shadow = textShadow)
     val labelStyle = MaterialTheme.typography.labelLarge.copy(shadow = textShadow)

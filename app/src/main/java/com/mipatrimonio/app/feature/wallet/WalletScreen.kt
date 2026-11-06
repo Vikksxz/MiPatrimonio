@@ -7,10 +7,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -369,6 +370,7 @@ fun CardFormSheet(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CardFormBody(
     state: CardFormState,
@@ -416,11 +418,10 @@ private fun CardFormBody(
         )
 
         FormSection(title = stringResource(R.string.card_form_bank)) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 BankOption.BANKS.forEach { bank ->
                     val name = stringResource(bank.nameRes)
@@ -618,7 +619,7 @@ private fun DesignSwatch(
                 shape = shape,
             )
             .border(
-                width = if (selected) 2.dp else 1.dp,
+                width = 1.dp,
                 color = if (selected) accent else NeonColor.line,
                 shape = shape,
             )

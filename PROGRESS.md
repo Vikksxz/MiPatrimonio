@@ -2,8 +2,8 @@
 
 ## Estado
 - Fase actual: 1
-- Última tarea cerrada: T1.5
-- Tarea en curso: T1.6 Tarjetas (implementada; pendiente probar en móvil y revisión visual)
+- Última tarea cerrada: T1.6
+- Tarea en curso: T1.7 Añadir movimiento manual (sin empezar)
 
 ## Decisiones tomadas
 - (2026-11-02) Paquete: com.mipatrimonio.app
@@ -18,7 +18,7 @@
 ## Problemas conocidos
 - KGP 2.4.21 declarado por buildscript falló (NoClassDefFoundError BaseVariant, API eliminada en AGP 9): se revirtió al KGP embebido 2.2.10
 - compileSdk 36 insuficiente: Compose 1.12 exige 37; se subió a 37 y se instaló la plataforma android-37.2
-- (T1.4, detectado en revisión de T1.6) `TransactionDao.deleteCardAndNullify` borra los movimientos en vez de poner `cardId = NULL`; su test instrumentado no se ha ejecutado. Además, borrar una tarjeta deja `cardId` colgando en `transactions`. Corregir antes de T1.7 (añadir movimientos) o de T1.9.
+- (T1.4, RESUELTO 2026-11-06) `TransactionDao.deleteCardAndNullify` borraba los movimientos en vez de poner `cardId = NULL`. Corregido con `nullifyCardId(cardId)` + `@Transaction`; `WalletViewModel.deleteCard` lo ejecuta dentro de `database.withTransaction`. Test instrumentado `transactionDaoDeleteCardAndNullify` pasa (14/14 instrumentados en NX779J).
 - (T1.6) No hay `dataExtractionRules`/`fullBackupContent` en `res/xml` (lo pide §14); `allowBackup="false"` está puesto en el manifest. Se hará en T1.10.
 
 ## Mejoras menores pendientes (de revisiones)
@@ -35,5 +35,6 @@
 - (2026-11-04) T1.5 cerrada: `Money.kt` en `core/money/` con formato `1.234,56 €` (Locale ES, miles `.`, decimal `,`, símbolo € con espacio), prefijo `−` (U+2212) para gastos y `+` para ingresos, parseo flexible (`23,45`, `23.45`, `1.234,56`, con/sin símbolo, con/sin signo). Tests unitarios: 34 tests cubriendo formato, signo, parseo, edge cases y round-trip. Sin `Float`/`Double` en persistencia.
 - (2026-11-06) Publicado en `main`: T1.4, T1.5, AGENTS.md nuevo y `opencode.json` con agentes/permisos. `main` en `1e44540`.
 - (2026-11-06) T1.6 implementada (rama `t1-6-tarjetas`): `WalletScreen` con lista (`CardPreview` 180 dp), hoja `CardFormSheet` (banco, variante, tipo, nombre, 6 diseños, vista previa en vivo), botón "Añadir tarjeta" con borde discontinuo, borrado con confirmación y `WalletViewModel` (save/delete + limpieza de la foto). Foto propia con `ActivityResultContracts.PickVisualMedia`, copiada a `noBackupFilesDir/card_photos`, reducida a 1280 px, orientación EXIF aplicada y borrado limitado a esa carpeta. Colores de tarjeta según tabla §5.5. 8 tests unitarios nuevos de diseños y bancos. Revisado por `@reasoning-expert` (mismo modelo no revisa): aplicados borrado seguro, validación de rutas, IO fuera del hilo principal y semántica `selectable` en los diseños. Pendiente: prueba en móvil y `@ui-reviewer` con capturas.
+- (2026-11-06) T1.6 CERRADA: probada en RedMagic NX779J (Android 15) con datos limpios: alta (banco BBVA, crédito, nombre, diseño), persistencia tras `force-stop`, edición precargada, foto propia desde el selector del sistema (copia en `no_backup/card_photos`, "Quitar foto" borra el archivo), borrado con confirmación (Cancelar mantiene la hoja) y empty state. `assembleDebug`, 42 tests unitarios y 14 instrumentados en verde. Revisión visual con `@ui-reviewer`: aplicados `FlowRow` en los chips de banco (ya no se corta "Otro"), borde de 1 dp en las muestras de diseño, brillo de tarjeta 24 dp/alfa 0.55 y sombra de texto reforzada. Se descartaron dos observaciones que contradecían §5.1/§5.5 (banco duplicado a la derecha sin variante; texto oscuro en chips cuando la tabla fija tinte + texto neón).
 - (2026-11-06) Aprendizaje de APIs en este proyecto: no existe `rememberPickVisualMedia` (usar `rememberLauncherForActivityResult` + `ActivityResultContracts.PickVisualMedia`); `Modifier.weight` NO se importa (es extensión de `RowScope`/`ColumnScope`); `shadow` es `androidx.compose.ui.draw.shadow`; `material-icons-core` no trae `Icons.Filled.CreditCard`; en material3 1.4 usar `OutlinedTextFieldDefaults.colors(...)` y `rememberModalBottomSheetState`.
 - No tocar archivos fuera del alcance de la tarea. local.properties ya está en .gitignore.

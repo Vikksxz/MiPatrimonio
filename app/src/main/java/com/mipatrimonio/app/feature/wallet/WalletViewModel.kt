@@ -3,6 +3,8 @@ package com.mipatrimonio.app.feature.wallet
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.room.withTransaction
+import com.mipatrimonio.app.core.database.AppDatabase
 import com.mipatrimonio.app.core.database.dao.CardDao
 import com.mipatrimonio.app.core.database.entity.CardEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,6 +23,7 @@ import javax.inject.Inject
 @HiltViewModel
 class WalletViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
+    private val database: AppDatabase,
     private val cardDao: CardDao,
 ) : ViewModel() {
 
@@ -56,7 +59,10 @@ class WalletViewModel @Inject constructor(
 
     fun deleteCard(card: CardEntity) {
         viewModelScope.launch {
-            cardDao.delete(card)
+            database.withTransaction {
+                cardDao.delete(card)
+                database.transactionDao().nullifyCardId(card.id)
+            }
             withContext(Dispatchers.IO) {
                 CardPhotoStore.delete(context, card.photoPath)
             }

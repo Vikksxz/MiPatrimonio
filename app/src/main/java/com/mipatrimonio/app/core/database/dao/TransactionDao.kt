@@ -57,10 +57,13 @@ interface TransactionDao {
     @Query("DELETE FROM transactions WHERE cardId = :cardId")
     suspend fun deleteByCardId(cardId: Long)
 
+    @Query("UPDATE transactions SET cardId = NULL WHERE cardId = :cardId")
+    suspend fun nullifyCardId(cardId: Long)
+
+    /** Al borrar una tarjeta sus movimientos se conservan, sin tarjeta asociada (§6). */
     @Transaction
     suspend fun deleteCardAndNullify(cardId: Long) {
-        // No borrar los movimientos: solo nullificar cardId
-        deleteByCardId(cardId)
+        nullifyCardId(cardId)
     }
 
     @Transaction
