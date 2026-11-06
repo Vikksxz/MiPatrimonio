@@ -700,7 +700,7 @@ Cada tarea termina con la app **compilando**. Marca `[x]` al completar.
 - [x] **T1.2 Tema neón.** `Color.kt`, `Type.kt` (fuentes Orbitron y Space Grotesk en `res/font`), `Theme.kt` oscuro, `Shape.kt`. Componentes: `NeonCard`, `NeonButton` (primario/secundario), `NeonChip`, `ScreenTitle`. *Aceptación:* pantalla de muestra con todos los componentes.
 - [x] **T1.3 Navegación.** Barra inferior con 4 pestañas + botón central +, `AppNavHost` con 4 pantallas vacías. *Aceptación:* se navega entre pestañas; el + abre una hoja vacía.
 - [x] **T1.4 Base de datos.** Entidades, enums, `TypeConverters`, DAOs (`TransactionDao`, `CardDao`, `CategoryDao`, `RecurringDao`, `SavingsDao`, `BudgetDao`, `DocumentDao`, `TagDao`), `AppDatabase` con `exportSchema = true`, seed de categorías. Módulo Hilt. *Aceptación:* tests de DAO pasan.
-- [ ] **T1.5 `Money`.** Formato `1.234,56 €`, parseo flexible, tests. *Aceptación:* tests pasan.
+- [x] **T1.5 `Money`.** Formato `1.234,56 €`, parseo flexible, tests. *Aceptación:* tests pasan.
 - [ ] **T1.6 Tarjetas.** `WalletScreen` (lista de tarjetas) y `CardFormSheet` (banco, variante, tipo, nombre, 6 diseños, foto propia con `PickVisualMedia` copiada a almacenamiento privado, vista previa en vivo, editar/eliminar con confirmación). *Aceptación:* alta, edición, borrado y foto funcionan y persisten.
 - [ ] **T1.7 Añadir movimiento manual.** `AddMenuSheet` y `ReviewSheet` (tipo, importe, comercio, fecha, categoría, tarjeta si aplica, nota). Casos de uso `AddTransaction`. *Aceptación:* un movimiento guardado aparece en la lista.
 - [ ] **T1.8 Lista de movimientos.** Filtros por tipo, buscador, agrupado por día, edición, borrado con deshacer. *Aceptación:* filtros correctos; tests de ViewModel.
