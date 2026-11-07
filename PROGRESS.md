@@ -2,8 +2,8 @@
 
 ## Estado
 - Fase actual: 1
-- Última tarea cerrada: T1.6
-- Tarea en curso: T1.7 Añadir movimiento manual (sin empezar)
+- Última tarea cerrada: T1.7
+- Tarea en curso: T1.8 Lista de movimientos (sin empezar)
 
 ## Decisiones tomadas
 - (2026-11-02) Paquete: com.mipatrimonio.app
@@ -25,6 +25,13 @@
 - (T1.6) `CardPreview` decodifica la foto con muestreo y en `Dispatchers.IO`, pero sin caché en memoria entre recomposiciones; si se nota jank en la lista, añadir caché.
 - (T1.6) El estado del formulario de tarjeta vive en `remember` (no `rememberSaveable`): al rotar se cierra la hoja. Aceptable por ahora; revisar en T4.9.
 - (T1.6) El banco se guarda como texto visible (p. ej. "CaixaBank") porque §6 lo define así; si se traduce el nombre, las tarjetas antiguas dejan de reconocerlo.
+- (T1.7) El estado del formulario de revisión vive en `remember` (no `rememberSaveable`): al rotar se pierde el borrador. Mismo caso que T1.6; revisar en T4.9.
+- (T1.7) `parseAmount` está en `ReviewSheet` (UI) y no tiene test propio; la validación real (`> 0`) sí está en `TransactionFactory`. Mover a dominio cuando llegue el OCR (T2.5).
+- (T1.7) Con fecha pasada, el movimiento nuevo aparece agrupado en su día y no "arriba" del listado (§8.3 asume la fecha de hoy). T1.8 debe añadir scroll/detalle al guardar.
+- (T1.7) No hay tope máximo de importe; un valor absurdo podría desbordar los `SUM` de SQLite en Inicio/Análisis. Añadir límite en T4.9.
+- (T1.7) La opción "Escanear ticket (OCR)" está deshabilitada con "Próximamente" hasta T2.5.
+- (T1.7) `TransactionFactory` solo admite `currency == "EUR"` hasta T4.6 (multimoneda); el test lo verifica.
+- (T1.8) La lista actual de Movimientos es básica (grupo por día, tipo e importe); faltan buscador, filtros, categoría, detalle/edición y deslizar para borrar.
 
 ## Notas para el próximo modelo
 - (2026-11-02) T1.1 cerrada: pantalla vacía oscura compilando.
@@ -36,5 +43,6 @@
 - (2026-11-06) Publicado en `main`: T1.4, T1.5, AGENTS.md nuevo y `opencode.json` con agentes/permisos. `main` en `1e44540`.
 - (2026-11-06) T1.6 implementada (rama `t1-6-tarjetas`): `WalletScreen` con lista (`CardPreview` 180 dp), hoja `CardFormSheet` (banco, variante, tipo, nombre, 6 diseños, vista previa en vivo), botón "Añadir tarjeta" con borde discontinuo, borrado con confirmación y `WalletViewModel` (save/delete + limpieza de la foto). Foto propia con `ActivityResultContracts.PickVisualMedia`, copiada a `noBackupFilesDir/card_photos`, reducida a 1280 px, orientación EXIF aplicada y borrado limitado a esa carpeta. Colores de tarjeta según tabla §5.5. 8 tests unitarios nuevos de diseños y bancos. Revisado por `@reasoning-expert` (mismo modelo no revisa): aplicados borrado seguro, validación de rutas, IO fuera del hilo principal y semántica `selectable` en los diseños. Pendiente: prueba en móvil y `@ui-reviewer` con capturas.
 - (2026-11-06) T1.6 CERRADA: probada en RedMagic NX779J (Android 15) con datos limpios: alta (banco BBVA, crédito, nombre, diseño), persistencia tras `force-stop`, edición precargada, foto propia desde el selector del sistema (copia en `no_backup/card_photos`, "Quitar foto" borra el archivo), borrado con confirmación (Cancelar mantiene la hoja) y empty state. `assembleDebug`, 42 tests unitarios y 14 instrumentados en verde. Revisión visual con `@ui-reviewer`: aplicados `FlowRow` en los chips de banco (ya no se corta "Otro"), borde de 1 dp en las muestras de diseño, brillo de tarjeta 24 dp/alfa 0.55 y sombra de texto reforzada. Se descartaron dos observaciones que contradecían §5.1/§5.5 (banco duplicado a la derecha sin variante; texto oscuro en chips cuando la tabla fija tinte + texto neón).
+- (2026-11-07) T1.7 CERRADA (rama `t1-7-anadir-movimiento`): `AddMenuSheet` con las tres opciones de §8.3 (OCR deshabilitado hasta T2.5), `ReviewSheet` con chips de tipo, importe con `Money.parse`, comercio, fecha con `DatePicker`, tarjeta si `CARD`, categoría filtrada por gasto/ingreso, tipo de ingreso obligatorio (Nómina/Otros), nota y validación de importe > 0. Caso de uso `AddTransaction` + `TransactionFactory` en `domain/usecase` (valida importe > 0, `incomeKind` solo en INCOME, `cardId` solo en CARD, EUR hasta T4.6). Lista básica de Movimientos agrupada por día (T1.8 la completa). Probado en NX779J: gasto metálico (12,50 €), ingreso (2.500,00 €), gasto con tarjeta y fecha 3 nov, ingreso sin tipo (bloquea y avisa), doble toque en Guardar (un solo insert), persistencia tras `force-stop`; BD verificada (725 céntimos, cardId 1, categoryId 2). 54 tests unitarios en verde. Revisado por `@financial-auditor` y `@reasoning-expert` (deepseek implementa, no revisa `code-reviewer`); aplicados: no tragar `CancellationException`, mantener `saving` hasta cerrar la hoja, no preseleccionar el tipo de ingreso y rechazar monedas distintas de EUR.
 - (2026-11-06) Aprendizaje de APIs en este proyecto: no existe `rememberPickVisualMedia` (usar `rememberLauncherForActivityResult` + `ActivityResultContracts.PickVisualMedia`); `Modifier.weight` NO se importa (es extensión de `RowScope`/`ColumnScope`); `shadow` es `androidx.compose.ui.draw.shadow`; `material-icons-core` no trae `Icons.Filled.CreditCard`; en material3 1.4 usar `OutlinedTextFieldDefaults.colors(...)` y `rememberModalBottomSheetState`.
 - No tocar archivos fuera del alcance de la tarea. local.properties ya está en .gitignore.

@@ -76,4 +76,39 @@
     <string name="card_form_error_name">Escribe un nombre para la tarjeta</string>
     <string name="card_item_action">Editar tarjeta %1$s</string>
     <string name="common_cancel">Cancelar</string>
+    <string name="common_accept">Aceptar</string>
+
+    <!-- T1.7: añadir movimiento manual -->
+    <string name="add_sheet_scan">Escanear ticket (OCR)</string>
+    <string name="add_sheet_scan_soon">Próximamente</string>
+    <string name="add_sheet_manual">Gasto manual o en metálico</string>
+    <string name="add_sheet_manual_hint">Añade un gasto en efectivo o con tarjeta</string>
+    <string name="add_sheet_income">Ingreso</string>
+    <string name="add_sheet_income_hint">Nómina u otros ingresos</string>
+    <string name="review_title_expense">Nuevo gasto</string>
+    <string name="review_title_income">Nuevo ingreso</string>
+    <string name="review_type">Tipo</string>
+    <string name="review_amount">Importe (€)</string>
+    <string name="review_merchant">Comercio o concepto</string>
+    <string name="review_date">Fecha</string>
+    <string name="review_category">Categoría</string>
+    <string name="review_card">Tarjeta</string>
+    <string name="review_card_none">Ninguna</string>
+    <string name="review_no_cards">No tienes tarjetas. Añádelas en Cartera.</string>
+    <string name="review_no_categories">No hay categorías disponibles</string>
+    <string name="review_note">Nota</string>
+    <string name="review_save">Guardar movimiento</string>
+    <string name="review_save_failed">No se pudo guardar el movimiento</string>
+    <string name="review_error_amount">Escribe un importe mayor que 0</string>
+    <string name="review_error_income_kind">Elige Nómina u Otros ingresos</string>
+    <string name="income_kind_title">Tipo de ingreso</string>
+    <string name="income_kind_payroll">Nómina</string>
+    <string name="income_kind_other">Otros ingresos</string>
+    <string name="type_cash">Metálico</string>
+    <string name="type_card">Tarjeta</string>
+    <string name="type_subscription">Suscripciones</string>
+    <string name="type_income">Ingresos</string>
+    <string name="transactions_empty">Sin movimientos todavía</string>
+    <string name="transactions_empty_hint">Pulsa + para añadir tu primer movimiento.</string>
+    <string name="transaction_untitled">Sin concepto</string>
 </resources>
