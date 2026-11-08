@@ -76,6 +76,7 @@ import com.mipatrimonio.app.core.ui.theme.NeonType
 @Composable
 fun WalletScreen(
     viewModel: WalletViewModel = hiltViewModel(),
+    onOpenDocuments: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val cards by viewModel.cards.collectAsStateWithLifecycle()
@@ -94,6 +95,7 @@ fun WalletScreen(
                 editingCard = card
                 showForm = true
             },
+            onOpenDocuments = onOpenDocuments,
             modifier = modifier,
         )
 
@@ -151,6 +153,7 @@ fun WalletContent(
     cards: List<CardEntity>,
     onAdd: () -> Unit,
     onEdit: (CardEntity) -> Unit,
+    onOpenDocuments: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -166,6 +169,19 @@ fun WalletContent(
             color = NeonColor.muted,
             fontSize = NeonType.secondary,
         )
+
+        NeonCard(modifier = Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onOpenDocuments)) {
+            Text(
+                text = stringResource(R.string.wallet_documents),
+                color = NeonColor.ink,
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = stringResource(R.string.wallet_documents_hint),
+                color = NeonColor.neonGreen,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
 
         if (cards.isEmpty()) {
             Box(
