@@ -1,5 +1,12 @@
 package com.mipatrimonio.app.feature.home
 
+import android.provider.Settings
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,12 +28,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -50,7 +59,9 @@ import com.mipatrimonio.app.core.ui.theme.MiPatrimonioTheme
 import com.mipatrimonio.app.core.ui.theme.NeonColor
 import com.mipatrimonio.app.core.ui.theme.NeonShape
 import com.mipatrimonio.app.domain.usecase.ActivePlanSummary
+import com.mipatrimonio.app.domain.usecase.BudgetLevel
 import com.mipatrimonio.app.domain.usecase.GetMonthlySummary
+import com.mipatrimonio.app.domain.usecase.HomeBudgetSummary
 import com.mipatrimonio.app.domain.usecase.MonthlySummary
 import com.mipatrimonio.app.domain.usecase.SavingsStatus
 import com.mipatrimonio.app.feature.savings.toMonthYearLabel
@@ -122,6 +133,11 @@ fun HomeContent(
 
         Spacer(modifier = Modifier.height(20.dp))
         BreakdownCard(summary)
+
+        if (summary.budgets.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(20.dp))
+            BudgetsCard(budgets = summary.budgets)
+        }
 
         Spacer(modifier = Modifier.height(20.dp))
         RecentSection(recent = summary.recent)
@@ -400,6 +416,90 @@ private fun formatMonth(month: YearMonth): String = month.atDay(1).format(MonthF
 
 private fun formatShortDate(epochDay: Long): String =
     LocalDate.ofEpochDay(epochDay).format(ShortDateFormatter)
+
+/** Presupuestos en Inicio (T3.4): barras con sensación de urgencia al completarse. */
+@Composable
+private fun BudgetsCard(budgets: List<HomeBudgetSummary>) {
+    NeonCard(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = stringResource(R.string.home_budgets_title),
+            color = NeonColor.ink,
+            style = MaterialTheme.typography.titleLarge,
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        budgets.forEachIndexed { index, b ->
+            if (index > 0) Spacer(modifier = Modifier.height(10.dp))
+            BudgetUrgencyRow(b)
+        }
+    }
+}
+
+@Composable
+private fun BudgetUrgencyRow(b: HomeBudgetSummary) {
+    val (barColor, glowColor) = when (b.level) {
+        BudgetLevel.OK -> NeonColor.neonCyan to NeonColor.neonCyan.copy(alpha = 0.20f)
+        BudgetLevel.WARNING -> NeonColor.neonAmber to NeonColor.neonAmber.copy(alpha = 0.45f)
+        BudgetLevel.OVER -> NeonColor.expenseRed to NeonColor.expenseRed.copy(alpha = 0.55f)
+    }
+    val progress = if (b.limitCents > 0L) {
+        (b.spentCents.toDouble() / b.limitCents.toDouble()).toFloat().coerceIn(0f, 1f)
+    } else 0f
+
+    val context = LocalContext.current
+    val animationsEnabled = remember(context) {
+        runCatching {
+            Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
+        }.getOrDefault(1f) != 0f
+    }
+    val urgentPulse = if (animationsEnabled && b.level != BudgetLevel.OK) {
+        val t = rememberInfiniteTransition(label = "budgetUrgency")
+        val p by t.animateFloat(
+            initialValue = 0.7f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = if (b.level == BudgetLevel.OVER) 700 else 1100, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse,
+            ),
+            label = "pulse",
+        )
+        p
+    } else 1f
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(text = b.categoryName, color = NeonColor.ink, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+            Text(
+                text = "${b.percent}% · ${Money.format(b.spentCents)}/${Money.format(b.limitCents)}",
+                color = barColor,
+                style = MaterialTheme.typography.labelSmall,
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        val shape = RoundedCornerShape(6.dp)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(10.dp)
+                .shadow(
+                    elevation = if (b.level == BudgetLevel.OVER) 10.dp else if (b.level == BudgetLevel.WARNING) 6.dp else 2.dp,
+                    shape = shape,
+                    clip = false,
+                    ambientColor = glowColor.copy(alpha = glowColor.alpha * urgentPulse),
+                    spotColor = glowColor.copy(alpha = glowColor.alpha * urgentPulse),
+                )
+                .clip(shape)
+                .background(NeonColor.track),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(progress)
+                    .height(10.dp)
+                    .clip(shape)
+                    .background(barColor.copy(alpha = if (b.level == BudgetLevel.OK) 0.85f else urgentPulse)),
+            )
+        }
+    }
+}
 
 /** Panel del plan activo en Inicio (§8.1, T3.1). */
 @Composable

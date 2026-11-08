@@ -720,7 +720,7 @@ Cada tarea termina con la app **compilando**. Marca `[x]` al completar.
 - [x] **T3.1 Planes de ahorro.** CRUD de planes, hoja de crear/editar (nombre + importe objetivo), aportaciones, **importe objetivo de solo lectura en la tarjeta**, cuota con −/+ (25 €). Caso de uso `EstimateSavings` con tests. *Aceptación:* estimación se actualiza al cambiar objetivo o cuota.
 - [x] **T3.2 `ProgressNeonBar`.** Componente animado (5.4) usado en Inicio y Ahorro, con soporte de reducción de movimiento. *Aceptación:* animación fluida; sin animación si el sistema la desactiva.
 - [x] **T3.3 Varios planes y prioridad.** Reordenar, plan activo. *Aceptación:* Inicio muestra el plan activo.
-- [ ] **T3.4 Presupuestos.** CRUD, barra por colores, avisos 80/100 % una vez al mes. *Aceptación:* tests de umbrales.
+- [x] **T3.4 Presupuestos.** CRUD, barra por colores, avisos 80/100 % una vez al mes. *Aceptación:* tests de umbrales.
 - [ ] **T3.5 Recurrentes y suscripciones.** CRUD, `RecurringWorker`, coste anual, aviso previo. *Aceptación:* tests de generación con huecos de días.
 - [ ] **T3.6 Notificaciones.** Canales, permiso, `AlertsWorker`, avisos de ahorro (7.3). *Aceptación:* se reciben avisos de prueba.
 - [ ] **T3.7 Análisis.** Gráfico por categoría, comparativa mes a mes, proyección a fin de mes, fijos vs. variables. *Aceptación:* cifras verificadas con tests.
