@@ -708,7 +708,7 @@ Cada tarea termina con la app **compilando**. Marca `[x]` al completar.
 - [x] **T1.10 Bloqueo.** `BiometricPrompt` + ajustes de bloqueo en DataStore, `FLAG_SECURE`. *Aceptación:* al volver a la app se pide autenticación.
 
 ### Fase 2
-- [ ] **T2.1 `CryptoManager`.** AES-GCM con Keystore, cifrar/descifrar streams, tests instrumentados. *Aceptación:* round-trip correcto.
+- [x] **T2.1 `CryptoManager`.** AES-GCM con Keystore, cifrar/descifrar streams, tests instrumentados. *Aceptación:* round-trip correcto.
 - [ ] **T2.2 Documentos.** Lista, alta desde selector del sistema, cifrado, visor PDF (`PdfRenderer`), borrado. *Aceptación:* se guarda y se abre una nómina PDF.
 - [ ] **T2.3 OCR base.** Wrapper de ML Kit Text Recognition, renderizado de PDF a bitmap. *Aceptación:* devuelve el texto de una imagen de prueba.
 - [ ] **T2.4 `ReceiptParser`.** Reglas de la sección 9 con tests (≥ 8 casos). *Aceptación:* tests pasan.
