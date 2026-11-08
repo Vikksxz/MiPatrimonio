@@ -713,7 +713,7 @@ Cada tarea termina con la app **compilando**. Marca `[x]` al completar.
 - [x] **T2.3 OCR base.** Wrapper de ML Kit Text Recognition, renderizado de PDF a bitmap. *Aceptación:* devuelve el texto de una imagen de prueba.
 - [x] **T2.4 `ReceiptParser`.** Reglas de la sección 9 con tests (≥ 8 casos). *Aceptación:* tests pasan.
 - [x] **T2.5 Escaneo de ticket.** Integrar ML Kit Document Scanner (con alternativa de galería) → OCR → `ReviewSheet` rellenada, con miniatura adjunta. *Aceptación:* escanear un ticket real prellena importe, fecha y comercio editables.
-- [ ] **T2.6 Compartir.** `ShareReceiverActivity`, copia inmediata, `DocumentClassifier`, flujo ticket/nómina. *Aceptación:* compartir un PDF desde CamScanner abre la hoja y guarda correctamente.
+- [x] **T2.6 Compartir.** `ShareReceiverActivity`, copia inmediata, `DocumentClassifier`, flujo ticket/nómina. *Aceptación:* compartir un PDF desde CamScanner abre la hoja y guarda correctamente.
 - [ ] **T2.7 Etiquetas y notas.** Tabla de etiquetas, selector en el formulario, filtro por etiqueta. *Aceptación:* etiquetar y filtrar funciona.
 
 ### Fase 3

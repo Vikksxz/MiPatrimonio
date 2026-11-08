@@ -1,9 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Tema siempre oscuro (MiPatrimonio.md sección 5). El tema Compose completo llega en T1.2. -->
+    <!-- Tema siempre oscuro (MiPatrimonio.md sección 5). -->
     <style name="Theme.MiPatrimonio" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/bg</item>
         <item name="android:statusBarColor">@color/bg</item>
         <item name="android:navigationBarColor">@color/bg</item>
+    </style>
+
+    <!-- Hoja inferior translúcida para recepción por "Compartir" (T2.6, §8.6/§10). -->
+    <style name="Theme.MiPatrimonio.Sheet" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:backgroundDimAmount">0.6</item>
     </style>
 </resources>

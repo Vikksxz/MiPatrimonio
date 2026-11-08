@@ -175,4 +175,17 @@
     <string name="document_default_title">Documento</string>
     <string name="wallet_documents">Documentos</string>
     <string name="wallet_documents_hint">Nóminas, facturas y garantías cifradas</string>
+
+    <!-- Compartir (T2.6, §8.6) -->
+    <string name="share_title">Desde %1$s</string>
+    <string name="share_title_default">Archivo recibido</string>
+    <string name="share_what_is">¿Qué es?</string>
+    <string name="share_ticket">Ticket de compra</string>
+    <string name="share_payslip">Nómina</string>
+    <string name="share_invoice">Factura</string>
+    <string name="share_warranty">Garantía</string>
+    <string name="share_other_doc">Otro documento</string>
+    <string name="share_saving">Guardando…</string>
+    <string name="share_saved">Guardado</string>
+    <string name="share_error">No se pudo procesar el archivo</string>
 </resources>
