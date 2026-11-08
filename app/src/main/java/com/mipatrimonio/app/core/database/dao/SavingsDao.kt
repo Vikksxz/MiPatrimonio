@@ -46,6 +46,9 @@ interface SavingsDao {
     @Query("SELECT SUM(amountCents) FROM plan_contributions WHERE date >= :from AND date < :to")
     fun observeMonthlyContributed(from: Long, to: Long): Flow<Long?>
 
+    @Query("SELECT SUM(amountCents) FROM plan_contributions WHERE date >= :from AND date < :to")
+    suspend fun getMonthlyContributed(from: Long, to: Long): Long?
+
     @Insert
     suspend fun insertPlan(plan: SavingsPlanEntity): Long
 

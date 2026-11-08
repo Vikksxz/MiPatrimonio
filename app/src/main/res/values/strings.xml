@@ -38,6 +38,11 @@
     <string name="savings_contribute">Aportar</string>
     <string name="savings_contribution_amount">Importe a aportar (€)</string>
     <string name="savings_contribution_confirm">Guardar aportación</string>
+    <string name="savings_withdraw">Retirar</string>
+    <string name="savings_withdraw_amount">Importe a retirar (€)</string>
+    <string name="savings_withdraw_confirm">Confirmar retirada</string>
+    <string name="savings_error_insufficient_available">No hay disponible suficiente este mes para esa aportación</string>
+    <string name="savings_error_exceeds_saved">No puedes retirar más de lo ahorrado en este plan</string>
     <string name="savings_plans_title">Planes</string>
     <string name="savings_create_plan">Crear plan de ahorro</string>
     <string name="savings_no_plans">Aún no tienes planes de ahorro.</string>

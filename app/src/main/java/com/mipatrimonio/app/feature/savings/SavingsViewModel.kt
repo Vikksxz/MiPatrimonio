@@ -174,14 +174,42 @@ class SavingsViewModel @Inject constructor(
         }
     }
 
-    fun addContribution(planId: Long, amountCents: Long) {
-        if (amountCents <= 0L) return
-        viewModelScope.launch {
-            val todayEpochDay = LocalDate.now().toEpochDay()
-            savingsDao.insertContribution(
-                PlanContributionEntity(planId = planId, amountCents = amountCents, date = todayEpochDay)
-            )
+    /** Disponible del mes (§7.1): ingresos - gastos - aportaciones al ahorro. */
+    private suspend fun availableThisMonthCents(): Long {
+        val from = month.atDay(1).toEpochDay()
+        val to = month.plusMonths(1).atDay(1).toEpochDay()
+        val txs = transactionDao.getByMonth(from, to)
+        var income = 0L
+        var expense = 0L
+        txs.forEach { tx ->
+            if (YearMonth.from(LocalDate.ofEpochDay(tx.date)) != month) return@forEach
+            when (tx.type) {
+                TransactionType.INCOME -> income += tx.amountBaseCents
+                TransactionType.CASH, TransactionType.CARD, TransactionType.SUBSCRIPTION -> expense += tx.amountBaseCents
+            }
         }
+        val savings = savingsDao.getMonthlyContributed(from, to) ?: 0L
+        return income - expense - savings
+    }
+
+    /** Aporta sin dejar el disponible en negativo (§7.1, petición George). null = OK, si no mensaje de error. */
+    suspend fun tryAddContribution(planId: Long, amountCents: Long): String? {
+        if (amountCents <= 0L) return "INVALID"
+        val available = availableThisMonthCents()
+        if (amountCents > available) return "INSUFFICIENT"
+        val todayEpochDay = LocalDate.now().toEpochDay()
+        savingsDao.insertContribution(PlanContributionEntity(planId = planId, amountCents = amountCents, date = todayEpochDay))
+        return null
+    }
+
+    /** Retirada de emergencia (aportación negativa, §6). No crea movimiento en Movimientos (2a). */
+    suspend fun tryWithdraw(planId: Long, amountCents: Long): String? {
+        if (amountCents <= 0L) return "INVALID"
+        val contributed = savingsDao.getContributed(planId) ?: 0L
+        if (amountCents > contributed) return "EXCEEDS_SAVED"
+        val todayEpochDay = LocalDate.now().toEpochDay()
+        savingsDao.insertContribution(PlanContributionEntity(planId = planId, amountCents = -amountCents, date = todayEpochDay))
+        return null
     }
 
     fun setActive(planId: Long) {

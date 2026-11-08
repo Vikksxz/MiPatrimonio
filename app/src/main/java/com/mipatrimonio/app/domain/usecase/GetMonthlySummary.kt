@@ -73,7 +73,8 @@ class GetMonthlySummary @Inject constructor(
             savingsDao.observePlansWithContributions(),
             budgetDao.observeWithCategory(),
         ) { monthTransactions, recent, monthlySaved, plans, budgetsWithCat ->
-            val savingsCents = (monthlySaved ?: 0L).coerceAtLeast(0L)
+            // §7.1: Σ aportaciones del mes (puede ser negativa si hay retiradas).
+            val savingsCents = monthlySaved ?: 0L
             val active = buildActivePlan(plans)
             val budgets = buildBudgetSummaries(month, monthTransactions, budgetsWithCat)
             build(month, monthTransactions, recent, savingsCents, active, budgets)
