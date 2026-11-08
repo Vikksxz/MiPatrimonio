@@ -17,6 +17,9 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions ORDER BY date DESC, id DESC")
     fun observeAll(): Flow<List<TransactionEntity>>
 
+    @Query("SELECT * FROM transactions ORDER BY date DESC, id DESC")
+    suspend fun getAll(): List<TransactionEntity>
+
     @Query("SELECT * FROM transactions WHERE date >= :fromEpochDay AND date < :toEpochDayExclusive ORDER BY date DESC, id DESC")
     fun observeByMonth(fromEpochDay: Long, toEpochDayExclusive: Long): Flow<List<TransactionEntity>>
 

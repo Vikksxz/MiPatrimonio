@@ -727,7 +727,7 @@ Cada tarea termina con la app **compilando**. Marca `[x]` al completar.
 - [x] **T3.8 Recordatorio nocturno** configurable. *Aceptación:* notificación de prueba.
 
 ### Fase 4
-- [ ] **T4.1 Exportación** CSV y PDF.
+- [x] **T4.1 Exportación** CSV y PDF. *Aceptación:* archivo se abre fuera de la app.
 - [ ] **T4.2 Copia local** `.mpbak` (cifrada con contraseña) y restauración.
 - [ ] **T4.3 Copia en Drive** (`AuthorizationClient` + REST `appDataFolder`), `BackupWorker`.
 - [ ] **T4.4 Widget Glance** y shortcut.
