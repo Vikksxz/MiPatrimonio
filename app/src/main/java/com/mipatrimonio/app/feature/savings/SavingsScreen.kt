@@ -41,7 +41,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -82,8 +84,9 @@ fun SavingsScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showPlanSheet by remember { mutableStateOf(false) }
     var editingPlanId by remember { mutableStateOf<Long?>(null) }
-    var showContribute by remember { mutableStateOf(false) }
-    var contributePlanId by remember { mutableStateOf<Long?>(null) }
+    var showAmountDialog by remember { mutableStateOf(false) }
+    var amountDialogPlanId by remember { mutableStateOf<Long?>(null) }
+    var amountDialogWithdraw by remember { mutableStateOf(false) }
     var showBudgetSheet by remember { mutableStateOf(false) }
     var editingBudgetId by remember { mutableStateOf<Long?>(null) }
 
@@ -94,7 +97,8 @@ fun SavingsScreen(
         onEditPlan = { editingPlanId = it; showPlanSheet = true },
         onChangeQuota = viewModel::changeQuota,
         onSetActive = viewModel::setActive,
-        onContribute = { contributePlanId = it; showContribute = true },
+        onContribute = { amountDialogPlanId = it; amountDialogWithdraw = false; showAmountDialog = true },
+        onWithdraw = { amountDialogPlanId = it; amountDialogWithdraw = true; showAmountDialog = true },
         onMovePlan = viewModel::movePlan,
         onAddBudget = { editingBudgetId = null; showBudgetSheet = true },
         onEditBudget = { editingBudgetId = it; showBudgetSheet = true },
@@ -129,13 +133,15 @@ fun SavingsScreen(
         }
     }
 
-    if (showContribute && contributePlanId != null) {
-        ContributeDialog(
-            onConfirm = { amount ->
-                viewModel.addContribution(contributePlanId!!, amount)
-                showContribute = false
+    if (showAmountDialog && amountDialogPlanId != null) {
+        AmountActionDialog(
+            isWithdraw = amountDialogWithdraw,
+            onSubmit = { amountCents ->
+                if (amountDialogWithdraw) viewModel.tryWithdraw(amountDialogPlanId!!, amountCents)
+                else viewModel.tryAddContribution(amountDialogPlanId!!, amountCents)
             },
-            onDismiss = { showContribute = false },
+            onSuccess = { showAmountDialog = false },
+            onDismiss = { showAmountDialog = false },
         )
     }
 
@@ -175,6 +181,7 @@ internal fun SavingsContent(
     onChangeQuota: (Long, Long) -> Unit = { _, _ -> },
     onSetActive: (Long) -> Unit = {},
     onContribute: (Long) -> Unit = {},
+    onWithdraw: (Long) -> Unit = {},
     onMovePlan: (Long, Boolean) -> Unit = { _, _ -> },
     onAddBudget: () -> Unit = {},
     onEditBudget: (Long) -> Unit = {},
@@ -197,6 +204,7 @@ internal fun SavingsContent(
                     onEdit = { onEditPlan(active.plan.id) },
                     onQuotaDelta = { delta -> onChangeQuota(active.plan.id, delta) },
                     onContribute = { onContribute(active.plan.id) },
+                    onWithdraw = { onWithdraw(active.plan.id) },
                 )
             }
         } else {
@@ -293,6 +301,7 @@ private fun ActivePlanCard(
     onEdit: () -> Unit,
     onQuotaDelta: (Long) -> Unit,
     onContribute: () -> Unit,
+    onWithdraw: () -> Unit,
 ) {
     val plan = item.plan
     val estimate = item.estimate
@@ -362,8 +371,13 @@ private fun ActivePlanCard(
                 Text(text = statusText, style = MaterialTheme.typography.bodySmall, color = statusColor)
             }
 
-            NeonButton(onClick = onContribute, secondary = true, modifier = Modifier.fillMaxWidth()) {
-                NeonButtonText(text = stringResource(R.string.savings_contribute), secondary = true)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                NeonButton(onClick = onContribute, secondary = true, modifier = Modifier.weight(1f)) {
+                    NeonButtonText(text = stringResource(R.string.savings_contribute), secondary = true)
+                }
+                NeonButton(onClick = onWithdraw, secondary = true, accent = NeonColor.neonAmber, modifier = Modifier.weight(1f)) {
+                    Text(text = stringResource(R.string.savings_withdraw), color = NeonColor.neonAmber, style = MaterialTheme.typography.labelLarge)
+                }
             }
         }
     }
@@ -498,33 +512,59 @@ private fun PlanEditSheet(
 }
 
 @Composable
-private fun ContributeDialog(onConfirm: (Long) -> Unit, onDismiss: () -> Unit) {
+private fun AmountActionDialog(
+    isWithdraw: Boolean,
+    onSubmit: suspend (Long) -> String?,
+    onSuccess: () -> Unit,
+    onDismiss: () -> Unit,
+) {
     var text by remember { mutableStateOf("") }
-    var error by remember { mutableStateOf(false) }
+    var errorMsg by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     val invalidAmount = stringResource(R.string.savings_invalid_amount)
+    val insufficient = stringResource(R.string.savings_error_insufficient_available)
+    val exceeds = stringResource(R.string.savings_error_exceeds_saved)
+
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!busy) onDismiss() },
         containerColor = NeonColor.panel,
-        title = { Text(stringResource(R.string.savings_contribute), color = NeonColor.ink) },
+        title = { Text(stringResource(if (isWithdraw) R.string.savings_withdraw else R.string.savings_contribute), color = NeonColor.ink) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SavingsTextField(
                     value = text,
-                    onValueChange = { text = it; error = false },
-                    label = stringResource(R.string.savings_contribution_amount),
+                    onValueChange = { text = it; errorMsg = null },
+                    label = stringResource(if (isWithdraw) R.string.savings_withdraw_amount else R.string.savings_contribution_amount),
                     keyboardType = KeyboardType.Decimal,
                 )
-                if (error) Text(invalidAmount, color = NeonColor.expenseRed, style = MaterialTheme.typography.bodySmall)
+                if (errorMsg != null) Text(errorMsg!!, color = NeonColor.expenseRed, style = MaterialTheme.typography.bodySmall)
             }
         },
         confirmButton = {
-            TextButton(onClick = {
-                val cents = try { Money.parse(text) } catch (_: Exception) { null }
-                if (cents == null || cents <= 0L) { error = true } else onConfirm(cents)
-            }) { Text(stringResource(R.string.savings_contribution_confirm), color = NeonColor.neonCyan) }
+            TextButton(
+                onClick = {
+                    val cents = try { Money.parse(text) } catch (_: Exception) { null }
+                    if (cents == null || cents <= 0L) { errorMsg = invalidAmount; return@TextButton }
+                    busy = true
+                    scope.launch {
+                        val err = onSubmit(cents)
+                        busy = false
+                        when (err) {
+                            null -> onSuccess()
+                            "INSUFFICIENT" -> errorMsg = insufficient
+                            "EXCEEDS_SAVED" -> errorMsg = exceeds
+                            else -> errorMsg = invalidAmount
+                        }
+                    }
+                },
+                enabled = !busy,
+            ) { Text(stringResource(if (isWithdraw) R.string.savings_withdraw_confirm else R.string.savings_contribution_confirm), color = NeonColor.neonCyan) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel), color = NeonColor.muted) }
+            TextButton(onClick = { if (!busy) onDismiss() }, enabled = !busy) {
+                Text(stringResource(R.string.common_cancel), color = NeonColor.muted)
+            }
         },
     )
 }
