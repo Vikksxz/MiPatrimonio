@@ -724,7 +724,7 @@ Cada tarea termina con la app **compilando**. Marca `[x]` al completar.
 - [x] **T3.5 Recurrentes y suscripciones.** CRUD, `RecurringWorker`, coste anual, aviso previo. *Aceptación:* tests de generación con huecos de días.
 - [x] **T3.6 Notificaciones.** Canales, permiso, `AlertsWorker`, avisos de ahorro (7.3). *Aceptación:* se reciben avisos de prueba.
 - [x] **T3.7 Análisis.** Gráfico por categoría, comparativa mes a mes, proyección a fin de mes, fijos vs. variables. *Aceptación:* cifras verificadas con tests.
-- [ ] **T3.8 Recordatorio nocturno** configurable.
+- [x] **T3.8 Recordatorio nocturno** configurable. *Aceptación:* notificación de prueba.
 
 ### Fase 4
 - [ ] **T4.1 Exportación** CSV y PDF.

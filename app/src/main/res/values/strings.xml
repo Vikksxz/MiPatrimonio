@@ -107,6 +107,12 @@
     <string name="notifications_reliability_hint">En algunos móviles (como REDMAGIC OS) conviene desactivar la optimización de batería para recibir avisos en segundo plano.</string>
     <string name="notifications_open_battery_settings">Abrir ajustes de batería</string>
 
+    <!-- Recordatorio nocturno (T3.8) -->
+    <string name="cash_reminder_title">Recordatorio nocturno</string>
+    <string name="cash_reminder_text">¿Has apuntado hoy tus gastos en metálico?</string>
+    <string name="cash_reminder_toggle">Recordarme apuntar gastos en metálico (~21:00)</string>
+    <string name="cash_reminder_test">Probar recordatorio</string>
+
     <!-- Presupuestos (T3.4) -->
     <string name="budgets_title">Presupuestos por categoría</string>
     <string name="budgets_empty">Sin presupuestos. Añade un límite por categoría.</string>

@@ -82,9 +82,23 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+    /** Recordatorio nocturno de gastos en metálico (§12, T3.8). Desactivado por defecto. */
+    val cashReminderEnabled: Flow<Boolean> = context.settingsDataStore.data
+        .catch { error ->
+            if (error is IOException) emit(emptyPreferences()) else throw error
+        }
+        .map { preferences -> preferences[KEY_CASH_REMINDER_ENABLED] ?: false }
+
+    suspend fun setCashReminderEnabled(enabled: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_CASH_REMINDER_ENABLED] = enabled
+        }
+    }
+
     private companion object {
         val KEY_LOCK_ENABLED = booleanPreferencesKey("lock_enabled")
         val KEY_LOCK_TIMEOUT_MINUTES = intPreferencesKey("lock_timeout_minutes")
         val KEY_HIDE_CONTENT = booleanPreferencesKey("hide_content")
+        val KEY_CASH_REMINDER_ENABLED = booleanPreferencesKey("cash_reminder_enabled")
     }
 }
