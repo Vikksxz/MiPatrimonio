@@ -47,6 +47,9 @@ interface TransactionDao {
     @Query("SELECT COUNT(*) FROM transactions WHERE recurringId = :recurringId AND date = :epochDay")
     fun existsForRecurring(recurringId: Long, epochDay: Long): Flow<Int>
 
+    @Query("SELECT COUNT(*) FROM transactions WHERE recurringId = :recurringId AND date = :epochDay")
+    suspend fun countForRecurringOnDate(recurringId: Long, epochDay: Long): Int
+
     @Query("SELECT categoryId, SUM(amountBaseCents) as totalCents FROM transactions WHERE date >= :from AND date < :to AND type IN ('CASH','CARD','SUBSCRIPTION') GROUP BY categoryId")
     fun observeSumBaseCentsByCategory(from: Long, to: Long): Flow<List<CategorySum>>
 

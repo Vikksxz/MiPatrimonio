@@ -6,7 +6,12 @@ import androidx.lifecycle.viewModelScope
 import androidx.room.withTransaction
 import com.mipatrimonio.app.core.database.AppDatabase
 import com.mipatrimonio.app.core.database.dao.CardDao
+import com.mipatrimonio.app.core.database.dao.CategoryDao
+import com.mipatrimonio.app.core.database.dao.RecurringDao
 import com.mipatrimonio.app.core.database.entity.CardEntity
+import com.mipatrimonio.app.core.database.entity.CategoryEntity
+import com.mipatrimonio.app.core.database.entity.RecurringEntity
+import com.mipatrimonio.app.core.model.TransactionType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -25,16 +30,30 @@ class WalletViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val database: AppDatabase,
     private val cardDao: CardDao,
+    private val recurringDao: RecurringDao,
+    private val categoryDao: CategoryDao,
 ) : ViewModel() {
 
     private val _cards = MutableStateFlow<List<CardEntity>>(emptyList())
     val cards = _cards.asStateFlow()
+
+    private val _recurrings = MutableStateFlow<List<RecurringEntity>>(emptyList())
+    val recurrings = _recurrings.asStateFlow()
+
+    private val _expenseCategories = MutableStateFlow<List<CategoryEntity>>(emptyList())
+    val expenseCategories = _expenseCategories.asStateFlow()
 
     init {
         viewModelScope.launch {
             cardDao.observeAll().collect { cards ->
                 _cards.value = cards
             }
+        }
+        viewModelScope.launch {
+            recurringDao.observeActive().collect { _recurrings.value = it }
+        }
+        viewModelScope.launch {
+            categoryDao.observeByIncome(false).collect { _expenseCategories.value = it }
         }
     }
 
@@ -67,5 +86,15 @@ class WalletViewModel @Inject constructor(
                 CardPhotoStore.delete(context, card.photoPath)
             }
         }
+    }
+
+    fun saveRecurring(entity: RecurringEntity) {
+        viewModelScope.launch {
+            if (entity.id == 0L) recurringDao.insert(entity) else recurringDao.update(entity)
+        }
+    }
+
+    fun deleteRecurring(entity: RecurringEntity) {
+        viewModelScope.launch { recurringDao.delete(entity) }
     }
 }
