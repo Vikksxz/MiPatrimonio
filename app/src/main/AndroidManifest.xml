@@ -16,11 +16,20 @@
         android:theme="@style/Theme.MiPatrimonio">
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="mipatrimonio" android:host="add" />
+            </intent-filter>
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
 
         <!-- T2.6: recepción por "Compartir" (CamScanner u otras apps), §8.6/§10 -->
@@ -52,6 +61,18 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <!-- Widget Glance (T4.4) -->
+        <receiver
+            android:name=".feature.widget.MiPatrimonioWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/mipatrimonio_widget_info" />
+        </receiver>
 
         <!-- Desactivar inicializador por defecto de WorkManager (usamos HiltWorkerFactory) -->
         <provider

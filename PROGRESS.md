@@ -2,8 +2,8 @@
 
 ## Estado
 - Fase actual: 4
-- Última tarea cerrada: T4.2
-- Tarea en curso: — (siguiente: T4.4 Widget Glance y shortcut, §16/§18)
+- Última tarea cerrada: T4.4
+- Tarea en curso: — (siguiente: T4.5 Informe mensual, §16/§18)
 
 ## Decisiones tomadas
 - (2026-11-02) Paquete: com.mipatrimonio.app
@@ -26,7 +26,7 @@
 - (2026-11-08) T2.4: `ParsedReceipt` (importes en céntimos `Long`, confianza por campo) y `ReceiptParser` (§9.2–9.3: normalización, prioridad/exclusión de total, tercio inferior, fecha válida ±rango, comercio/normalización). 8 tests unitarios realistas pasan (§9.5). Revisión `financial-auditor`: **no ejecutada** (límite de uso gratuito del subagente en el intento); pendiente revisión cruzada cuando haya cuota/modelo disponible.
 
 ## Dependencias (nombres exactos, versiones en libs.versions.toml)
-- AGP 9.5.0, Gradle 9.6.0, Kotlin 2.2.10 (embebido en AGP), KSP 2.3.13, Hilt 2.60.1, Room 2.8.5, DataStore 1.3.0, Navigation Compose 2.10.2, Compose BOM 2026.09.00, material-icons-core (BOM), core-ktx 1.19.1, activity-compose 1.13.0, lifecycle 2.11.0, coroutines 1.11.0, serialization 1.12.0, biometric 1.1.0, androidx.test.ext:junit 1.2.1 (instrumentados), ML Kit Text Recognition `com.google.mlkit:text-recognition` 16.0.1 (bundled, latino, en dispositivo)
+- AGP 9.5.0, Gradle 9.6.0, Kotlin 2.2.10 (embebido en AGP), KSP 2.3.13, Hilt 2.60.1, Room 2.8.5, DataStore 1.3.0, Navigation Compose 2.10.2, Compose BOM 2026.09.00, material-icons-core (BOM), core-ktx 1.19.1, activity-compose 1.13.0, lifecycle 2.11.0, coroutines 1.11.0, serialization 1.12.0, biometric 1.1.0, WorkManager 2.10.0, androidx.hilt work/compiler 1.4.0, Glance appwidget/material3 1.2.0, androidx.test.ext:junit 1.2.1 (instrumentados), ML Kit Text Recognition `com.google.mlkit:text-recognition` 16.0.1 (bundled, latino, en dispositivo)
 
 ## Problemas conocidos
 - KGP 2.4.21 declarado por buildscript falló (NoClassDefFoundError BaseVariant, API eliminada en AGP 9): se revirtió al KGP embebido 2.2.10
@@ -100,5 +100,6 @@
 - (2026-11-08) T4.1 CERRADA (rama `t4-1-exportacion-csv-pdf`): exportación §13. CSV de movimientos (`core/export/CsvExporter`, `;`, UTF-8 BOM, cabecera Fecha;Tipo;Importe;Moneda;Comercio;Nota;Categoria, importe `1.234,56`, escapado) con `TransactionDao.getAll()`. PDF resumen mensual (`PdfReportExporter`, `android.graphics.pdf.PdfDocument` A4) desde `GetMonthlySummary` (mes actual, proyección si visible), textos en `strings.xml`. Compartir/abrir fuera de la app vía `FileProvider` (`${applicationId}.fileprovider`, `res/xml/file_paths.xml` cache `exports`/`shared_docs`) + `ExportFileSharer` (`ACTION_SEND`, `FLAG_GRANT_READ_URI_PERMISSION`). UI en Cartera “Exportar datos” (CSV/PDF) con manejo de error; `WalletViewModel.exportCsv/exportPdf`. 3 tests `CsvExporterTest`. `assembleDebug`+`testDebugUnitTest` OK; instalado y verificado en NX779J (archivos se abren/comparten fuera de la app).
 - (2026-11-08) T4.2 CERRADA (rama `t4-2-copia-local-cifrada`, plan RSN/reasoning-expert): copia local `.mpbak` cifrada con contraseña y restauración (§11, §13.1–§13.4). `BackupCrypto` PBKDF2-HMAC-SHA256 (sal 16B, 600.000 iter) + AES-256-GCM, cabecera `[MPBK][v1][salt][IV]`, 6 tests. ZIP cifrado (blob único) con `meta.json` (schema/app/fecha), `data.json` (todas las tablas, `org.json`) y `files/` (docs, tickets, fotos tarjeta). `BackupManager` export/import SAF; restauración **reemplaza todo** con confirmación, transacción + `clearAllTables` e **ID remapping** FK; Keystore no transferible → docs/tickets se re-cifran con Keystore del dispositivo (`EncryptedDocumentStore`/`ReceiptImageStore.saveBytes`), fotos en `noBackupFilesDir` (`CardPhotoStore.saveBytes`). DAOs `getAll/deleteAll/insertAll` + `ExchangeRateDao/PersonDao/SharedExpenseDao/SharedShareDao` (sin migración). UI Cartera→Copia de seguridad (crear contraseña+confirmar, mínimo 8, aviso irrecuperable; restaurar con confirmación destructiva). `assembleDebug`+`testDebugUnitTest` OK; instalado NX779J. **Aceptación verificada por George** (funcionamiento correcto).
 - (2026-11-08) **T4.3 POSPUESTA** por decisión de George: se omite integración Google Drive por límites/costes de Google Cloud; la exportación local selectiva (T4.1 CSV/PDF, T4.2 `.mpbak`) se considera suficiente por ahora. Rama `t4-3-copia-drive` creada sin cambios de código.
-- (2026-11-08) Siguiente: T4.4 Widget Glance y shortcut (§16/§18).
+- (2026-11-08) T4.4: Glance `androidx.glance:glance-appwidget`/`glance-material3` 1.2.0 (Google Maven, estable). Widget 2×2 (redimensionable) con “Disponible este mes”, gastos/ingresos, proyección (§7.5) y barra de plan activo (sin animación); `+ Gasto` abre `mipatrimonio://add` (intent-filter `VIEW` en `MainActivity` `singleTop`, respeta bloqueo vía `AppGate`). Acceso directo “Añadir gasto”. Datos vía Hilt `EntryPointAccessors` (`WidgetEntryPoint`: `TransactionDao`,`SavingsDao`). Refresco `WidgetUpdater` tras add/update/delete/restore de transacciones y mutaciones de ahorro/planes + `WidgetUpdateWorker` periódico 30 min (`KEEP`). Fix crítico: `ColorProvider` de Glance toma **ID de recurso** con `Int` (no ARGB) → usar `ColorProvider(R.color.widget_*)`.
+- (2026-11-08) Siguiente: T4.5 Informe mensual (§16/§18).
 - No tocar archivos fuera del alcance de la tarea. local.properties ya está en .gitignore.

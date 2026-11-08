@@ -19,6 +19,8 @@ import com.mipatrimonio.app.core.ui.theme.NeonColor
 @Composable
 fun AppGate(
     modifier: Modifier = Modifier,
+    openAdd: Boolean = false,
+    onAddConsumed: () -> Unit = {},
     viewModel: LockViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -37,6 +39,6 @@ fun AppGate(
             onUnlocked = viewModel::unlock,
         )
 
-        else -> AppRoot()
+        else -> AppRoot(openAdd = openAdd, onAddConsumed = onAddConsumed)
     }
 }

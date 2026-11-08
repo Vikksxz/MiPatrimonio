@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,7 +67,11 @@ private const val OCR_MAX_DIMENSION = 1600
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppRoot(addViewModel: AddTransactionViewModel = hiltViewModel()) {
+fun AppRoot(
+    openAdd: Boolean = false,
+    onAddConsumed: () -> Unit = {},
+    addViewModel: AddTransactionViewModel = hiltViewModel(),
+) {
     val navController = rememberNavController()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -93,6 +98,17 @@ fun AppRoot(addViewModel: AddTransactionViewModel = hiltViewModel()) {
         payrollDraft = null
         pendingPayrollDraft = null
         showDuplicateWarning = false
+    }
+
+    LaunchedEffect(openAdd) {
+        if (openAdd) {
+            addMode = null
+            scanError = null
+            scanning = false
+            clearDrafts()
+            showAddSheet = true
+            onAddConsumed()
+        }
     }
 
     fun closeAddFlow() {

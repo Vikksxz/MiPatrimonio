@@ -15,6 +15,7 @@ import com.mipatrimonio.app.domain.usecase.BudgetStatus
 import com.mipatrimonio.app.domain.usecase.BudgetThresholds
 import com.mipatrimonio.app.domain.usecase.EstimateSavings
 import com.mipatrimonio.app.domain.usecase.SavingsEstimate
+import com.mipatrimonio.app.feature.widget.WidgetUpdater
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.LocalDate
 import java.time.YearMonth
@@ -53,6 +54,7 @@ class SavingsViewModel @Inject constructor(
     private val budgetDao: BudgetDao,
     private val categoryDao: CategoryDao,
     private val transactionDao: TransactionDao,
+    private val widgetUpdater: WidgetUpdater,
 ) : ViewModel() {
 
     private val month: YearMonth = YearMonth.now()
@@ -134,6 +136,7 @@ class SavingsViewModel @Inject constructor(
                 )
             )
             if (isFirst && id > 0L) savingsDao.setActivePlan(id)
+            widgetUpdater.update()
         }
     }
 
@@ -152,6 +155,7 @@ class SavingsViewModel @Inject constructor(
                     initialEstimatedMonths = initialMonths,
                 )
             )
+            widgetUpdater.update()
         }
     }
 
@@ -171,6 +175,7 @@ class SavingsViewModel @Inject constructor(
                     initialEstimatedMonths = initialMonths,
                 )
             )
+            widgetUpdater.update()
         }
     }
 
@@ -199,6 +204,7 @@ class SavingsViewModel @Inject constructor(
         if (amountCents > available) return "INSUFFICIENT"
         val todayEpochDay = LocalDate.now().toEpochDay()
         savingsDao.insertContribution(PlanContributionEntity(planId = planId, amountCents = amountCents, date = todayEpochDay))
+        widgetUpdater.update()
         return null
     }
 
@@ -209,11 +215,15 @@ class SavingsViewModel @Inject constructor(
         if (amountCents > contributed) return "EXCEEDS_SAVED"
         val todayEpochDay = LocalDate.now().toEpochDay()
         savingsDao.insertContribution(PlanContributionEntity(planId = planId, amountCents = -amountCents, date = todayEpochDay))
+        widgetUpdater.update()
         return null
     }
 
     fun setActive(planId: Long) {
-        viewModelScope.launch { savingsDao.setActivePlan(planId) }
+        viewModelScope.launch {
+            savingsDao.setActivePlan(planId)
+            widgetUpdater.update()
+        }
     }
 
     fun deletePlan(planId: Long) {
@@ -224,6 +234,7 @@ class SavingsViewModel @Inject constructor(
                 val next = uiState.value.plans.firstOrNull { it.plan.id != planId }
                 if (next != null) savingsDao.setActivePlan(next.plan.id)
             }
+            widgetUpdater.update()
         }
     }
 
@@ -249,6 +260,7 @@ class SavingsViewModel @Inject constructor(
             }
             savingsDao.updatePlan(newA)
             savingsDao.updatePlan(newB)
+            widgetUpdater.update()
         }
     }
 
