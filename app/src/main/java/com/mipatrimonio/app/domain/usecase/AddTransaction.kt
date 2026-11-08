@@ -6,6 +6,7 @@ import com.mipatrimonio.app.core.database.dao.TransactionDao
 import com.mipatrimonio.app.core.database.entity.TransactionEntity
 import com.mipatrimonio.app.core.model.IncomeKind
 import com.mipatrimonio.app.core.model.TransactionType
+import com.mipatrimonio.app.feature.widget.WidgetUpdater
 import java.time.LocalDate
 import javax.inject.Inject
 
@@ -107,6 +108,7 @@ class AddTransaction @Inject constructor(
     private val transactionDao: TransactionDao,
     private val tagDao: TagDao,
     private val evaluateBudgetAlerts: EvaluateBudgetAlerts,
+    private val widgetUpdater: WidgetUpdater,
 ) {
 
     suspend operator fun invoke(
@@ -123,6 +125,7 @@ class AddTransaction @Inject constructor(
                 Log.w("AddTransaction", "No se pudieron evaluar alertas de presupuesto", e)
             }
         }
+        widgetUpdater.update()
         return id
     }
 }
@@ -135,6 +138,7 @@ class UpdateTransaction @Inject constructor(
     private val transactionDao: TransactionDao,
     private val tagDao: TagDao,
     private val evaluateBudgetAlerts: EvaluateBudgetAlerts,
+    private val widgetUpdater: WidgetUpdater,
 ) {
 
     suspend operator fun invoke(existing: TransactionEntity, input: NewTransaction): Long {
@@ -152,6 +156,7 @@ class UpdateTransaction @Inject constructor(
                 Log.w("UpdateTransaction", "No se pudieron evaluar alertas de presupuesto", e)
             }
         }
+        widgetUpdater.update()
         return existing.id
     }
 }

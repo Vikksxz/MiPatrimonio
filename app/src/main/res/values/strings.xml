@@ -132,6 +132,16 @@
     <string name="export_pdf_projection">Proyección de gasto</string>
     <string name="export_pdf_footer">Generado por MiPatrimonio</string>
 
+    <!-- Widget y acceso directo (T4.4, §16) -->
+    <string name="shortcut_add_expense_short">Añadir gasto</string>
+    <string name="shortcut_add_expense_long">Añadir gasto</string>
+    <string name="widget_name">MiPatrimonio</string>
+    <string name="widget_description">Disponible este mes y plan de ahorro</string>
+    <string name="widget_available_label">Disponible este mes</string>
+    <string name="widget_projection">Proyección</string>
+    <string name="widget_add_expense">+ Gasto</string>
+    <string name="widget_no_plan">Sin plan activo</string>
+
     <!-- Copia local cifrada (T4.2, §13) -->
     <string name="backup_section_title">Copia de seguridad</string>
     <string name="backup_section_hint">Guarda o restaura todos tus datos en un archivo .mpbak cifrado con contraseña.</string>

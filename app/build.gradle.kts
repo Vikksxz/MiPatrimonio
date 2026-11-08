@@ -66,6 +66,10 @@ dependencies {
     // OCR (T2.3)
     implementation(libs.mlkit.text.recognition)
 
+    // Widget (T4.4)
+    implementation(libs.androidx.glance.appwidget)
+    implementation(libs.androidx.glance.material3)
+
     // Base de datos (se configura desde T1.4)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)

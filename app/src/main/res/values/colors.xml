@@ -2,4 +2,12 @@
 <resources>
     <!-- Tokens de color de MiPatrimonio.md sección 5.1 -->
     <color name="bg">#070A12</color>
+
+    <!-- Widget Glance (T4.4) -->
+    <color name="widget_bg">#FF070A12</color>
+    <color name="widget_panel">#FF11162A</color>
+    <color name="widget_ink">#FFEAF0FF</color>
+    <color name="widget_muted">#FF8CA0C8</color>
+    <color name="widget_cyan">#FF6FE3FF</color>
+    <color name="widget_track">#FF1A2342</color>
 </resources>

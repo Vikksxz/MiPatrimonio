@@ -1,8 +1,12 @@
 package com.mipatrimonio.app
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -24,8 +28,11 @@ class MainActivity : FragmentActivity() {
     @Inject
     lateinit var settingsRepository: SettingsRepository
 
+    private var addRequested by mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        handleAddIntent(intent)
 
         // "Ocultar contenido en recientes y capturas" (§14), activado por defecto.
         lifecycleScope.launch {
@@ -38,8 +45,23 @@ class MainActivity : FragmentActivity() {
 
         setContent {
             MiPatrimonioTheme {
-                AppGate()
+                AppGate(
+                    openAdd = addRequested,
+                    onAddConsumed = { addRequested = false },
+                )
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleAddIntent(intent)
+    }
+
+    private fun handleAddIntent(intent: Intent?) {
+        if (intent?.action == Intent.ACTION_VIEW && intent.data?.scheme == "mipatrimonio" && intent.data?.host == "add") {
+            addRequested = true
         }
     }
 

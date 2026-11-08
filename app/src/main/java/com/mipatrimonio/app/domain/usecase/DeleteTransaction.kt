@@ -2,6 +2,7 @@ package com.mipatrimonio.app.domain.usecase
 
 import com.mipatrimonio.app.core.database.dao.TransactionDao
 import com.mipatrimonio.app.core.database.entity.TransactionEntity
+import com.mipatrimonio.app.feature.widget.WidgetUpdater
 import javax.inject.Inject
 
 /**
@@ -10,10 +11,12 @@ import javax.inject.Inject
  */
 class DeleteTransaction @Inject constructor(
     private val transactionDao: TransactionDao,
+    private val widgetUpdater: WidgetUpdater,
 ) {
 
     suspend operator fun invoke(transaction: TransactionEntity) {
         transactionDao.delete(transaction)
+        widgetUpdater.update()
     }
 }
 
@@ -23,9 +26,11 @@ class DeleteTransaction @Inject constructor(
  */
 class RestoreTransaction @Inject constructor(
     private val transactionDao: TransactionDao,
+    private val widgetUpdater: WidgetUpdater,
 ) {
 
     suspend operator fun invoke(transaction: TransactionEntity) {
         transactionDao.restore(transaction)
+        widgetUpdater.update()
     }
 }
