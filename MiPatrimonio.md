@@ -709,7 +709,7 @@ Cada tarea termina con la app **compilando**. Marca `[x]` al completar.
 
 ### Fase 2
 - [x] **T2.1 `CryptoManager`.** AES-GCM con Keystore, cifrar/descifrar streams, tests instrumentados. *Aceptación:* round-trip correcto.
-- [ ] **T2.2 Documentos.** Lista, alta desde selector del sistema, cifrado, visor PDF (`PdfRenderer`), borrado. *Aceptación:* se guarda y se abre una nómina PDF.
+- [x] **T2.2 Documentos.** Lista, alta desde selector del sistema, cifrado, visor PDF (`PdfRenderer`), borrado. *Aceptación:* se guarda y se abre una nómina PDF.
 - [ ] **T2.3 OCR base.** Wrapper de ML Kit Text Recognition, renderizado de PDF a bitmap. *Aceptación:* devuelve el texto de una imagen de prueba.
 - [ ] **T2.4 `ReceiptParser`.** Reglas de la sección 9 con tests (≥ 8 casos). *Aceptación:* tests pasan.
 - [ ] **T2.5 Escaneo de ticket.** Integrar ML Kit Document Scanner (con alternativa de galería) → OCR → `ReviewSheet` rellenada, con miniatura adjunta. *Aceptación:* escanear un ticket real prellena importe, fecha y comercio editables.

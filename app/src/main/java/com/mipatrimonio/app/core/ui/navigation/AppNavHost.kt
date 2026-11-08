@@ -4,8 +4,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
+import com.mipatrimonio.app.feature.documents.DocumentViewerScreen
+import com.mipatrimonio.app.feature.documents.DocumentsScreen
 import com.mipatrimonio.app.feature.home.HomeScreen
 import com.mipatrimonio.app.feature.savings.SavingsScreen
 import com.mipatrimonio.app.feature.transactions.TransactionsScreen
@@ -27,6 +31,20 @@ fun AppNavHost(
         composable(Routes.HOME) { HomeScreen() }
         composable(Routes.TRANSACTIONS) { TransactionsScreen() }
         composable(Routes.SAVINGS) { SavingsScreen() }
-        composable(Routes.WALLET) { WalletScreen() }
+        composable(Routes.WALLET) {
+            WalletScreen(onOpenDocuments = { navController.navigate(Routes.DOCUMENTS) })
+        }
+        composable(Routes.DOCUMENTS) {
+            DocumentsScreen(
+                onBack = { navController.popBackStack() },
+                onOpen = { id -> navController.navigate(Routes.documentView(id)) },
+            )
+        }
+        composable(
+            route = Routes.DOCUMENT_VIEW,
+            arguments = listOf(navArgument("documentId") { type = NavType.LongType }),
+        ) {
+            DocumentViewerScreen(onBack = { navController.popBackStack() })
+        }
     }
 }

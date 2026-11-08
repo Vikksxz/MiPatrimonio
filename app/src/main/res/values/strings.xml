@@ -143,4 +143,32 @@
     <string name="transaction_deleted">Movimiento eliminado</string>
     <string name="transactions_action_failed">No se pudo completar la acción</string>
     <string name="common_undo">Deshacer</string>
+    <string name="common_back">Atrás</string>
+
+    <!-- T2.2: documentos -->
+    <string name="documents_title">Documentos</string>
+    <string name="documents_add">Añadir documento</string>
+    <string name="documents_empty">Todavía no hay documentos</string>
+    <string name="documents_empty_hint">Guarda nóminas, facturas o garantías en PDF de forma cifrada.</string>
+    <string name="documents_search_hint">Buscar documento</string>
+    <string name="documents_delete">Eliminar documento</string>
+    <string name="documents_delete_confirm">¿Eliminar este documento? Esta acción no se puede deshacer.</string>
+    <string name="documents_save_failed">No se pudo guardar el documento</string>
+    <string name="documents_open_failed">No se pudo abrir el documento</string>
+    <string name="documents_deleted">Documento eliminado</string>
+    <string name="documents_action_failed">No se pudo completar la acción</string>
+    <string name="document_kind_payslip">Nómina</string>
+    <string name="document_kind_invoice">Factura</string>
+    <string name="document_kind_warranty">Garantía</string>
+    <string name="document_kind_insurance">Seguro</string>
+    <string name="document_kind_contract">Contrato</string>
+    <string name="document_kind_other">Otros</string>
+    <string name="document_title_hint">Título</string>
+    <string name="document_kind_label">Tipo</string>
+    <string name="document_date_label">Fecha</string>
+    <string name="document_expires_label">Vence</string>
+    <string name="document_save">Guardar documento</string>
+    <string name="document_default_title">Documento</string>
+    <string name="wallet_documents">Documentos</string>
+    <string name="wallet_documents_hint">Nóminas, facturas y garantías cifradas</string>
 </resources>

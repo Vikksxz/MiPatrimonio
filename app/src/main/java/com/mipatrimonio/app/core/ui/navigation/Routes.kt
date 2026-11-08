@@ -9,6 +9,10 @@ object Routes {
     const val TRANSACTIONS = "transactions"
     const val SAVINGS = "savings"
     const val WALLET = "wallet"
+    const val DOCUMENTS = "documents"
+    const val DOCUMENT_VIEW = "documents/view/{documentId}"
+
+    fun documentView(documentId: Long): String = "documents/view/$documentId"
 
     /** Destinos de la barra inferior, en el orden en que se resaltan. */
     val topLevel = listOf(HOME, TRANSACTIONS, SAVINGS, WALLET)
