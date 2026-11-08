@@ -145,6 +145,31 @@ class SavingsViewModel @Inject constructor(
             }
         }
     }
+
+    /** Reordena prioridad (T3.3): intercambia con el vecino según [up]. */
+    fun movePlan(planId: Long, up: Boolean) {
+        viewModelScope.launch {
+            val ordered = uiState.value.plans.sortedBy { it.plan.priority }
+            val index = ordered.indexOfFirst { it.plan.id == planId }
+            if (index < 0) return@launch
+            val targetIndex = if (up) index - 1 else index + 1
+            if (targetIndex !in ordered.indices) return@launch
+            val a = ordered[index].plan
+            val b = ordered[targetIndex].plan
+            // Intercambio de prioridad (valores distintos para mantener orden estable).
+            val aPri = a.priority
+            val bPri = b.priority
+            val (newA, newB) = if (aPri == bPri) {
+                val base = index + 1
+                if (up) a.copy(priority = base - 1) to b.copy(priority = base + 1)
+                else a.copy(priority = base + 1) to b.copy(priority = base - 1)
+            } else {
+                a.copy(priority = bPri) to b.copy(priority = aPri)
+            }
+            savingsDao.updatePlan(newA)
+            savingsDao.updatePlan(newB)
+        }
+    }
 }
 
 fun YearMonth.toMonthYearLabel(locale: Locale = Locale.forLanguageTag("es-ES")): String {

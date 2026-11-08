@@ -88,6 +88,7 @@ fun SavingsScreen(
         onChangeQuota = viewModel::changeQuota,
         onSetActive = viewModel::setActive,
         onContribute = { contributePlanId = it; showContribute = true },
+        onMovePlan = viewModel::movePlan,
     )
 
     if (showPlanSheet) {
@@ -139,6 +140,7 @@ internal fun SavingsContent(
     onChangeQuota: (Long, Long) -> Unit = { _, _ -> },
     onSetActive: (Long) -> Unit = {},
     onContribute: (Long) -> Unit = {},
+    onMovePlan: (Long, Boolean) -> Unit = { _, _ -> },
 ) {
     LazyColumn(
         modifier = modifier
@@ -197,11 +199,16 @@ internal fun SavingsContent(
             }
         } else {
             items(items = state.plans, key = { it.plan.id }) { item ->
+                val index = state.plans.indexOfFirst { it.plan.id == item.plan.id }
                 PlanRow(
                     item = item,
                     isActive = item.plan.id == active?.plan?.id,
+                    canMoveUp = index > 0,
+                    canMoveDown = index >= 0 && index < state.plans.lastIndex,
                     onSetActive = { onSetActive(item.plan.id) },
                     onEdit = { onEditPlan(item.plan.id) },
+                    onMoveUp = { onMovePlan(item.plan.id, true) },
+                    onMoveDown = { onMovePlan(item.plan.id, false) },
                 )
             }
         }
@@ -303,8 +310,12 @@ private fun ActivePlanCard(
 private fun PlanRow(
     item: PlanItemUi,
     isActive: Boolean,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
     onSetActive: () -> Unit,
     onEdit: () -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
 ) {
     NeonCard(modifier = Modifier.fillMaxWidth().clickable { onEdit() }) {
         Row(
@@ -318,7 +329,7 @@ private fun PlanRow(
                 modifier = Modifier.semantics { contentDescription = activeDesc },
                 colors = RadioButtonDefaults.colors(selectedColor = NeonColor.neonCyan, unselectedColor = NeonColor.muted),
             )
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(4.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = item.plan.name, style = MaterialTheme.typography.bodyLarge, color = NeonColor.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
@@ -327,11 +338,24 @@ private fun PlanRow(
                     color = NeonColor.muted,
                 )
             }
-            Text(
-                text = stringResource(R.string.savings_priority, item.plan.priority),
-                style = MaterialTheme.typography.labelSmall,
-                color = NeonColor.chipText,
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                val upDesc = stringResource(R.string.savings_move_up)
+                IconButton(
+                    onClick = onMoveUp,
+                    enabled = canMoveUp,
+                    modifier = Modifier.size(44.dp).semantics { contentDescription = upDesc },
+                ) {
+                    Text("▲", color = if (canMoveUp) NeonColor.neonCyan else NeonColor.lineInput, style = MaterialTheme.typography.labelSmall)
+                }
+                val downDesc = stringResource(R.string.savings_move_down)
+                IconButton(
+                    onClick = onMoveDown,
+                    enabled = canMoveDown,
+                    modifier = Modifier.size(44.dp).semantics { contentDescription = downDesc },
+                ) {
+                    Text("▼", color = if (canMoveDown) NeonColor.neonCyan else NeonColor.lineInput, style = MaterialTheme.typography.labelSmall)
+                }
+            }
         }
     }
 }

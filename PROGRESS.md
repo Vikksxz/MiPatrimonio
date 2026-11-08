@@ -2,8 +2,8 @@
 
 ## Estado
 - Fase actual: 3
-- Última tarea cerrada: T3.2
-- Tarea en curso: T3.3 Varios planes y prioridad (sin empezar)
+- Última tarea cerrada: T3.3
+- Tarea en curso: T3.4 Presupuestos (sin empezar)
 
 ## Decisiones tomadas
 - (2026-11-02) Paquete: com.mipatrimonio.app
@@ -90,5 +90,6 @@
 - (2026-11-08) T2.7 CERRADA (rama `t2-7-etiquetas-notas`): etiquetas (Tag/TransactionTag ya en BD) persistidas desde `AddTransaction`/`UpdateTransaction` (`tagIds` en `NewTransaction`, `TagDao.replaceTagsForTransaction`). `ReviewSheet` permite seleccionar/crear etiquetas y las precarga al editar; `TransactionsViewModel`/pantalla filtran por etiqueta (combinable con tipo/búsqueda). `buildDayGroups` conserva compatibilidad. **Aceptación confirmada por George en NX779J**: etiquetar y filtrar funciona.
 - (2026-11-08) T3.1 CERRADA (rama `t3-1-planes-ahorro`): `EstimateSavings` (dominio, puro, `Long` céntimos, §7.2) + 8 tests; `SavingsDao` con `observePlansWithContributions`/`PlanWithContributions`, activar/insertar plan y aportaciones. UI Ahorro (CRUD planes, hoja crear/editar nombre+objetivo, objetivo solo lectura en tarjeta, cuota −/+ 25 €, estimación reactiva al cambiar objetivo/cuota, aportar, lista con prioridad/activo, barra progreso simple). Integración Inicio (§7.1/§8.1, opción 1 acordada con George): `GetMonthlySummary` descuenta **aportaciones reales del mes** del disponible (no como gasto, sin doble cómputo) y expone `activePlan`; Inicio muestra panel “PLAN DE AHORRO ACTIVO” (progreso, %, ahorrado/objetivo, meses, banner estado) y “Crear plan de ahorro” si no hay. Navegación desde Inicio→Ahorro usa patrón de pestaña (popUpTo/saveState/restoreState). **Aceptación confirmada por George en NX779J**: estimación se actualiza al cambiar objetivo/cuota; balance/panel en Inicio correctos; navegación arreglada.
 - (2026-11-08) T3.2 CERRADA (rama `t3-2-progress-neon-bar`): `core/ui/components/ProgressNeonBar.kt` (§5.4) — pista 14 dp/`track`, relleno degradado verde→cian→magenta con brillo cian, destello blanco (alfa 0.3, ~30%, cada 2,4 s), cabeza pulsante 10 dp con halo cian↔magenta (1,6 s), cambio de progreso 800 ms. Respeta `ANIMATOR_DURATION_SCALE == 0` (sin animaciones, cambio instantáneo/cabeza estática) y añade `semantics` de porcentaje. Sustituye barras simples en Inicio y Ahorro. **Aceptación confirmada por George en NX779J**.
-- (2026-11-08) Siguiente: T3.3 Varios planes y prioridad (§18).
+- (2026-11-08) T3.3 CERRADA (rama `t3-3-planes-prioridad`): varios planes con prioridad reordenable (▲/▼, persistida en `SavingsPlan.priority`) y selección de plan activo (único). Inicio muestra el plan activo (ya integrado). **Aceptación confirmada por George en NX779J**.
+- (2026-11-08) Siguiente: T3.4 Presupuestos (§7.4, §8.4, §18).
 - No tocar archivos fuera del alcance de la tarea. local.properties ya está en .gitignore.
