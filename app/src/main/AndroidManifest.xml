@@ -19,6 +19,25 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- T2.6: recepción por "Compartir" (CamScanner u otras apps), §8.6/§10 -->
+        <activity
+            android:name=".feature.share.ShareReceiverActivity"
+            android:exported="true"
+            android:theme="@style/Theme.MiPatrimonio.Sheet">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/pdf" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/pdf" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>
