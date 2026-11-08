@@ -8,17 +8,26 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mipatrimonio.app.core.database.dao.CardDao
 import com.mipatrimonio.app.core.database.dao.CategoryDao
+import com.mipatrimonio.app.core.database.dao.DocumentDao
 import com.mipatrimonio.app.core.database.entity.CardEntity
 import com.mipatrimonio.app.core.database.entity.CategoryEntity
+import com.mipatrimonio.app.core.database.entity.DocumentEntity
 import com.mipatrimonio.app.core.database.entity.TransactionEntity
+import com.mipatrimonio.app.core.model.DocumentKind
+import com.mipatrimonio.app.core.model.IncomeKind
+import com.mipatrimonio.app.core.ocr.DocumentClassification
+import com.mipatrimonio.app.core.ocr.DocumentClassifier
 import com.mipatrimonio.app.core.ocr.OcrService
 import com.mipatrimonio.app.core.ocr.ReceiptParser
+import com.mipatrimonio.app.core.storage.EncryptedDocumentStore
 import com.mipatrimonio.app.core.storage.ReceiptImageStore
 import com.mipatrimonio.app.domain.usecase.AddTransaction
 import com.mipatrimonio.app.domain.usecase.DeleteTransaction
 import com.mipatrimonio.app.domain.usecase.NewTransaction
 import com.mipatrimonio.app.domain.usecase.UpdateTransaction
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.File
+import java.io.FileInputStream
 import java.time.LocalDate
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
@@ -38,6 +47,16 @@ data class ReceiptScanDraft(
     val thumbnail: Bitmap,
 )
 
+/** Borrador de nómina PDF (confirmación obligatoria): guarda documento cifrado + ingreso. */
+data class PayrollDraft(
+    val sourceFilePath: String,
+    val mimeType: String,
+    val displayName: String,
+    val amountCents: Long?,
+    val date: LocalDate,
+    val thumbnail: Bitmap?,
+)
+
 /**
  * Estado del formulario de revisión del botón + (T1.7).
  * Ofrece tarjetas y categorías a la hoja y guarda mediante [AddTransaction].
@@ -51,6 +70,8 @@ class AddTransactionViewModel @Inject constructor(
     private val deleteTransaction: DeleteTransaction,
     private val ocrService: OcrService,
     private val receiptImageStore: ReceiptImageStore,
+    private val documentStore: EncryptedDocumentStore,
+    private val documentDao: DocumentDao,
 ) : ViewModel() {
 
     val cards: StateFlow<List<CardEntity>> = cardDao.observeAll()
@@ -111,28 +132,39 @@ class AddTransactionViewModel @Inject constructor(
         saveFailed = true
     }
 
+    suspend fun recognizeLines(bitmap: Bitmap): List<String> = withContext(Dispatchers.IO) {
+        ocrService.recognize(bitmap).lines
+    }
+
     /**
      * OCR + parseo del ticket (T2.5). No persiste nada hasta confirmar el guardado (§8.3/§9.1).
      * [bitmap] no se recicla aquí.
      */
     suspend fun scanReceipt(bitmap: Bitmap): ReceiptScanDraft = withContext(Dispatchers.IO) {
-        val ocr = ocrService.recognize(bitmap)
-        val parsed = ReceiptParser.parse(ocr.lines)
-        val thumbSide = 480
-        val scale = minOf(
-            thumbSide.toFloat() / bitmap.width.coerceAtLeast(1),
-            thumbSide.toFloat() / bitmap.height.coerceAtLeast(1),
-            1f,
-        )
-        val thumbW = (bitmap.width * scale).toInt().coerceAtLeast(1)
-        val thumbH = (bitmap.height * scale).toInt().coerceAtLeast(1)
-        val thumbnail = Bitmap.createScaledBitmap(bitmap, thumbW, thumbH, true)
+        val lines = ocrService.recognize(bitmap).lines
+        val parsed = ReceiptParser.parse(lines)
+        val thumbnail = renderThumbnail(bitmap)
         ReceiptScanDraft(
             amountCents = parsed.amountCents,
             date = parsed.date ?: LocalDate.now(),
             merchant = parsed.merchant?.takeIf { it.isNotBlank() },
             sourceBitmap = bitmap,
             thumbnail = thumbnail,
+        )
+    }
+
+    private fun renderThumbnail(source: Bitmap): Bitmap {
+        val thumbSide = 480
+        val scale = minOf(
+            thumbSide.toFloat() / source.width.coerceAtLeast(1),
+            thumbSide.toFloat() / source.height.coerceAtLeast(1),
+            1f,
+        )
+        return Bitmap.createScaledBitmap(
+            source,
+            (source.width * scale).toInt().coerceAtLeast(1),
+            (source.height * scale).toInt().coerceAtLeast(1),
+            true,
         )
     }
 
@@ -148,4 +180,41 @@ class AddTransactionViewModel @Inject constructor(
                 .onFailure(::fail)
         }
     }
+
+    /** Guarda nómina confirmada: documento PDF cifrado + ingreso (nunca sin confirmación). */
+    fun savePayroll(input: NewTransaction, draft: PayrollDraft, onSaved: (Long) -> Unit) {
+        if (!begin()) return
+        viewModelScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    val file = File(draft.sourceFilePath)
+                    val relativePath = FileInputStream(file).use { documentStore.save(it) }
+                    documentDao.insert(
+                        DocumentEntity(
+                            kind = DocumentKind.PAYSLIP,
+                            title = input.merchant.trim().ifBlank { draft.displayName.removeSuffix(".pdf") },
+                            filePath = relativePath,
+                            mimeType = draft.mimeType.ifBlank { "application/pdf" },
+                            date = input.date.toEpochDay(),
+                            createdAt = System.currentTimeMillis(),
+                        ),
+                    )
+                    runCatching { file.delete() }
+                    addTransaction(input.copy(incomeKind = IncomeKind.PAYROLL))
+                }
+            }
+                .onSuccess(onSaved)
+                .onFailure(::fail)
+        }
+    }
+
+    suspend fun findPayrollDuplicates(date: LocalDate, title: String): List<DocumentEntity> =
+        withContext(Dispatchers.IO) {
+            val trimmed = title.trim()
+            documentDao.getAllByKind(DocumentKind.PAYSLIP).filter { doc ->
+                val sameDate = doc.date == date.toEpochDay()
+                val sameTitle = trimmed.isNotBlank() && doc.title.trim().equals(trimmed, ignoreCase = true)
+                sameDate || sameTitle
+            }
+        }
 }

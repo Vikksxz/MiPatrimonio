@@ -117,26 +117,61 @@ class ShareViewModel @Inject constructor(
                 decodeImageFile(source, 1600)
             } ?: return@withContext null
             val parsed = ReceiptParser.parse(lines)
-            val thumbSide = 480
-            val scale = minOf(
-                thumbSide.toFloat() / bitmap.width.coerceAtLeast(1),
-                thumbSide.toFloat() / bitmap.height.coerceAtLeast(1),
-                1f,
-            )
-            val thumbnail = Bitmap.createScaledBitmap(
-                bitmap,
-                (bitmap.width * scale).toInt().coerceAtLeast(1),
-                (bitmap.height * scale).toInt().coerceAtLeast(1),
-                true,
-            )
             ReceiptScanDraft(
                 amountCents = parsed.amountCents,
                 date = parsed.date ?: LocalDate.now(),
                 merchant = parsed.merchant?.takeIf { it.isNotBlank() },
                 sourceBitmap = bitmap,
-                thumbnail = thumbnail,
+                thumbnail = thumbnailOf(bitmap),
             )
         }
+
+    suspend fun buildPayrollDraft(
+        file: SharedFileInfo,
+        classification: DocumentClassification,
+    ): com.mipatrimonio.app.feature.add.PayrollDraft? = withContext(Dispatchers.IO) {
+        val source = File(file.inboxPath)
+        if (!source.exists()) return@withContext null
+        val thumb = if (file.mimeType == "application/pdf" || source.name.endsWith(".pdf", true)) {
+            runCatching {
+                val bmp = PdfBitmapRenderer.renderFirstPage(source)
+                thumbnailOf(bmp).also { bmp.recycle() }
+            }.getOrNull()
+        } else {
+            decodeImageFile(source, 480)
+        }
+        com.mipatrimonio.app.feature.add.PayrollDraft(
+            sourceFilePath = file.inboxPath,
+            mimeType = file.mimeType,
+            displayName = file.displayName,
+            amountCents = classification.suggestedNetCents,
+            date = classification.suggestedDate ?: LocalDate.now(),
+            thumbnail = thumb,
+        )
+    }
+
+    suspend fun findPayrollDuplicates(date: LocalDate, title: String): List<DocumentEntity> =
+        withContext(Dispatchers.IO) {
+            val trimmed = title.trim()
+            documentDao.getAllByKind(DocumentKind.PAYSLIP).filter { doc ->
+                doc.date == date.toEpochDay() || (trimmed.isNotBlank() && doc.title.trim().equals(trimmed, true))
+            }
+        }
+
+    private fun thumbnailOf(source: Bitmap): Bitmap {
+        val thumbSide = 480
+        val scale = minOf(
+            thumbSide.toFloat() / source.width.coerceAtLeast(1),
+            thumbSide.toFloat() / source.height.coerceAtLeast(1),
+            1f,
+        )
+        return Bitmap.createScaledBitmap(
+            source,
+            (source.width * scale).toInt().coerceAtLeast(1),
+            (source.height * scale).toInt().coerceAtLeast(1),
+            true,
+        )
+    }
 
     fun saveAsDocument(
         file: SharedFileInfo,
