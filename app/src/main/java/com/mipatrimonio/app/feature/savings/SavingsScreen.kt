@@ -11,14 +11,17 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
@@ -54,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mipatrimonio.app.R
+import com.mipatrimonio.app.core.database.entity.CategoryEntity
 import com.mipatrimonio.app.core.money.Money
 import com.mipatrimonio.app.core.ui.components.NeonButton
 import com.mipatrimonio.app.core.ui.components.NeonButtonText
@@ -63,6 +67,7 @@ import com.mipatrimonio.app.core.ui.components.ScreenTitle
 import com.mipatrimonio.app.core.ui.theme.MiPatrimonioTheme
 import com.mipatrimonio.app.core.ui.theme.NeonColor
 import com.mipatrimonio.app.core.ui.theme.NeonShape
+import com.mipatrimonio.app.domain.usecase.BudgetLevel
 import com.mipatrimonio.app.domain.usecase.EstimateSavings
 import com.mipatrimonio.app.domain.usecase.SavingsStatus
 import java.time.YearMonth
@@ -79,6 +84,8 @@ fun SavingsScreen(
     var editingPlanId by remember { mutableStateOf<Long?>(null) }
     var showContribute by remember { mutableStateOf(false) }
     var contributePlanId by remember { mutableStateOf<Long?>(null) }
+    var showBudgetSheet by remember { mutableStateOf(false) }
+    var editingBudgetId by remember { mutableStateOf<Long?>(null) }
 
     SavingsContent(
         state = state,
@@ -89,6 +96,8 @@ fun SavingsScreen(
         onSetActive = viewModel::setActive,
         onContribute = { contributePlanId = it; showContribute = true },
         onMovePlan = viewModel::movePlan,
+        onAddBudget = { editingBudgetId = null; showBudgetSheet = true },
+        onEditBudget = { editingBudgetId = it; showBudgetSheet = true },
     )
 
     if (showPlanSheet) {
@@ -129,6 +138,32 @@ fun SavingsScreen(
             onDismiss = { showContribute = false },
         )
     }
+
+    if (showBudgetSheet) {
+        val editing = editingBudgetId?.let { id -> state.budgets.firstOrNull { it.budget.id == id } }
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = { showBudgetSheet = false },
+            sheetState = sheetState,
+            containerColor = NeonColor.panel,
+            contentColor = NeonColor.ink,
+        ) {
+            BudgetEditSheet(
+                categories = state.expenseCategories,
+                initialCategoryId = editing?.budget?.categoryId,
+                initialLimitCents = editing?.budget?.limitCents,
+                existingId = editing?.budget?.id,
+                onSave = { catId, limit, existingId ->
+                    viewModel.saveBudget(catId, limit, existingId)
+                    showBudgetSheet = false
+                },
+                onDelete = if (editing != null) {
+                    { viewModel.deleteBudget(editing.budget.id); showBudgetSheet = false }
+                } else null,
+                onDismiss = { showBudgetSheet = false },
+            )
+        }
+    }
 }
 
 @Composable
@@ -141,6 +176,8 @@ internal fun SavingsContent(
     onSetActive: (Long) -> Unit = {},
     onContribute: (Long) -> Unit = {},
     onMovePlan: (Long, Boolean) -> Unit = { _, _ -> },
+    onAddBudget: () -> Unit = {},
+    onEditBudget: (Long) -> Unit = {},
 ) {
     LazyColumn(
         modifier = modifier
@@ -216,6 +253,34 @@ internal fun SavingsContent(
         item {
             NeonButton(onClick = onCreatePlan, modifier = Modifier.fillMaxWidth()) {
                 NeonButtonText(text = stringResource(R.string.savings_create_plan))
+            }
+        }
+
+        // --- Presupuestos (T3.4, §7.4/§8.4) ---
+        item {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.budgets_title),
+                style = MaterialTheme.typography.titleMedium,
+                color = NeonColor.ink,
+            )
+        }
+        if (state.budgets.isEmpty()) {
+            item {
+                Text(
+                    text = stringResource(R.string.budgets_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = NeonColor.muted,
+                )
+            }
+        } else {
+            items(items = state.budgets, key = { "budget-${it.budget.id}" }) { item ->
+                BudgetRow(item = item, onEdit = { onEditBudget(item.budget.id) })
+            }
+        }
+        item {
+            NeonButton(onClick = onAddBudget, secondary = true, modifier = Modifier.fillMaxWidth()) {
+                NeonButtonText(text = stringResource(R.string.budgets_add), secondary = true)
             }
             Spacer(Modifier.height(16.dp))
         }
@@ -488,6 +553,145 @@ private fun SavingsTextField(
             cursorColor = NeonColor.neonCyan,
         ),
     )
+}
+
+// --- Presupuestos (T3.4) ---
+
+@Composable
+private fun BudgetRow(item: BudgetItemUi, onEdit: () -> Unit) {
+    val catName = item.category?.name ?: stringResource(R.string.budgets_category)
+    val barColor = when (item.status.level) {
+        BudgetLevel.OK -> NeonColor.neonCyan
+        BudgetLevel.WARNING -> NeonColor.neonAmber
+        BudgetLevel.OVER -> NeonColor.expenseRed
+    }
+    val progress = if (item.budget.limitCents > 0L) {
+        (item.status.spentCents.toDouble() / item.budget.limitCents.toDouble()).toFloat().coerceIn(0f, 1f)
+    } else 0f
+    NeonCard(modifier = Modifier.fillMaxWidth().clickable { onEdit() }) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(text = catName, style = MaterialTheme.typography.bodyLarge, color = NeonColor.ink, modifier = Modifier.weight(1f))
+                Text(text = stringResource(R.string.budgets_percent, item.status.percent), style = MaterialTheme.typography.labelMedium, color = barColor)
+            }
+            BudgetBar(progress = progress, color = barColor)
+            Text(
+                text = stringResource(R.string.budgets_spent_of_limit, Money.format(item.status.spentCents), Money.format(item.budget.limitCents)),
+                style = MaterialTheme.typography.bodySmall,
+                color = NeonColor.muted,
+            )
+        }
+    }
+}
+
+@Composable
+private fun BudgetBar(progress: Float, color: Color) {
+    val shape = RoundedCornerShape(8.dp)
+    Box(modifier = Modifier.fillMaxWidth().height(10.dp).clip(shape).background(NeonColor.track)) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(progress.coerceIn(0f, 1f))
+                .height(10.dp)
+                .clip(shape)
+                .background(color),
+        )
+    }
+}
+
+@Composable
+private fun BudgetEditSheet(
+    categories: List<CategoryEntity>,
+    initialCategoryId: Long?,
+    initialLimitCents: Long?,
+    existingId: Long?,
+    onSave: (Long, Long, Long?) -> Unit,
+    onDelete: (() -> Unit)?,
+    onDismiss: () -> Unit,
+) {
+    var selectedCategoryId by remember { mutableStateOf(initialCategoryId ?: categories.firstOrNull()?.id) }
+    var limitText by remember { mutableStateOf(initialLimitCents?.let { Money.formatNumber(it) } ?: "") }
+    var error by remember { mutableStateOf<String?>(null) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    val invalidAmount = stringResource(R.string.savings_invalid_amount)
+    val noCategories = stringResource(R.string.budgets_no_categories)
+
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            text = stringResource(if (existingId != null) R.string.budgets_edit else R.string.budgets_add),
+            style = MaterialTheme.typography.titleLarge,
+            color = NeonColor.ink,
+        )
+        if (categories.isEmpty()) {
+            Text(stringResource(R.string.budgets_no_categories), color = NeonColor.muted)
+        } else {
+            Text(stringResource(R.string.budgets_category), style = MaterialTheme.typography.labelLarge, color = NeonColor.muted)
+            Column(
+                modifier = Modifier.heightIn(max = 180.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                categories.forEach { cat ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(NeonShape.inputRadius)).clickable { selectedCategoryId = cat.id }.padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(
+                            selected = selectedCategoryId == cat.id,
+                            onClick = { selectedCategoryId = cat.id },
+                            colors = RadioButtonDefaults.colors(selectedColor = NeonColor.neonCyan, unselectedColor = NeonColor.muted),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(cat.name, color = NeonColor.ink)
+                    }
+                }
+            }
+        }
+        SavingsTextField(
+            value = limitText,
+            onValueChange = { limitText = it },
+            label = stringResource(R.string.budgets_limit),
+            keyboardType = KeyboardType.Decimal,
+        )
+        if (error != null) Text(error!!, color = NeonColor.expenseRed, style = MaterialTheme.typography.bodySmall)
+
+        NeonButton(
+            onClick = {
+                val catId = selectedCategoryId
+                val cents = try { Money.parse(limitText) } catch (_: Exception) { null }
+                if (catId == null) { error = noCategories; return@NeonButton }
+                if (cents == null || cents <= 0L) { error = invalidAmount; return@NeonButton }
+                onSave(catId, cents, existingId)
+            },
+            modifier = Modifier.fillMaxWidth(),
+        ) { NeonButtonText(text = stringResource(R.string.budgets_save)) }
+
+        if (existingId != null && onDelete != null) {
+            NeonButton(onClick = { showDeleteConfirm = true }, secondary = true, accent = NeonColor.expenseRed, modifier = Modifier.fillMaxWidth()) {
+                Text(text = stringResource(R.string.budgets_delete), color = NeonColor.expenseRed, style = MaterialTheme.typography.labelLarge)
+            }
+        }
+    }
+
+    if (showDeleteConfirm && onDelete != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            containerColor = NeonColor.panel,
+            title = { Text(stringResource(R.string.budgets_delete), color = NeonColor.ink) },
+            text = { Text(stringResource(R.string.budgets_delete_confirm), color = NeonColor.muted) },
+            confirmButton = {
+                TextButton(onClick = { showDeleteConfirm = false; onDelete() }) {
+                    Text(stringResource(R.string.budgets_delete), color = NeonColor.expenseRed)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text(stringResource(R.string.common_cancel), color = NeonColor.neonCyan)
+                }
+            },
+        )
+    }
 }
 
 @Preview(showBackground = true, backgroundColor = 0xFF070A12)

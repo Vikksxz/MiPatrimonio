@@ -2,23 +2,28 @@ package com.mipatrimonio.app.feature.savings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.mipatrimonio.app.core.database.dao.PlanWithContributions
+import com.mipatrimonio.app.core.database.dao.BudgetDao
+import com.mipatrimonio.app.core.database.dao.CategoryDao
 import com.mipatrimonio.app.core.database.dao.SavingsDao
+import com.mipatrimonio.app.core.database.dao.TransactionDao
+import com.mipatrimonio.app.core.database.entity.BudgetEntity
+import com.mipatrimonio.app.core.database.entity.CategoryEntity
 import com.mipatrimonio.app.core.database.entity.PlanContributionEntity
 import com.mipatrimonio.app.core.database.entity.SavingsPlanEntity
+import com.mipatrimonio.app.core.model.TransactionType
+import com.mipatrimonio.app.domain.usecase.BudgetStatus
+import com.mipatrimonio.app.domain.usecase.BudgetThresholds
 import com.mipatrimonio.app.domain.usecase.EstimateSavings
 import com.mipatrimonio.app.domain.usecase.SavingsEstimate
 import dagger.hilt.android.lifecycle.HiltViewModel
-import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
-import java.time.ZoneId
 import java.time.format.TextStyle
 import java.util.Locale
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -28,36 +33,84 @@ data class PlanItemUi(
     val estimate: SavingsEstimate,
 )
 
+data class BudgetItemUi(
+    val budget: BudgetEntity,
+    val category: CategoryEntity?,
+    val status: BudgetStatus,
+)
+
 data class SavingsUiState(
     val plans: List<PlanItemUi> = emptyList(),
     val activePlan: PlanItemUi? = null,
+    val budgets: List<BudgetItemUi> = emptyList(),
+    val expenseCategories: List<CategoryEntity> = emptyList(),
     val loaded: Boolean = false,
 )
 
 @HiltViewModel
 class SavingsViewModel @Inject constructor(
     private val savingsDao: SavingsDao,
+    private val budgetDao: BudgetDao,
+    private val categoryDao: CategoryDao,
+    private val transactionDao: TransactionDao,
 ) : ViewModel() {
 
-    val uiState: StateFlow<SavingsUiState> = savingsDao.observePlansWithContributions()
-        .map { all ->
-            val items = all.map { pwc ->
-                val contributed = pwc.contributions.sumOf { it.amountCents }
-                val estimate = EstimateSavings.estimate(
-                    targetCents = pwc.plan.targetCents,
-                    contributedCents = contributed,
-                    monthlyQuotaCents = pwc.plan.monthlyQuotaCents,
-                    // Neutral: no false "BEHIND" sin datos reales de ingreso/gasto (T3.1).
-                    freeMonthlyCents = pwc.plan.monthlyQuotaCents,
-                    initialEstimatedMonths = pwc.plan.initialEstimatedMonths,
-                    now = YearMonth.now(),
-                )
-                PlanItemUi(pwc.plan, contributed, estimate)
-            }.sortedBy { it.plan.priority }
-            val active = items.firstOrNull { it.plan.isActive } ?: items.firstOrNull()
-            SavingsUiState(plans = items, activePlan = active, loaded = true)
+    private val month: YearMonth = YearMonth.now()
+    private val monthFrom: Long = month.atDay(1).toEpochDay()
+    private val monthToExclusive: Long = month.plusMonths(1).atDay(1).toEpochDay()
+
+    private val plansFlow = savingsDao.observePlansWithContributions()
+
+    private val budgetsFlow = combine(
+        budgetDao.observeWithCategory(),
+        transactionDao.observeByMonth(monthFrom, monthToExclusive),
+        categoryDao.observeByIncome(false),
+    ) { budgetsWithCat, monthTx, expenseCats ->
+        val spentByCategory = mutableMapOf<Long, Long>()
+        monthTx.forEach { tx ->
+            val catId = tx.categoryId ?: return@forEach
+            if (tx.type == TransactionType.INCOME) return@forEach
+            spentByCategory[catId] = (spentByCategory[catId] ?: 0L) + tx.amountBaseCents
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SavingsUiState())
+        val items = budgetsWithCat.map { bwc ->
+            val spent = spentByCategory[bwc.budget.categoryId] ?: 0L
+            val status = BudgetThresholds.evaluate(spent, bwc.budget.limitCents, month, bwc.budget.notified80Month, bwc.budget.notified100Month)
+            BudgetItemUi(budget = bwc.budget, category = bwc.category, status = status)
+        }.sortedBy { it.category?.name ?: "" }
+        // Persistir marcas de umbral alcanzado (una vez por mes/umbral, §7.4). T3.6 enviará notificaciones.
+        items.forEach { item ->
+            val b = item.budget
+            val s = item.status
+            if (s.newNotified80Month != b.notified80Month || s.newNotified100Month != b.notified100Month) {
+                viewModelScope.launch { budgetDao.updateNotifiedMonths(b.id, s.newNotified80Month, s.newNotified100Month) }
+            }
+        }
+        Triple(items, expenseCats, spentByCategory)
+    }
+
+    val uiState: StateFlow<SavingsUiState> = combine(plansFlow, budgetsFlow) { all, budgetData ->
+        val items = all.map { pwc ->
+            val contributed = pwc.contributions.sumOf { it.amountCents }
+            val estimate = EstimateSavings.estimate(
+                targetCents = pwc.plan.targetCents,
+                contributedCents = contributed,
+                monthlyQuotaCents = pwc.plan.monthlyQuotaCents,
+                // Neutral: no false "BEHIND" sin datos reales de ingreso/gasto (T3.1).
+                freeMonthlyCents = pwc.plan.monthlyQuotaCents,
+                initialEstimatedMonths = pwc.plan.initialEstimatedMonths,
+                now = YearMonth.now(),
+            )
+            PlanItemUi(pwc.plan, contributed, estimate)
+        }.sortedBy { it.plan.priority }
+        val active = items.firstOrNull { it.plan.isActive } ?: items.firstOrNull()
+        SavingsUiState(
+            plans = items,
+            activePlan = active,
+            budgets = budgetData.first,
+            expenseCategories = budgetData.second,
+            loaded = true,
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SavingsUiState())
 
     fun createPlan(name: String, targetCents: Long) {
         val trimmed = name.trim()
@@ -168,6 +221,29 @@ class SavingsViewModel @Inject constructor(
             }
             savingsDao.updatePlan(newA)
             savingsDao.updatePlan(newB)
+        }
+    }
+
+    // --- Presupuestos (T3.4) ---
+    fun saveBudget(categoryId: Long, limitCents: Long, existingId: Long? = null) {
+        if (limitCents <= 0L || categoryId <= 0L) return
+        viewModelScope.launch {
+            val existing = existingId?.let { uiState.value.budgets.firstOrNull { b -> b.budget.id == it }?.budget }
+                ?: budgetDao.getByCategory(categoryId)
+            val entity = if (existing != null) {
+                // Al cambiar límite/categoría, reiniciar avisos del mes actual según nueva evaluación.
+                existing.copy(categoryId = categoryId, limitCents = limitCents, notified80Month = -1, notified100Month = -1)
+            } else {
+                BudgetEntity(categoryId = categoryId, limitCents = limitCents)
+            }
+            budgetDao.upsert(entity)
+        }
+    }
+
+    fun deleteBudget(budgetId: Long) {
+        viewModelScope.launch {
+            val b = uiState.value.budgets.firstOrNull { it.budget.id == budgetId }?.budget ?: return@launch
+            budgetDao.delete(b)
         }
     }
 }

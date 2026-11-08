@@ -1,5 +1,6 @@
 package com.mipatrimonio.app.domain.usecase
 
+import com.mipatrimonio.app.core.database.dao.BudgetDao
 import com.mipatrimonio.app.core.database.dao.PlanWithContributions
 import com.mipatrimonio.app.core.database.dao.SavingsDao
 import com.mipatrimonio.app.core.database.dao.TransactionDao
@@ -21,6 +22,15 @@ data class ActivePlanSummary(
     val estimate: SavingsEstimate,
 )
 
+/** Resumen de presupuesto para Inicio (T3.4, §7.4/§8.4). */
+data class HomeBudgetSummary(
+    val categoryName: String,
+    val spentCents: Long,
+    val limitCents: Long,
+    val percent: Int,
+    val level: BudgetLevel,
+)
+
 /**
  * Resumen del mes natural para la pantalla Inicio (MiPatrimonio.md §7.1).
  * Todos los importes están en céntimos (`Long`); el signo lo da el tipo.
@@ -34,6 +44,7 @@ data class MonthlySummary(
     val savingsCents: Long = 0L,
     val recent: List<TransactionEntity> = emptyList(),
     val activePlan: ActivePlanSummary? = null,
+    val budgets: List<HomeBudgetSummary> = emptyList(),
 ) {
     /** Gastos del mes: metálico + tarjeta + suscripciones. */
     val expenseCents: Long get() = cashCents + cardCents + subscriptionCents
@@ -49,6 +60,7 @@ data class MonthlySummary(
 class GetMonthlySummary @Inject constructor(
     private val transactionDao: TransactionDao,
     private val savingsDao: SavingsDao,
+    private val budgetDao: BudgetDao,
 ) {
 
     operator fun invoke(month: YearMonth = YearMonth.now()): Flow<MonthlySummary> {
@@ -59,10 +71,12 @@ class GetMonthlySummary @Inject constructor(
             transactionDao.observeRecent(RECENT_LIMIT),
             savingsDao.observeMonthlyContributed(fromEpochDay, toEpochDayExclusive),
             savingsDao.observePlansWithContributions(),
-        ) { monthTransactions, recent, monthlySaved, plans ->
+            budgetDao.observeWithCategory(),
+        ) { monthTransactions, recent, monthlySaved, plans, budgetsWithCat ->
             val savingsCents = (monthlySaved ?: 0L).coerceAtLeast(0L)
             val active = buildActivePlan(plans)
-            build(month, monthTransactions, recent, savingsCents, active)
+            val budgets = buildBudgetSummaries(month, monthTransactions, budgetsWithCat)
+            build(month, monthTransactions, recent, savingsCents, active, budgets)
         }
     }
 
@@ -87,6 +101,7 @@ class GetMonthlySummary @Inject constructor(
             recent: List<TransactionEntity>,
             savingsCents: Long = SAVINGS_CENTS,
             activePlan: ActivePlanSummary? = null,
+            budgets: List<HomeBudgetSummary> = emptyList(),
         ): MonthlySummary {
             var income = 0L
             var cash = 0L
@@ -112,7 +127,35 @@ class GetMonthlySummary @Inject constructor(
                 savingsCents = savingsCents,
                 recent = recent.take(RECENT_LIMIT),
                 activePlan = activePlan,
+                budgets = budgets,
             )
+        }
+
+        /** Presupuestos con gasto del mes por categoría (§7.4). */
+        fun buildBudgetSummaries(
+            month: YearMonth,
+            transactions: List<TransactionEntity>,
+            budgetsWithCat: List<BudgetDao.BudgetWithCategory>,
+        ): List<HomeBudgetSummary> {
+            val spentByCategory = mutableMapOf<Long, Long>()
+            transactions.forEach { tx ->
+                if (YearMonth.from(LocalDate.ofEpochDay(tx.date)) != month) return@forEach
+                if (tx.type == TransactionType.INCOME) return@forEach
+                val catId = tx.categoryId ?: return@forEach
+                spentByCategory[catId] = (spentByCategory[catId] ?: 0L) + tx.amountBaseCents
+            }
+            return budgetsWithCat.mapNotNull { bwc ->
+                val cat = bwc.category ?: return@mapNotNull null
+                val spent = spentByCategory[bwc.budget.categoryId] ?: 0L
+                val st = BudgetThresholds.evaluate(spent, bwc.budget.limitCents, month, bwc.budget.notified80Month, bwc.budget.notified100Month)
+                HomeBudgetSummary(
+                    categoryName = cat.name,
+                    spentCents = st.spentCents,
+                    limitCents = st.limitCents,
+                    percent = st.percent,
+                    level = st.level,
+                )
+            }.sortedBy { it.categoryName }
         }
 
         /** Selecciona plan activo y calcula su estimación (§8.1/§7.2). */
