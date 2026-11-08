@@ -21,11 +21,11 @@ import com.mipatrimonio.app.core.ui.theme.MiPatrimonioTheme
 import com.mipatrimonio.app.core.ui.theme.NeonColor
 
 /**
- * Hoja del botón + (T1.7, MiPatrimonio.md §8.3): tres opciones.
- * El escaneo de ticket llega en T2.5; hasta entonces se muestra deshabilitado.
+ * Hoja del botón + (T1.7, §8.3; T2.5 escaneo OCR).
  */
 @Composable
 fun AddMenuSheet(
+    onScan: () -> Unit,
     onManualExpense: () -> Unit,
     onIncome: () -> Unit,
     modifier: Modifier = Modifier,
@@ -40,9 +40,8 @@ fun AddMenuSheet(
 
         AddMenuOption(
             title = stringResource(R.string.add_sheet_scan),
-            subtitle = stringResource(R.string.add_sheet_scan_soon),
-            enabled = false,
-            onClick = {},
+            subtitle = stringResource(R.string.add_sheet_scan_hint),
+            onClick = onScan,
         )
         AddMenuOption(
             title = stringResource(R.string.add_sheet_manual),
@@ -89,6 +88,6 @@ private fun AddMenuOption(
 @Composable
 private fun AddMenuSheetPreview() {
     MiPatrimonioTheme {
-        AddMenuSheet(onManualExpense = {}, onIncome = {})
+        AddMenuSheet(onScan = {}, onManualExpense = {}, onIncome = {})
     }
 }

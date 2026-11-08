@@ -1,14 +1,19 @@
 package com.mipatrimonio.app.feature.add
 
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DatePicker
@@ -30,7 +35,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
@@ -78,28 +86,30 @@ fun ReviewSheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     editing: TransactionEntity? = null,
+    scanDraft: ReceiptScanDraft? = null,
     onDeleted: () -> Unit = {},
     viewModel: AddTransactionViewModel = hiltViewModel(),
 ) {
     val cards by viewModel.cards.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(editing?.id, scanDraft?.thumbnail) {
         viewModel.reset()
     }
 
     ReviewContent(
         initialType = initialType,
         editing = editing,
+        scanDraft = scanDraft,
         cards = cards,
         categories = categories,
         saving = viewModel.saving,
         saveFailed = viewModel.saveFailed,
         onSave = { input ->
-            if (editing == null) {
-                viewModel.save(input, onSaved)
-            } else {
-                viewModel.update(editing, input, onSaved)
+            when {
+                editing != null -> viewModel.update(editing, input, onSaved)
+                scanDraft != null -> viewModel.saveScanned(input, scanDraft.sourceBitmap, onSaved)
+                else -> viewModel.save(input, onSaved)
             }
         },
         onDelete = if (editing == null) {
@@ -125,14 +135,18 @@ fun ReviewContent(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     editing: TransactionEntity? = null,
+    scanDraft: ReceiptScanDraft? = null,
     onDelete: (() -> Unit)? = null,
 ) {
-    val state = remember(initialType, editing?.id) { ReviewState(initialType, editing) }
+    val state = remember(initialType, editing?.id, scanDraft?.thumbnail) {
+        ReviewState(initialType, editing, scanDraft)
+    }
     val visibleCategories = categories.filter {
         it.isIncome == (state.type == TransactionType.INCOME)
     }
     var showDatePicker by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    val fromOcr = scanDraft != null && editing == null
 
     Column(
         modifier = modifier
@@ -151,6 +165,33 @@ fun ReviewContent(
                 },
             ),
         )
+
+        if (fromOcr) {
+            Text(
+                text = stringResource(R.string.scan_read_hint),
+                color = NeonColor.neonCyan,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            scanDraft?.thumbnail?.let { thumb ->
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = stringResource(R.string.scan_attachment),
+                        color = NeonColor.muted,
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                    Image(
+                        bitmap = thumb.asImageBitmap(),
+                        contentDescription = stringResource(R.string.scan_attachment),
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(140.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(NeonColor.bg),
+                    )
+                }
+            }
+        }
 
         FormSection(title = stringResource(R.string.review_type)) {
             FlowRow(
@@ -342,6 +383,7 @@ fun ReviewContent(
                             categoryId = state.categoryId,
                             cardId = if (state.type == TransactionType.CARD) state.cardId else null,
                             note = state.note,
+                            receiptPath = state.receiptPath,
                         ),
                     )
                 }
@@ -474,17 +516,27 @@ fun ReviewContent(
 }
 
 @Stable
-private class ReviewState(initialType: TransactionType, editing: TransactionEntity? = null) {
+private class ReviewState(
+    initialType: TransactionType,
+    editing: TransactionEntity? = null,
+    scanDraft: ReceiptScanDraft? = null,
+) {
     var type by mutableStateOf(editing?.type ?: initialType)
-    var amountText by mutableStateOf(editing?.let { Money.formatNumber(it.amountCents) } ?: "")
-    var merchant by mutableStateOf(editing?.merchant ?: "")
+    var amountText by mutableStateOf(
+        editing?.let { Money.formatNumber(it.amountCents) }
+            ?: scanDraft?.amountCents?.let { Money.formatNumber(it) }
+            ?: "",
+    )
+    var merchant by mutableStateOf(editing?.merchant ?: scanDraft?.merchant.orEmpty())
     var date by mutableStateOf(
-        editing?.let { LocalDate.ofEpochDay(it.date) } ?: LocalDate.now(),
+        editing?.let { LocalDate.ofEpochDay(it.date) } ?: scanDraft?.date ?: LocalDate.now(),
     )
     var categoryId by mutableStateOf(editing?.categoryId)
     var cardId by mutableStateOf(editing?.cardId)
     var note by mutableStateOf(editing?.note ?: "")
     var incomeKind by mutableStateOf(editing?.incomeKind)
+    // En escaneo el ticket se cifra al guardar (saveScanned); en edición se conserva.
+    val receiptPath: String? = editing?.receiptPath
     var showAmountError by mutableStateOf(false)
     var showIncomeKindError by mutableStateOf(false)
 }

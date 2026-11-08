@@ -2,8 +2,8 @@
 
 ## Estado
 - Fase actual: 2
-- Última tarea cerrada: T2.4
-- Tarea en curso: T2.5 Escaneo de ticket (sin empezar)
+- Última tarea cerrada: T2.5
+- Tarea en curso: T2.6 Compartir desde CamScanner (sin empezar)
 
 ## Decisiones tomadas
 - (2026-11-02) Paquete: com.mipatrimonio.app
@@ -84,5 +84,6 @@
 - (2026-11-08) T2.2 CERRADA (rama `t2-2-documentos`): lista de documentos, alta desde `OpenDocument` (PDF) cifrada con `CryptoManager` en `filesDir/documents/<uuid>.bin`, visor PDF con `PdfRenderer` (temporal en `cacheDir`, limpiado al salir) y borrado (BD + archivo). Acceso en Cartera → Documentos. Aceptación confirmada en NX779J: se guarda y se abre una nómina PDF.
 - (2026-11-08) T2.3 CERRADA (rama `t2-3-ocr-base`): `OcrService` (wrapper ML Kit Text Recognition latino, bundled, suspend sobre `Bitmap`) y `PdfBitmapRenderer` (primera página PDF → `Bitmap` ~1600 px). Dependencia `com.google.mlkit:text-recognition:16.0.1`. Aceptación verificada con test instrumentado en NX779J: devuelve texto de una imagen de prueba.
 - (2026-11-08) T2.4 CERRADA (rama `t2-4-receipt-parser`): `ParsedReceipt` + `ReceiptParser` (§9.2–9.3), importes en céntimos `Long`, confianza por campo. **8 tests unitarios** realistas pasan (§9.5). `financial-auditor` no pudo ejecutarse por límite de uso gratuito (intento fallido); reintentar revisión cuando haya cuota.
-- (2026-11-08) Siguiente: T2.5 Escaneo de ticket (ML Kit Document Scanner o galería → OCR → `ReviewSheet` prellenada, miniatura adjunta). Depende de T2.3/T2.4.
+- (2026-11-08) T2.5 CERRADA (rama `t2-5-escaneo-ticket`): flujo **galería** (`PickVisualMedia`) → decodificación muestreada/EXIF → `OcrService`+`ReceiptParser` → `ReviewSheet` prellenada (importe/fecha/comercio editables) con “Leído del ticket: revisa los datos” y miniatura. **No se guarda sin confirmación**; al confirmar, `ReceiptImageStore` cifra el ticket (AES-GCM vía `CryptoManager`, §11) en `filesDir/receipts/<uuid>.bin` y `saveScanned` lo adjunta (`receiptPath`). `NewTransaction`/`TransactionFactory.create` admiten `receiptPath`. Limpieza de bitmaps al cerrar el flujo. Revisión `reasoning-expert` aplicada (reciclado; `FLAG_SECURE` global T1.10). **Aceptación confirmada en NX779J**: foto real de ticket (C.c Alcala Magna, galería) prellenó los datos correctamente. *Dependencia `play-services-mlkit-document-scanner` no añadida* (versión estable no verificada; galería cumple aceptación) — pendiente si George lo pide.
+- (2026-11-08) Siguiente: T2.6 Compartir desde CamScanner (§9.4, §10, §8.6). Depende de T2.4/T2.5.
 - No tocar archivos fuera del alcance de la tarea. local.properties ya está en .gitignore.

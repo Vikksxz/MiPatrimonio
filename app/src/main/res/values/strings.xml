@@ -96,13 +96,17 @@
     <string name="common_cancel">Cancelar</string>
     <string name="common_accept">Aceptar</string>
 
-    <!-- T1.7: añadir movimiento manual -->
+    <!-- T1.7: añadir movimiento manual / T2.5: escaneo -->
     <string name="add_sheet_scan">Escanear ticket (OCR)</string>
-    <string name="add_sheet_scan_soon">Próximamente</string>
+    <string name="add_sheet_scan_hint">Elige una foto del ticket desde la galería</string>
     <string name="add_sheet_manual">Gasto manual o en metálico</string>
     <string name="add_sheet_manual_hint">Añade un gasto en efectivo o con tarjeta</string>
     <string name="add_sheet_income">Ingreso</string>
     <string name="add_sheet_income_hint">Nómina u otros ingresos</string>
+    <string name="scan_read_hint">Leído del ticket: revisa los datos</string>
+    <string name="scan_attachment">Ticket adjunto</string>
+    <string name="scan_processing">Leyendo el ticket…</string>
+    <string name="scan_failed">No se pudo leer el ticket. Prueba con otra imagen.</string>
     <string name="review_title_expense">Nuevo gasto</string>
     <string name="review_title_income">Nuevo ingreso</string>
     <string name="review_title_edit">Editar movimiento</string>
