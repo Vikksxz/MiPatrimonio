@@ -42,6 +42,7 @@ import com.mipatrimonio.app.core.money.Money
 import com.mipatrimonio.app.core.ui.components.NeonButton
 import com.mipatrimonio.app.core.ui.components.NeonButtonText
 import com.mipatrimonio.app.core.ui.components.NeonCard
+import com.mipatrimonio.app.core.ui.components.ProgressNeonBar
 import com.mipatrimonio.app.core.ui.components.ScreenTitle
 import com.mipatrimonio.app.core.ui.components.accentColor
 import com.mipatrimonio.app.core.ui.components.label
@@ -429,7 +430,7 @@ private fun ActiveSavingsPanel(plan: ActivePlanSummary?, onOpenSavings: () -> Un
                 )
             }
             Text(text = plan.name, color = NeonColor.ink, style = MaterialTheme.typography.titleMedium)
-            HomeSimpleProgressBar(progress = progress)
+            ProgressNeonBar(progress = progress, modifier = Modifier.fillMaxWidth())
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
                     text = "${Money.format(plan.contributedCents)} / ${Money.format(plan.targetCents)}",
@@ -462,13 +463,7 @@ private fun ActiveSavingsPanel(plan: ActivePlanSummary?, onOpenSavings: () -> Un
     }
 }
 
-@Composable
-private fun HomeSimpleProgressBar(progress: Float) {
-    val shape = RoundedCornerShape(8.dp)
-    Box(modifier = Modifier.fillMaxWidth().height(10.dp).clip(shape).background(NeonColor.track)) {
-        Box(modifier = Modifier.fillMaxWidth(progress.coerceIn(0f, 1f)).height(10.dp).clip(shape).background(NeonColor.neonGreen))
-    }
-}
+
 
 @Preview(showBackground = true, backgroundColor = 0xFF070A12)
 @Composable

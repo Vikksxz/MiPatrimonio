@@ -58,6 +58,7 @@ import com.mipatrimonio.app.core.money.Money
 import com.mipatrimonio.app.core.ui.components.NeonButton
 import com.mipatrimonio.app.core.ui.components.NeonButtonText
 import com.mipatrimonio.app.core.ui.components.NeonCard
+import com.mipatrimonio.app.core.ui.components.ProgressNeonBar
 import com.mipatrimonio.app.core.ui.components.ScreenTitle
 import com.mipatrimonio.app.core.ui.theme.MiPatrimonioTheme
 import com.mipatrimonio.app.core.ui.theme.NeonColor
@@ -231,7 +232,7 @@ private fun ActivePlanCard(
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(text = plan.name, style = MaterialTheme.typography.titleMedium, color = NeonColor.ink, fontWeight = FontWeight.Bold)
 
-            SimpleProgressBar(progress = progress, modifier = Modifier.fillMaxWidth())
+            ProgressNeonBar(progress = progress, modifier = Modifier.fillMaxWidth())
 
             Text(
                 text = stringResource(R.string.savings_saved_of_target, Money.format(item.contributedCents), Money.format(plan.targetCents)),
@@ -296,24 +297,7 @@ private fun ActivePlanCard(
     }
 }
 
-@Composable
-private fun SimpleProgressBar(progress: Float, modifier: Modifier = Modifier) {
-    val shape = RoundedCornerShape(8.dp)
-    Box(
-        modifier = modifier
-            .height(10.dp)
-            .clip(shape)
-            .background(NeonColor.track),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(progress.coerceIn(0f, 1f))
-                .height(10.dp)
-                .clip(shape)
-                .background(NeonColor.neonGreen),
-        )
-    }
-}
+
 
 @Composable
 private fun PlanRow(
