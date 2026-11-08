@@ -113,6 +113,25 @@
     <string name="cash_reminder_toggle">Recordarme apuntar gastos en metálico (~21:00)</string>
     <string name="cash_reminder_test">Probar recordatorio</string>
 
+    <!-- Exportación (T4.1, §13) -->
+    <string name="export_section_title">Exportar datos</string>
+    <string name="export_section_hint">Genera un archivo con tus movimientos o un resumen mensual para compartirlo.</string>
+    <string name="export_csv">Exportar movimientos (CSV)</string>
+    <string name="export_pdf">Exportar resumen mensual (PDF)</string>
+    <string name="export_share_csv">Compartir CSV</string>
+    <string name="export_share_pdf">Compartir PDF</string>
+    <string name="export_error">No se pudo generar el archivo. Inténtalo de nuevo.</string>
+    <string name="export_pdf_title">MiPatrimonio - Resumen mensual</string>
+    <string name="export_pdf_income">Ingresos</string>
+    <string name="export_pdf_cash">Gastos (metálico)</string>
+    <string name="export_pdf_card">Gastos (tarjeta)</string>
+    <string name="export_pdf_subscriptions">Suscripciones</string>
+    <string name="export_pdf_total_expenses">Total gastos</string>
+    <string name="export_pdf_savings">Aportado a ahorro</string>
+    <string name="export_pdf_available">Disponible</string>
+    <string name="export_pdf_projection">Proyección de gasto</string>
+    <string name="export_pdf_footer">Generado por MiPatrimonio</string>
+
     <!-- Presupuestos (T3.4) -->
     <string name="budgets_title">Presupuestos por categoría</string>
     <string name="budgets_empty">Sin presupuestos. Añade un límite por categoría.</string>

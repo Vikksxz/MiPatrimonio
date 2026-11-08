@@ -76,6 +76,7 @@ import com.mipatrimonio.app.R
 import com.mipatrimonio.app.core.database.entity.CardEntity
 import com.mipatrimonio.app.core.database.entity.CategoryEntity
 import com.mipatrimonio.app.core.database.entity.RecurringEntity
+import com.mipatrimonio.app.core.export.ExportFileSharer
 import com.mipatrimonio.app.core.model.CardKind
 import com.mipatrimonio.app.core.model.RecurrencePeriod
 import com.mipatrimonio.app.core.model.TransactionType
@@ -108,6 +109,7 @@ fun WalletScreen(
     onOpenDocuments: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
     val cards by viewModel.cards.collectAsStateWithLifecycle()
     val recurrings by viewModel.recurrings.collectAsStateWithLifecycle()
     val expenseCategories by viewModel.expenseCategories.collectAsStateWithLifecycle()
@@ -117,6 +119,7 @@ fun WalletScreen(
     var deleteTarget by remember { mutableStateOf<CardEntity?>(null) }
     var showRecurringForm by remember { mutableStateOf(false) }
     var editingRecurring by remember { mutableStateOf<RecurringEntity?>(null) }
+    var exportError by remember { mutableStateOf(false) }
 
     MiPatrimonioTheme {
         WalletContent(
@@ -135,8 +138,40 @@ fun WalletScreen(
             onEditRecurring = { editingRecurring = it; showRecurringForm = true },
             cashReminderEnabled = cashReminderEnabled,
             onCashReminderEnabledChange = viewModel::setCashReminderEnabled,
+            onExportCsv = {
+                viewModel.exportCsv(
+                    onReady = { file, mime ->
+                        ExportFileSharer.share(context, file, mime, context.getString(R.string.export_share_csv))
+                    },
+                    onError = { exportError = true },
+                )
+            },
+            onExportPdf = {
+                viewModel.exportPdf(
+                    onReady = { file, mime ->
+                        ExportFileSharer.share(context, file, mime, context.getString(R.string.export_share_pdf))
+                    },
+                    onError = { exportError = true },
+                )
+            },
             modifier = modifier,
         )
+
+        if (exportError) {
+            AlertDialog(
+                onDismissRequest = { exportError = false },
+                containerColor = NeonColor.panel,
+                titleContentColor = NeonColor.ink,
+                textContentColor = NeonColor.muted,
+                title = { Text(stringResource(R.string.export_section_title)) },
+                text = { Text(stringResource(R.string.export_error)) },
+                confirmButton = {
+                    TextButton(onClick = { exportError = false }) {
+                        Text(stringResource(R.string.common_accept), color = NeonColor.neonCyan)
+                    }
+                },
+            )
+        }
 
         if (showForm) {
             CardFormSheet(
@@ -218,6 +253,8 @@ fun WalletContent(
     onEditRecurring: (RecurringEntity) -> Unit = {},
     cashReminderEnabled: Boolean = false,
     onCashReminderEnabledChange: (Boolean) -> Unit = {},
+    onExportCsv: () -> Unit = {},
+    onExportPdf: () -> Unit = {},
 ) {
     val subscriptions = recurrings.filter { it.isSubscription }
     val fixed = recurrings.filter { !it.isSubscription }
@@ -290,6 +327,12 @@ fun WalletContent(
             NotificationsSection(
                 cashReminderEnabled = cashReminderEnabled,
                 onCashReminderEnabledChange = onCashReminderEnabledChange,
+            )
+        }
+        item {
+            ExportSection(
+                onExportCsv = onExportCsv,
+                onExportPdf = onExportPdf,
             )
         }
         item { Box(Modifier.padding(bottom = 16.dp)) }
@@ -496,6 +539,38 @@ private fun RecurringFormSheet(
                 }
             },
         )
+    }
+}
+
+@Composable
+private fun ExportSection(
+    onExportCsv: () -> Unit,
+    onExportPdf: () -> Unit,
+) {
+    NeonCard(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = stringResource(R.string.export_section_title),
+                color = NeonColor.ink,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = stringResource(R.string.export_section_hint),
+                color = NeonColor.muted,
+                style = MaterialTheme.typography.bodySmall,
+            )
+            NeonButton(onClick = onExportCsv, modifier = Modifier.fillMaxWidth()) {
+                NeonButtonText(stringResource(R.string.export_csv))
+            }
+            NeonButton(onClick = onExportPdf, secondary = true, modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = stringResource(R.string.export_pdf),
+                    color = NeonColor.neonCyan,
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
+        }
     }
 }
 

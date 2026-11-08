@@ -1,9 +1,9 @@
 # PROGRESS
 
 ## Estado
-- Fase actual: 4 (Fase 3 completada)
-- Última tarea cerrada: T3.8
-- Tarea en curso: — (siguiente: T4.1 Exportación CSV y PDF, §13/§18)
+- Fase actual: 4
+- Última tarea cerrada: T4.1
+- Tarea en curso: — (siguiente: T4.2 Copia local cifrada, §11/§13/§18)
 
 ## Decisiones tomadas
 - (2026-11-02) Paquete: com.mipatrimonio.app
@@ -97,5 +97,6 @@
 - (2026-11-08) T3.6 CERRADA (rama `t3-6-notificaciones`): canales §12 centralizados en `AppNotificationChannels` (`budgets`,`savings`,`subscriptions`,`reminders`,`reports`) creados en `MiPatrimonioApp`; `POST_NOTIFICATIONS` con explicación previa (no al arrancar) en Cartera→Avisos + `RequestPermission` (Android 13+) y enlace a ajustes de batería/fiabilidad §12. `AlertsWorker` diario (KEEP) evalúa presupuestos (§7.4, `EvaluateBudgetAlerts`, prioridad 100%/80%, una vez mes/umbral) y planes de ahorro (§7.3, `EvaluateSavingsAlerts`, notifica cambio de estado o ≥1 mes; `freeMonthly` neutral como UI). `RecurringWorker` encola alertas one-time tras ejecutar (§12). Alertas de presupuesto inmediatas tras guardar/editar gasto (`AddTransaction`/`UpdateTransaction`, fallo de alerta no bloquea guardado). Avisos de prueba (ahorro+presupuesto) en Cartera. `assembleDebug`+`testDebugUnitTest` OK; **aceptación verificada en NX779J** (notificaciones de prueba recibidas en canales `savings`/`budgets`).
 - (2026-11-08) T3.7 CERRADA (rama `t3-7-analisis`): `MonthlyAnalysis` (puro, `Long`) con `projection` (§7.5, oculta < día 3, excluye futuro/ingresos), `fixedVsVariable` (§7.7, unión categoría `isFixed` o `recurringId` sin doble conteo, `libreAlMes`) y `expensesByCategory`; 5 tests. `GetMonthlySummary` expone `MonthProjection`; Inicio muestra “Proyección de gasto” en tarjeta de saldo (§8.1.6). Movimientos→**Análisis** (`Routes.ANALYSIS`, `AnalysisScreen`/VM): comparativa mes a mes, donut por categoría (Canvas) con leyenda vertical y panel fijos vs variables. `CategoryDao.getAll()` suspend. `assembleDebug`+`testDebugUnitTest` OK; verificado en NX779J (proyección visible al subir al inicio de Resumen; layout de donut ajustado). Revisiones FIN/UI/REV no ejecutadas (ahorro de límites).
 - (2026-11-08) T3.8 CERRADA (rama `t3-8-recordatorio-nocturno`): `CashReminderWorker` (@HiltWorker, diario ~21:00 flexible, `PeriodicWorkRequest` 24h + `initialDelay`, sin alarmas exactas) notifica “¿Has apuntado hoy tus gastos en metálico?” en canal `reminders` (§12) si `cash_reminder_enabled`. Preferencia en `SettingsRepository` (DataStore, default desactivada), programar/cancelar al cambiar y al inicio; UI en Cartera→Avisos (switch + “Probar recordatorio”). `CashReminderNotifier`. 3 tests de delay. `assembleDebug`+`testDebugUnitTest` OK; instalado en NX779J (aceptación: notificación de prueba).
-- (2026-11-08) Siguiente: T4.1 Exportación CSV y PDF (§13/§18).
+- (2026-11-08) T4.1 CERRADA (rama `t4-1-exportacion-csv-pdf`): exportación §13. CSV de movimientos (`core/export/CsvExporter`, `;`, UTF-8 BOM, cabecera Fecha;Tipo;Importe;Moneda;Comercio;Nota;Categoria, importe `1.234,56`, escapado) con `TransactionDao.getAll()`. PDF resumen mensual (`PdfReportExporter`, `android.graphics.pdf.PdfDocument` A4) desde `GetMonthlySummary` (mes actual, proyección si visible), textos en `strings.xml`. Compartir/abrir fuera de la app vía `FileProvider` (`${applicationId}.fileprovider`, `res/xml/file_paths.xml` cache `exports`/`shared_docs`) + `ExportFileSharer` (`ACTION_SEND`, `FLAG_GRANT_READ_URI_PERMISSION`). UI en Cartera “Exportar datos” (CSV/PDF) con manejo de error; `WalletViewModel.exportCsv/exportPdf`. 3 tests `CsvExporterTest`. `assembleDebug`+`testDebugUnitTest` OK; instalado y verificado en NX779J (archivos se abren/comparten fuera de la app).
+- (2026-11-08) Siguiente: T4.2 Copia local cifrada (§11/§13/§18).
 - No tocar archivos fuera del alcance de la tarea. local.properties ya está en .gitignore.

@@ -42,6 +42,17 @@
             </intent-filter>
         </activity>
 
+        <!-- FileProvider para compartir exports (§13) y documentos descifrados (§11) -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <!-- Desactivar inicializador por defecto de WorkManager (usamos HiltWorkerFactory) -->
         <provider
             android:name="androidx.startup.InitializationProvider"

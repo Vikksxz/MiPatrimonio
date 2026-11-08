@@ -5,15 +5,26 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.room.withTransaction
 import com.mipatrimonio.app.core.database.AppDatabase
+import com.mipatrimonio.app.R
+import com.mipatrimonio.app.core.database.dao.BudgetDao
 import com.mipatrimonio.app.core.database.dao.CardDao
 import com.mipatrimonio.app.core.database.dao.CategoryDao
 import com.mipatrimonio.app.core.database.dao.RecurringDao
+import com.mipatrimonio.app.core.database.dao.SavingsDao
+import com.mipatrimonio.app.core.database.dao.TransactionDao
 import com.mipatrimonio.app.core.database.entity.CardEntity
 import com.mipatrimonio.app.core.database.entity.CategoryEntity
 import com.mipatrimonio.app.core.database.entity.RecurringEntity
+import com.mipatrimonio.app.core.export.CsvExporter
+import com.mipatrimonio.app.core.export.ExportFileSharer
+import com.mipatrimonio.app.core.export.PdfReportExporter
 import com.mipatrimonio.app.core.model.TransactionType
 import com.mipatrimonio.app.core.settings.SettingsRepository
+import com.mipatrimonio.app.domain.usecase.GetMonthlySummary
 import com.mipatrimonio.app.feature.reminders.CashReminderWorker
+import kotlinx.coroutines.flow.first
+import java.io.File
+import java.time.YearMonth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -34,7 +45,11 @@ class WalletViewModel @Inject constructor(
     private val cardDao: CardDao,
     private val recurringDao: RecurringDao,
     private val categoryDao: CategoryDao,
+    private val transactionDao: TransactionDao,
+    private val savingsDao: SavingsDao,
+    private val budgetDao: BudgetDao,
     private val settingsRepository: SettingsRepository,
+    private val getMonthlySummary: GetMonthlySummary,
 ) : ViewModel() {
 
     private val _cards = MutableStateFlow<List<CardEntity>>(emptyList())
@@ -111,6 +126,49 @@ class WalletViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.setCashReminderEnabled(enabled)
             if (enabled) CashReminderWorker.schedule(context) else CashReminderWorker.cancel(context)
+        }
+    }
+
+    fun exportCsv(onReady: (File, String) -> Unit, onError: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                val (file, mime) = withContext(Dispatchers.IO) {
+                    val txs = transactionDao.getAll()
+                    val cats = categoryDao.getAll().associateBy { it.id }
+                    val typeLabel: (TransactionType) -> String = { t ->
+                        when (t) {
+                            TransactionType.CASH -> context.getString(R.string.type_cash)
+                            TransactionType.CARD -> context.getString(R.string.type_card)
+                            TransactionType.SUBSCRIPTION -> context.getString(R.string.type_subscription)
+                            TransactionType.INCOME -> context.getString(R.string.type_income)
+                        }
+                    }
+                    val csv = CsvExporter.export(txs, cats, typeLabel)
+                    val out = File(ExportFileSharer.exportsDir(context), "mipatrimonio-movimientos.csv")
+                    out.writeText(csv, Charsets.UTF_8)
+                    out to "text/csv"
+                }
+                onReady(file, mime)
+            } catch (_: Exception) {
+                onError()
+            }
+        }
+    }
+
+    fun exportPdf(onReady: (File, String) -> Unit, onError: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                val (file, mime) = withContext(Dispatchers.IO) {
+                    val month = YearMonth.now()
+                    val summary = getMonthlySummary(month).first()
+                    val name = "mipatrimonio-resumen-${month.year}-${month.monthValue.toString().padStart(2, '0')}.pdf"
+                    val out = PdfReportExporter.generate(context, summary, name)
+                    out to "application/pdf"
+                }
+                onReady(file, mime)
+            } catch (_: Exception) {
+                onError()
+            }
         }
     }
 }
