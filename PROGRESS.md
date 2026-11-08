@@ -2,8 +2,8 @@
 
 ## Estado
 - Fase actual: 2
-- Última tarea cerrada: T2.6
-- Tarea en curso: T2.7 Etiquetas y notas (sin empezar)
+- Última tarea cerrada: T2.7
+- Tarea en curso: T2.8 (sin empezar)
 
 ## Decisiones tomadas
 - (2026-11-02) Paquete: com.mipatrimonio.app
@@ -87,5 +87,6 @@
 - (2026-11-08) T2.5 CERRADA (rama `t2-5-escaneo-ticket`): flujo **galería** (`PickVisualMedia`) → decodificación muestreada/EXIF → `OcrService`+`ReceiptParser` → `ReviewSheet` prellenada (importe/fecha/comercio editables) con “Leído del ticket: revisa los datos” y miniatura. **No se guarda sin confirmación**; al confirmar, `ReceiptImageStore` cifra el ticket (AES-GCM vía `CryptoManager`, §11) en `filesDir/receipts/<uuid>.bin` y `saveScanned` lo adjunta (`receiptPath`). `NewTransaction`/`TransactionFactory.create` admiten `receiptPath`. Limpieza de bitmaps al cerrar el flujo. Revisión `reasoning-expert` aplicada (reciclado; `FLAG_SECURE` global T1.10). **Aceptación confirmada en NX779J**: foto real de ticket (C.c Alcala Magna, galería) prellenó los datos correctamente. *Dependencia `play-services-mlkit-document-scanner` no añadida* (versión estable no verificada; galería cumple aceptación) — pendiente si George lo pide.
 - (2026-11-08) T2.6 CERRADA (rama `t2-6-compartir`): `ShareReceiverActivity` (tema hoja `Theme.MiPatrimonio.Sheet`, `ACTION_SEND`/`SEND_MULTIPLE`, PDF+imagen) con bloqueo/`FLAG_SECURE`; **copia inmediata** del URI a `filesDir/inbox/` (extrae `EXTRA_STREAM` y fallback `ClipData`); `DocumentClassifier` (§9.4, sin acentos, sugiere ticket/nómina, detecta `LÍQUIDO A PERCIBIR`) + 4 tests. Hoja “¿Qué es?” (usuario confirma): ticket → OCR→`ReviewSheet` prellenada (cifrado al confirmar); nómina → documento cifrado y, si detecta líquido, ingreso nómina; factura/garantía/otro → documento cifrado. **Fix**: quitar `taskAffinity=""`/`excludeFromRecents` (bloqueaban el lanzamiento desde apps reales). **Aceptación confirmada en NX779J**: compartir PDF desde **Archivos/Descargas** y desde **CamScanner** abre la hoja y guarda correctamente. *Nota*: formulario de nómina editable (§8.6) simplificado (título/fecha auto, ingreso por detección); ruta ingreso+nómina no probada con nómina real.
 - (2026-11-08) Mejora confirmada por George (rama `t2-5-6-payroll-confirm-flow`): nóminas con **confirmación obligatoria** y auto-relleno (líquido+fecha) desde **`+` (acepta imagen/PDF)**, **Compartir** y **Cartera→Documentos**; al confirmar guarda **documento cifrado + ingreso** juntos. `DocumentClassifier` más flexible (variantes de líquido/neto, importe en líneas siguientes, fecha). **Aviso de posible duplicado** (misma fecha/título) con Continuar/Cancelar. George confirmó detección correcta con nómina real; pendiente validación final del flujo Cartera→Documentos tras instalar.
-- (2026-11-08) Siguiente: T2.7 Etiquetas y notas (§6, §8.2).
+- (2026-11-08) T2.7 CERRADA (rama `t2-7-etiquetas-notas`): etiquetas (Tag/TransactionTag ya en BD) persistidas desde `AddTransaction`/`UpdateTransaction` (`tagIds` en `NewTransaction`, `TagDao.replaceTagsForTransaction`). `ReviewSheet` permite seleccionar/crear etiquetas y las precarga al editar; `TransactionsViewModel`/pantalla filtran por etiqueta (combinable con tipo/búsqueda). `buildDayGroups` conserva compatibilidad. **Aceptación confirmada por George en NX779J**: etiquetar y filtrar funciona.
+- (2026-11-08) Siguiente: T2.8 (ver §18).
 - No tocar archivos fuera del alcance de la tarea. local.properties ya está en .gitignore.
