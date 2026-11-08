@@ -10,6 +10,7 @@ import com.mipatrimonio.app.core.database.dao.SavingsDao
 import com.mipatrimonio.app.core.database.dao.TagDao
 import com.mipatrimonio.app.core.database.dao.TransactionDao
 import com.mipatrimonio.app.core.database.seed.SeedCallback
+import com.mipatrimonio.app.core.security.CryptoManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -63,4 +64,10 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideTagDao(db: AppDatabase): TagDao = db.tagDao()
+
+    @Provides
+    @Singleton
+    fun provideCryptoManager(@dagger.hilt.android.qualifiers.ApplicationContext context: Context): CryptoManager {
+        return CryptoManager(context)
+    }
 }
