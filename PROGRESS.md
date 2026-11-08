@@ -2,8 +2,8 @@
 
 ## Estado
 - Fase actual: 2
-- Última tarea cerrada: T2.3
-- Tarea en curso: T2.4 `ReceiptParser` (sin empezar)
+- Última tarea cerrada: T2.4
+- Tarea en curso: T2.5 Escaneo de ticket (sin empezar)
 
 ## Decisiones tomadas
 - (2026-11-02) Paquete: com.mipatrimonio.app
@@ -23,6 +23,7 @@
 - (2026-11-08) T2.1: `CryptoManager` (AES-256-GCM, Android Keystore, sin autenticación de usuario). Formato `[12 bytes IV][ciphertext+tag]`. Con Keystore2/`setRandomizedEncryptionRequired(true)` **no** se pasa IV del llamador al cifrar: se usa `cipher.iv` generado por el proveedor y se escribe en el archivo; al descifrar se lee el IV y se pasa en `GCMParameterSpec`. Errores de cifrado/descifrado (tag/MAC inválido) se envuelven en `IOException`. `decryptToTempFile` escribe en `cacheDir` (el llamador borra el temporal).
 - (2026-11-08) T2.2: documentos cifrados en `filesDir/documents/<uuid>.bin` vía `EncryptedDocumentStore` + `CryptoManager`. Alta desde `OpenDocument` (PDF), metadatos en `DocumentEntity`; visor con `PdfRenderer` sobre temporal descifrado en `cacheDir` (renderer/FD/temporal liberados en `onCleared`). Acceso desde Cartera → Documentos; rutas `documents` y `documents/view/{id}`.
 - (2026-11-08) T2.3: `OcrService` (ML Kit Text Recognition latino, on-device, `InputImage` desde `Bitmap`, API suspend) y `PdfBitmapRenderer` (primera página a `Bitmap` ~1600 px con `PdfRenderer`). Dependencia `com.google.mlkit:text-recognition:16.0.1` (bundled); si hay que ajustar versión por política/compatibilidad, confirmar con George.
+- (2026-11-08) T2.4: `ParsedReceipt` (importes en céntimos `Long`, confianza por campo) y `ReceiptParser` (§9.2–9.3: normalización, prioridad/exclusión de total, tercio inferior, fecha válida ±rango, comercio/normalización). 8 tests unitarios realistas pasan (§9.5). Revisión `financial-auditor`: **no ejecutada** (límite de uso gratuito del subagente en el intento); pendiente revisión cruzada cuando haya cuota/modelo disponible.
 
 ## Dependencias (nombres exactos, versiones en libs.versions.toml)
 - AGP 9.5.0, Gradle 9.6.0, Kotlin 2.2.10 (embebido en AGP), KSP 2.3.13, Hilt 2.60.1, Room 2.8.5, DataStore 1.3.0, Navigation Compose 2.10.2, Compose BOM 2026.09.00, material-icons-core (BOM), core-ktx 1.19.1, activity-compose 1.13.0, lifecycle 2.11.0, coroutines 1.11.0, serialization 1.12.0, biometric 1.1.0, androidx.test.ext:junit 1.2.1 (instrumentados), ML Kit Text Recognition `com.google.mlkit:text-recognition` 16.0.1 (bundled, latino, en dispositivo)
@@ -82,5 +83,6 @@
 - (2026-11-08) T2.1 CERRADA (rama `t2-1-crypto-manager`): `CryptoManager` AES-256-GCM con clave en Android Keystore (`KeyGenParameterSpec`, sin autenticación de usuario). Formato `[12B IV][ciphertext+tag]`; IV generado por el Keystore al cifrar (`cipher.iv`) y leído del archivo al descifrar. `encrypt`/`decrypt` en **streaming** (`CipherInputStream`, sin cargar todo en memoria), `decryptToTempFile` a `cacheDir` (borra el temporal si falla). Errores criptográficos normalizados a `IOException`. 7 tests instrumentados en NX779J en verde. Revisión `reasoning-expert` (NVIDIA nemotron-3-ultra) aplicada: corregidos streaming/OOM y huérfanos de temporales. `opencode.json` con fallbacks NVIDIA NIM.
 - (2026-11-08) T2.2 CERRADA (rama `t2-2-documentos`): lista de documentos, alta desde `OpenDocument` (PDF) cifrada con `CryptoManager` en `filesDir/documents/<uuid>.bin`, visor PDF con `PdfRenderer` (temporal en `cacheDir`, limpiado al salir) y borrado (BD + archivo). Acceso en Cartera → Documentos. Aceptación confirmada en NX779J: se guarda y se abre una nómina PDF.
 - (2026-11-08) T2.3 CERRADA (rama `t2-3-ocr-base`): `OcrService` (wrapper ML Kit Text Recognition latino, bundled, suspend sobre `Bitmap`) y `PdfBitmapRenderer` (primera página PDF → `Bitmap` ~1600 px). Dependencia `com.google.mlkit:text-recognition:16.0.1`. Aceptación verificada con test instrumentado en NX779J: devuelve texto de una imagen de prueba.
-- (2026-11-08) Siguiente: T2.4 `ReceiptParser` (reglas §9, ≥8 casos de test). Tarea 🔒 (afecta importes/fechas extraídos): revisión con `financial-auditor`/`code-reviewer` (según modelo implementador).
+- (2026-11-08) T2.4 CERRADA (rama `t2-4-receipt-parser`): `ParsedReceipt` + `ReceiptParser` (§9.2–9.3), importes en céntimos `Long`, confianza por campo. **8 tests unitarios** realistas pasan (§9.5). `financial-auditor` no pudo ejecutarse por límite de uso gratuito (intento fallido); reintentar revisión cuando haya cuota.
+- (2026-11-08) Siguiente: T2.5 Escaneo de ticket (ML Kit Document Scanner o galería → OCR → `ReviewSheet` prellenada, miniatura adjunta). Depende de T2.3/T2.4.
 - No tocar archivos fuera del alcance de la tarea. local.properties ya está en .gitignore.
