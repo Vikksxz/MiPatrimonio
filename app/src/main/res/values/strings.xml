@@ -43,6 +43,8 @@
     <string name="savings_no_plans">Aún no tienes planes de ahorro.</string>
     <string name="savings_set_active">Activo</string>
     <string name="savings_priority">Prioridad %1$d</string>
+    <string name="savings_move_up">Subir prioridad</string>
+    <string name="savings_move_down">Bajar prioridad</string>
     <string name="savings_sheet_create">Crear plan de ahorro</string>
     <string name="savings_sheet_edit">Editar plan</string>
     <string name="savings_plan_name">Nombre</string>
