@@ -12,6 +12,7 @@ import androidx.navigation.navArgument
 import com.mipatrimonio.app.feature.documents.DocumentViewerScreen
 import com.mipatrimonio.app.feature.documents.DocumentsScreen
 import com.mipatrimonio.app.feature.home.HomeScreen
+import com.mipatrimonio.app.feature.analysis.AnalysisScreen
 import com.mipatrimonio.app.feature.savings.SavingsScreen
 import com.mipatrimonio.app.feature.transactions.TransactionsScreen
 import com.mipatrimonio.app.feature.wallet.WalletScreen
@@ -40,7 +41,9 @@ fun AppNavHost(
                 },
             )
         }
-        composable(Routes.TRANSACTIONS) { TransactionsScreen() }
+        composable(Routes.TRANSACTIONS) {
+            TransactionsScreen(onOpenAnalysis = { navController.navigate(Routes.ANALYSIS) })
+        }
         composable(Routes.SAVINGS) { SavingsScreen() }
         composable(Routes.WALLET) {
             WalletScreen(onOpenDocuments = { navController.navigate(Routes.DOCUMENTS) })
@@ -56,6 +59,9 @@ fun AppNavHost(
             arguments = listOf(navArgument("documentId") { type = NavType.LongType }),
         ) {
             DocumentViewerScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.ANALYSIS) {
+            AnalysisScreen(onBack = { navController.popBackStack() })
         }
     }
 }

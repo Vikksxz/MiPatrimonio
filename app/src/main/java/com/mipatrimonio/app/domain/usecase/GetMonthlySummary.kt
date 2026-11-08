@@ -45,6 +45,7 @@ data class MonthlySummary(
     val recent: List<TransactionEntity> = emptyList(),
     val activePlan: ActivePlanSummary? = null,
     val budgets: List<HomeBudgetSummary> = emptyList(),
+    val projection: MonthProjection? = null,
 ) {
     /** Gastos del mes: metálico + tarjeta + suscripciones. */
     val expenseCents: Long get() = cashCents + cardCents + subscriptionCents
@@ -103,6 +104,7 @@ class GetMonthlySummary @Inject constructor(
             savingsCents: Long = SAVINGS_CENTS,
             activePlan: ActivePlanSummary? = null,
             budgets: List<HomeBudgetSummary> = emptyList(),
+            today: LocalDate = LocalDate.now(),
         ): MonthlySummary {
             var income = 0L
             var cash = 0L
@@ -119,6 +121,8 @@ class GetMonthlySummary @Inject constructor(
                 }
             }
 
+            val projection = MonthlyAnalysis.projection(month, transactions, today)
+
             return MonthlySummary(
                 month = month,
                 incomeCents = income,
@@ -129,6 +133,7 @@ class GetMonthlySummary @Inject constructor(
                 recent = recent.take(RECENT_LIMIT),
                 activePlan = activePlan,
                 budgets = budgets,
+                projection = projection,
             )
         }
 

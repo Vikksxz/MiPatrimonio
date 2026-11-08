@@ -186,6 +186,15 @@ private fun BalanceCard(summary: MonthlySummary) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            val projection = summary.projection
+            if (projection != null && projection.visible) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.home_projection, Money.format(projection.projectedExpenseCents)),
+                    color = NeonColor.muted,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
             Spacer(modifier = Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 MiniPanel(

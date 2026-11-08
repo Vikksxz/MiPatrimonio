@@ -37,6 +37,7 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
@@ -94,6 +95,7 @@ private val FilterTypes = listOf(
 fun TransactionsScreen(
     modifier: Modifier = Modifier,
     viewModel: TransactionsViewModel = hiltViewModel(),
+    onOpenAnalysis: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var editing by remember { mutableStateOf<TransactionEntity?>(null) }
@@ -111,6 +113,7 @@ fun TransactionsScreen(
             onEdit = { editing = it },
             onDelete = viewModel::delete,
             onRestore = viewModel::restore,
+            onOpenAnalysis = onOpenAnalysis,
         )
 
         val current = editing
@@ -146,6 +149,7 @@ fun TransactionsContent(
     onEdit: (TransactionEntity) -> Unit = {},
     onDelete: (TransactionEntity) -> Unit = {},
     onRestore: (TransactionEntity) -> Unit = {},
+    onOpenAnalysis: () -> Unit = {},
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -167,7 +171,16 @@ fun TransactionsContent(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            ScreenTitle(text = stringResource(R.string.tab_transactions))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ScreenTitle(text = stringResource(R.string.tab_transactions))
+                TextButton(onClick = onOpenAnalysis) {
+                    Text(stringResource(R.string.transactions_open_analysis), color = NeonColor.neonCyan)
+                }
+            }
 
             SearchField(
                 query = state.query,

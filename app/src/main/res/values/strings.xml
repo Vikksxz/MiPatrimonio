@@ -133,6 +133,7 @@
     <string name="tab_wallet">Cartera</string>
     <string name="home_title">Resumen</string>
     <string name="home_available">Disponible este mes</string>
+    <string name="home_projection">Proyección de gasto: %1$s</string>
     <string name="home_income">Ingresos</string>
     <string name="home_expenses">Gastos</string>
     <string name="home_savings_plan_active">PLAN DE AHORRO ACTIVO</string>
@@ -274,7 +275,25 @@
     <string name="transactions_no_results_hint">Prueba con otro texto o cambia el filtro.</string>
     <string name="transaction_deleted">Movimiento eliminado</string>
     <string name="transactions_action_failed">No se pudo completar la acción</string>
+    <string name="transactions_open_analysis">Análisis</string>
     <string name="common_undo">Deshacer</string>
+
+    <!-- Análisis (T3.7) -->
+    <string name="analysis_title">ANÁLISIS</string>
+    <string name="analysis_back">‹ Volver</string>
+    <string name="analysis_current_month">Mes actual</string>
+    <string name="analysis_previous_month">Mes anterior</string>
+    <string name="analysis_comparison">Comparativa mes a mes</string>
+    <string name="analysis_income">Ingresos</string>
+    <string name="analysis_expenses">Gastos</string>
+    <string name="analysis_difference">Diferencia</string>
+    <string name="analysis_by_category">Gastos por categoría</string>
+    <string name="analysis_no_expenses">Sin gastos en este mes</string>
+    <string name="analysis_fixed_variable">Fijos vs variables</string>
+    <string name="analysis_fixed">Fijos</string>
+    <string name="analysis_variable">Variables</string>
+    <string name="analysis_free_at_month_end">Libre al mes</string>
+    <string name="analysis_other_category">Otros gastos</string>
     <string name="common_back">Atrás</string>
 
     <!-- T2.2: documentos -->
