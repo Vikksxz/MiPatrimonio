@@ -3,6 +3,7 @@ package com.mipatrimonio.app.core.database.dao
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
@@ -18,6 +19,9 @@ interface TransactionDao {
 
     @Query("SELECT * FROM transactions WHERE date >= :fromEpochDay AND date < :toEpochDayExclusive ORDER BY date DESC, id DESC")
     fun observeByMonth(fromEpochDay: Long, toEpochDayExclusive: Long): Flow<List<TransactionEntity>>
+
+    @Query("SELECT * FROM transactions WHERE id = :id LIMIT 1")
+    suspend fun getById(id: Long): TransactionEntity?
 
     @Query("SELECT type, SUM(amountBaseCents) as totalCents FROM transactions WHERE date >= :from AND date < :to GROUP BY type")
     fun observeTotalsByType(from: Long, to: Long): Flow<List<TypeTotal>>
@@ -43,6 +47,10 @@ interface TransactionDao {
 
     @Insert
     suspend fun insert(transaction: TransactionEntity): Long
+
+    /** Reinserta un movimiento borrado (deshacer), conservando su id. */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun restore(transaction: TransactionEntity)
 
     @Insert
     suspend fun insertAll(transactions: List<TransactionEntity>)

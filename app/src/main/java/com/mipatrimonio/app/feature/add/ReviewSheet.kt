@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -13,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -38,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mipatrimonio.app.R
 import com.mipatrimonio.app.core.database.entity.CardEntity
 import com.mipatrimonio.app.core.database.entity.CategoryEntity
+import com.mipatrimonio.app.core.database.entity.TransactionEntity
 import com.mipatrimonio.app.core.model.CardKind
 import com.mipatrimonio.app.core.model.IncomeKind
 import com.mipatrimonio.app.core.model.TransactionType
@@ -63,6 +66,10 @@ private val ReviewDateFormatter: DateTimeFormatter =
  * Hoja de revisión del botón + (T1.7, MiPatrimonio.md §8.3).
  * Formulario común para gasto manual e ingreso. Se muestra dentro del
  * `ModalBottomSheet` que ya abre [AddMenuSheet].
+ *
+ * En T1.8 también se reutiliza como detalle/edición de un movimiento existente
+ * ([editing] no nulo): precarga los datos, guarda con `UpdateTransaction` y
+ * permite eliminarlo con confirmación.
  */
 @Composable
 fun ReviewSheet(
@@ -70,6 +77,8 @@ fun ReviewSheet(
     onSaved: (Long) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    editing: TransactionEntity? = null,
+    onDeleted: () -> Unit = {},
     viewModel: AddTransactionViewModel = hiltViewModel(),
 ) {
     val cards by viewModel.cards.collectAsStateWithLifecycle()
@@ -81,11 +90,23 @@ fun ReviewSheet(
 
     ReviewContent(
         initialType = initialType,
+        editing = editing,
         cards = cards,
         categories = categories,
         saving = viewModel.saving,
         saveFailed = viewModel.saveFailed,
-        onSave = { input -> viewModel.save(input, onSaved) },
+        onSave = { input ->
+            if (editing == null) {
+                viewModel.save(input, onSaved)
+            } else {
+                viewModel.update(editing, input, onSaved)
+            }
+        },
+        onDelete = if (editing == null) {
+            null
+        } else {
+            { viewModel.delete(editing, onDeleted) }
+        },
         onDismiss = onDismiss,
         modifier = modifier,
     )
@@ -103,12 +124,15 @@ fun ReviewContent(
     onSave: (NewTransaction) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    editing: TransactionEntity? = null,
+    onDelete: (() -> Unit)? = null,
 ) {
-    val state = remember(initialType) { ReviewState(initialType) }
+    val state = remember(initialType, editing?.id) { ReviewState(initialType, editing) }
     val visibleCategories = categories.filter {
         it.isIncome == (state.type == TransactionType.INCOME)
     }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -120,10 +144,10 @@ fun ReviewContent(
     ) {
         ScreenTitle(
             text = stringResource(
-                if (state.type == TransactionType.INCOME) {
-                    R.string.review_title_income
-                } else {
-                    R.string.review_title_expense
+                when {
+                    editing != null -> R.string.review_title_edit
+                    state.type == TransactionType.INCOME -> R.string.review_title_income
+                    else -> R.string.review_title_expense
                 },
             ),
         )
@@ -324,7 +348,11 @@ fun ReviewContent(
             },
             modifier = Modifier.fillMaxWidth(),
         ) {
-            NeonButtonText(text = stringResource(R.string.review_save))
+            NeonButtonText(
+                text = stringResource(
+                    if (editing == null) R.string.review_save else R.string.review_save_edit,
+                ),
+            )
         }
 
         if (saveFailed) {
@@ -335,13 +363,69 @@ fun ReviewContent(
             )
         }
 
-        TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
+        if (onDelete != null) {
+            TextButton(
+                onClick = { if (!saving) showDeleteDialog = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 44.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.review_delete),
+                    color = NeonColor.expenseRed,
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
+        }
+
+        TextButton(
+            onClick = onDismiss,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 44.dp),
+        ) {
             Text(
                 text = stringResource(R.string.common_cancel),
                 color = NeonColor.muted,
                 style = MaterialTheme.typography.labelLarge,
             )
         }
+    }
+
+    if (showDeleteDialog && onDelete != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            containerColor = NeonColor.panel,
+            title = {
+                Text(
+                    text = stringResource(R.string.review_delete),
+                    color = NeonColor.ink,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            },
+            text = {
+                Text(
+                    text = stringResource(R.string.review_delete_confirm),
+                    color = NeonColor.muted,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteDialog = false
+                        onDelete()
+                    },
+                ) {
+                    Text(stringResource(R.string.review_delete), color = NeonColor.expenseRed)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text(stringResource(R.string.common_cancel), color = NeonColor.muted)
+                }
+            },
+        )
     }
 
     if (showDatePicker) {
@@ -390,15 +474,17 @@ fun ReviewContent(
 }
 
 @Stable
-private class ReviewState(initialType: TransactionType) {
-    var type by mutableStateOf(initialType)
-    var amountText by mutableStateOf("")
-    var merchant by mutableStateOf("")
-    var date by mutableStateOf(LocalDate.now())
-    var categoryId by mutableStateOf<Long?>(null)
-    var cardId by mutableStateOf<Long?>(null)
-    var note by mutableStateOf("")
-    var incomeKind by mutableStateOf<IncomeKind?>(null)
+private class ReviewState(initialType: TransactionType, editing: TransactionEntity? = null) {
+    var type by mutableStateOf(editing?.type ?: initialType)
+    var amountText by mutableStateOf(editing?.let { Money.formatNumber(it.amountCents) } ?: "")
+    var merchant by mutableStateOf(editing?.merchant ?: "")
+    var date by mutableStateOf(
+        editing?.let { LocalDate.ofEpochDay(it.date) } ?: LocalDate.now(),
+    )
+    var categoryId by mutableStateOf(editing?.categoryId)
+    var cardId by mutableStateOf(editing?.cardId)
+    var note by mutableStateOf(editing?.note ?: "")
+    var incomeKind by mutableStateOf(editing?.incomeKind)
     var showAmountError by mutableStateOf(false)
     var showIncomeKindError by mutableStateOf(false)
 }
