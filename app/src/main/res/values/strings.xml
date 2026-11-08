@@ -98,15 +98,20 @@
 
     <!-- T1.7: añadir movimiento manual / T2.5: escaneo -->
     <string name="add_sheet_scan">Escanear ticket (OCR)</string>
-    <string name="add_sheet_scan_hint">Elige una foto del ticket desde la galería</string>
+    <string name="add_sheet_scan_hint">Elige una foto o PDF (ticket o nómina) para leer los datos</string>
     <string name="add_sheet_manual">Gasto manual o en metálico</string>
     <string name="add_sheet_manual_hint">Añade un gasto en efectivo o con tarjeta</string>
     <string name="add_sheet_income">Ingreso</string>
     <string name="add_sheet_income_hint">Nómina u otros ingresos</string>
     <string name="scan_read_hint">Leído del ticket: revisa los datos</string>
+    <string name="scan_payroll_hint">Leída la nómina: revisa los datos antes de confirmar</string>
     <string name="scan_attachment">Ticket adjunto</string>
-    <string name="scan_processing">Leyendo el ticket…</string>
-    <string name="scan_failed">No se pudo leer el ticket. Prueba con otra imagen.</string>
+    <string name="scan_document_attachment">Documento adjunto</string>
+    <string name="scan_processing">Leyendo el documento…</string>
+    <string name="scan_failed">No se pudo leer el archivo. Prueba con otra imagen o PDF.</string>
+    <string name="duplicate_payroll_title">Posible nómina duplicada</string>
+    <string name="duplicate_payroll_message">Ya existe una nómina con la misma fecha o título. ¿Quieres continuar de todos modos?</string>
+    <string name="duplicate_continue">Continuar</string>
     <string name="review_title_expense">Nuevo gasto</string>
     <string name="review_title_income">Nuevo ingreso</string>
     <string name="review_title_edit">Editar movimiento</string>

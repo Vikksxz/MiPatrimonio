@@ -24,9 +24,11 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Snackbar
@@ -34,6 +36,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -50,15 +53,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mipatrimonio.app.R
 import com.mipatrimonio.app.core.database.entity.DocumentEntity
 import com.mipatrimonio.app.core.model.DocumentKind
+import com.mipatrimonio.app.core.model.TransactionType
 import com.mipatrimonio.app.core.ui.components.NeonButton
 import com.mipatrimonio.app.core.ui.components.NeonButtonText
 import com.mipatrimonio.app.core.ui.components.NeonCard
 import com.mipatrimonio.app.core.ui.theme.MiPatrimonioTheme
 import com.mipatrimonio.app.core.ui.theme.NeonColor
+import com.mipatrimonio.app.feature.add.ReviewSheet
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DocumentsScreen(
     onBack: () -> Unit,
@@ -69,13 +75,13 @@ fun DocumentsScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var pendingDelete by remember { mutableStateOf<DocumentEntity?>(null) }
-    var pendingUri by remember { mutableStateOf<Uri?>(null) }
     val errorText = stringResource(R.string.documents_action_failed)
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     val picker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
     ) { uri: Uri? ->
-        if (uri != null) pendingUri = uri
+        if (uri != null) viewModel.onFilePicked(uri)
     }
 
     LaunchedEffect(state.error) {
@@ -83,13 +89,6 @@ fun DocumentsScreen(
             snackbarHostState.showSnackbar(errorText)
             viewModel.clearError()
         }
-    }
-
-    // Confirmación simple al elegir archivo: guarda como Nómina (aceptación T2.2) con título del archivo.
-    LaunchedEffect(pendingUri) {
-        val uri = pendingUri ?: return@LaunchedEffect
-        pendingUri = null
-        viewModel.addFromUri(uri = uri, kind = DocumentKind.PAYSLIP, date = LocalDate.now())
     }
 
     MiPatrimonioTheme {
@@ -230,23 +229,10 @@ fun DocumentsScreen(
             AlertDialog(
                 onDismissRequest = { pendingDelete = null },
                 containerColor = NeonColor.panel,
-                title = {
-                    Text(
-                        text = stringResource(R.string.documents_delete),
-                        color = NeonColor.ink,
-                    )
-                },
-                text = {
-                    Text(
-                        text = stringResource(R.string.documents_delete_confirm),
-                        color = NeonColor.muted,
-                    )
-                },
+                title = { Text(text = stringResource(R.string.documents_delete), color = NeonColor.ink) },
+                text = { Text(text = stringResource(R.string.documents_delete_confirm), color = NeonColor.muted) },
                 confirmButton = {
-                    TextButton(onClick = {
-                        viewModel.delete(toDelete)
-                        pendingDelete = null
-                    }) {
+                    TextButton(onClick = { viewModel.delete(toDelete); pendingDelete = null }) {
                         Text(stringResource(R.string.documents_delete), color = NeonColor.expenseRed)
                     }
                 },
@@ -256,6 +242,42 @@ fun DocumentsScreen(
                     }
                 },
             )
+        }
+
+        if (state.pendingDuplicateWarning && state.pendingPayrollDraft != null) {
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissPendingPayroll() },
+                containerColor = NeonColor.panel,
+                title = { Text(stringResource(R.string.duplicate_payroll_title), color = NeonColor.ink) },
+                text = { Text(stringResource(R.string.duplicate_payroll_message), color = NeonColor.muted) },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.confirmDuplicateAndShowDraft() }) {
+                        Text(stringResource(R.string.duplicate_continue), color = NeonColor.neonCyan)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { viewModel.dismissPendingPayroll() }) {
+                        Text(stringResource(R.string.common_cancel), color = NeonColor.muted)
+                    }
+                },
+            )
+        }
+
+        val draft = state.pendingPayrollDraft
+        if (draft != null && !state.pendingDuplicateWarning) {
+            ModalBottomSheet(
+                onDismissRequest = { viewModel.dismissPendingPayroll() },
+                sheetState = sheetState,
+                containerColor = NeonColor.panel,
+                contentColor = NeonColor.ink,
+            ) {
+                ReviewSheet(
+                    initialType = TransactionType.INCOME,
+                    payrollDraft = draft,
+                    onSaved = { viewModel.onPayrollSaved() },
+                    onDismiss = { viewModel.dismissPendingPayroll() },
+                )
+            }
         }
     }
 }

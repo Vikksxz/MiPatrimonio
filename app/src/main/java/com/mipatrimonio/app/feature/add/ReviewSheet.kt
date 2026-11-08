@@ -87,20 +87,22 @@ fun ReviewSheet(
     modifier: Modifier = Modifier,
     editing: TransactionEntity? = null,
     scanDraft: ReceiptScanDraft? = null,
+    payrollDraft: PayrollDraft? = null,
     onDeleted: () -> Unit = {},
     viewModel: AddTransactionViewModel = hiltViewModel(),
 ) {
     val cards by viewModel.cards.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
 
-    LaunchedEffect(editing?.id, scanDraft?.thumbnail) {
+    LaunchedEffect(editing?.id, scanDraft?.thumbnail, payrollDraft?.sourceFilePath) {
         viewModel.reset()
     }
 
     ReviewContent(
-        initialType = initialType,
+        initialType = if (payrollDraft != null) TransactionType.INCOME else initialType,
         editing = editing,
         scanDraft = scanDraft,
+        payrollDraft = payrollDraft,
         cards = cards,
         categories = categories,
         saving = viewModel.saving,
@@ -108,15 +110,12 @@ fun ReviewSheet(
         onSave = { input ->
             when {
                 editing != null -> viewModel.update(editing, input, onSaved)
+                payrollDraft != null -> viewModel.savePayroll(input, payrollDraft, onSaved)
                 scanDraft != null -> viewModel.saveScanned(input, scanDraft.sourceBitmap, onSaved)
                 else -> viewModel.save(input, onSaved)
             }
         },
-        onDelete = if (editing == null) {
-            null
-        } else {
-            { viewModel.delete(editing, onDeleted) }
-        },
+        onDelete = if (editing == null) null else ({ viewModel.delete(editing, onDeleted) }),
         onDismiss = onDismiss,
         modifier = modifier,
     )
@@ -136,17 +135,19 @@ fun ReviewContent(
     modifier: Modifier = Modifier,
     editing: TransactionEntity? = null,
     scanDraft: ReceiptScanDraft? = null,
+    payrollDraft: PayrollDraft? = null,
     onDelete: (() -> Unit)? = null,
 ) {
-    val state = remember(initialType, editing?.id, scanDraft?.thumbnail) {
-        ReviewState(initialType, editing, scanDraft)
+    val state = remember(initialType, editing?.id, scanDraft?.thumbnail, payrollDraft?.sourceFilePath) {
+        ReviewState(initialType, editing, scanDraft, payrollDraft)
     }
     val visibleCategories = categories.filter {
         it.isIncome == (state.type == TransactionType.INCOME)
     }
     var showDatePicker by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-    val fromOcr = scanDraft != null && editing == null
+    val fromOcr = (scanDraft != null || payrollDraft != null) && editing == null
+    val isPayroll = payrollDraft != null
 
     Column(
         modifier = modifier
@@ -168,20 +169,21 @@ fun ReviewContent(
 
         if (fromOcr) {
             Text(
-                text = stringResource(R.string.scan_read_hint),
+                text = stringResource(if (isPayroll) R.string.scan_payroll_hint else R.string.scan_read_hint),
                 color = NeonColor.neonCyan,
                 style = MaterialTheme.typography.bodyMedium,
             )
-            scanDraft?.thumbnail?.let { thumb ->
+            val thumb = scanDraft?.thumbnail ?: payrollDraft?.thumbnail
+            thumb?.let { bmp ->
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        text = stringResource(R.string.scan_attachment),
+                        text = stringResource(if (isPayroll) R.string.scan_document_attachment else R.string.scan_attachment),
                         color = NeonColor.muted,
                         style = MaterialTheme.typography.labelMedium,
                     )
                     Image(
-                        bitmap = thumb.asImageBitmap(),
-                        contentDescription = stringResource(R.string.scan_attachment),
+                        bitmap = bmp.asImageBitmap(),
+                        contentDescription = stringResource(R.string.scan_document_attachment),
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -520,22 +522,27 @@ private class ReviewState(
     initialType: TransactionType,
     editing: TransactionEntity? = null,
     scanDraft: ReceiptScanDraft? = null,
+    payrollDraft: PayrollDraft? = null,
 ) {
-    var type by mutableStateOf(editing?.type ?: initialType)
+    var type by mutableStateOf(editing?.type ?: if (payrollDraft != null) TransactionType.INCOME else initialType)
     var amountText by mutableStateOf(
         editing?.let { Money.formatNumber(it.amountCents) }
+            ?: payrollDraft?.amountCents?.let { Money.formatNumber(it) }
             ?: scanDraft?.amountCents?.let { Money.formatNumber(it) }
             ?: "",
     )
-    var merchant by mutableStateOf(editing?.merchant ?: scanDraft?.merchant.orEmpty())
+    var merchant by mutableStateOf(
+        editing?.merchant ?: payrollDraft?.displayName?.removeSuffix(".pdf")?.removeSuffix(".PDF")
+            ?: scanDraft?.merchant.orEmpty(),
+    )
     var date by mutableStateOf(
-        editing?.let { LocalDate.ofEpochDay(it.date) } ?: scanDraft?.date ?: LocalDate.now(),
+        editing?.let { LocalDate.ofEpochDay(it.date) } ?: payrollDraft?.date ?: scanDraft?.date ?: LocalDate.now(),
     )
     var categoryId by mutableStateOf(editing?.categoryId)
     var cardId by mutableStateOf(editing?.cardId)
     var note by mutableStateOf(editing?.note ?: "")
-    var incomeKind by mutableStateOf(editing?.incomeKind)
-    // En escaneo el ticket se cifra al guardar (saveScanned); en edición se conserva.
+    var incomeKind by mutableStateOf(editing?.incomeKind ?: if (payrollDraft != null) IncomeKind.PAYROLL else null)
+    // En escaneo el ticket/nómina se persiste al confirmar; en edición se conserva.
     val receiptPath: String? = editing?.receiptPath
     var showAmountError by mutableStateOf(false)
     var showIncomeKindError by mutableStateOf(false)

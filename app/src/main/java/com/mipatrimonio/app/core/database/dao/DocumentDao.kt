@@ -18,6 +18,9 @@ interface DocumentDao {
     @Query("SELECT * FROM documents WHERE kind = :kind ORDER BY date DESC")
     fun observeByKind(kind: DocumentKind): Flow<List<DocumentEntity>>
 
+    @Query("SELECT * FROM documents WHERE kind = :kind ORDER BY date DESC")
+    suspend fun getAllByKind(kind: DocumentKind): List<DocumentEntity>
+
     @Query("SELECT * FROM documents WHERE expiresAt IS NOT NULL AND expiresAt <= :beforeEpochDay ORDER BY expiresAt ASC")
     fun observeExpiringBefore(beforeEpochDay: Long): Flow<List<DocumentEntity>>
 
