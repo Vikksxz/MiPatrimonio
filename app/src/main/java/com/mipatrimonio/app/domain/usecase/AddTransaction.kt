@@ -37,6 +37,46 @@ object TransactionFactory {
         input: NewTransaction,
         createdAtMillis: Long,
     ): TransactionEntity {
+        validate(input)
+
+        return TransactionEntity(
+            type = input.type,
+            incomeKind = if (input.type == TransactionType.INCOME) input.incomeKind else null,
+            amountCents = input.amountCents,
+            currency = input.currency,
+            amountBaseCents = input.amountCents,
+            date = input.date.toEpochDay(),
+            merchant = input.merchant.trim(),
+            note = input.note.trim(),
+            categoryId = input.categoryId,
+            cardId = if (input.type == TransactionType.CARD) input.cardId else null,
+            createdAt = createdAtMillis,
+        )
+    }
+
+    /**
+     * Aplica los cambios de [input] sobre [existing] tocando **solo** los campos
+     * editables del formulario. Conserva id, fecha de creación, ticket, vínculos
+     * (recurrente/compartido) y cualquier campo futuro (p. ej. etiquetas o tipo
+     * de cambio) en lugar de reconstruir la entidad desde cero.
+     */
+    fun applyTo(existing: TransactionEntity, input: NewTransaction): TransactionEntity {
+        validate(input)
+        return existing.copy(
+            type = input.type,
+            incomeKind = if (input.type == TransactionType.INCOME) input.incomeKind else null,
+            amountCents = input.amountCents,
+            currency = input.currency,
+            amountBaseCents = input.amountCents,
+            date = input.date.toEpochDay(),
+            merchant = input.merchant.trim(),
+            note = input.note.trim(),
+            categoryId = input.categoryId,
+            cardId = if (input.type == TransactionType.CARD) input.cardId else null,
+        )
+    }
+
+    private fun validate(input: NewTransaction) {
         require(input.amountCents > 0) { "El importe debe ser mayor que 0" }
         require(input.type == TransactionType.INCOME || input.incomeKind == null) {
             "incomeKind solo se usa con INCOME"
@@ -50,23 +90,6 @@ object TransactionFactory {
         require(input.currency.isNotBlank()) { "La moneda no puede estar vacía" }
         // Multimoneda (T4.6): hasta que exista conversión solo se admite EUR.
         require(input.currency == "EUR") { "Solo se admite EUR hasta T4.6" }
-
-        // Multimoneda (T4.6): hasta entonces amountBaseCents == amountCents.
-        val amountBaseCents = input.amountCents
-
-        return TransactionEntity(
-            type = input.type,
-            incomeKind = if (input.type == TransactionType.INCOME) input.incomeKind else null,
-            amountCents = input.amountCents,
-            currency = input.currency,
-            amountBaseCents = amountBaseCents,
-            date = input.date.toEpochDay(),
-            merchant = input.merchant.trim(),
-            note = input.note.trim(),
-            categoryId = input.categoryId,
-            cardId = if (input.type == TransactionType.CARD) input.cardId else null,
-            createdAt = createdAtMillis,
-        )
     }
 }
 
@@ -84,5 +107,24 @@ class AddTransaction @Inject constructor(
     ): Long {
         val entity = TransactionFactory.create(input, createdAtMillis)
         return transactionDao.insert(entity)
+    }
+}
+
+/**
+ * Caso de uso `UpdateTransaction` (T1.8): edita un movimiento conservando id,
+ * fecha de creación, ticket y vínculos (recurrente/compartido).
+ */
+class UpdateTransaction @Inject constructor(
+    private val transactionDao: TransactionDao,
+) {
+
+    suspend operator fun invoke(existing: TransactionEntity, input: NewTransaction): Long {
+        // Se relee la fila para no pisar datos cambiados por otra pantalla.
+        val current = transactionDao.getById(existing.id)
+            ?: error("El movimiento ya no existe")
+        val updated = TransactionFactory.applyTo(current, input)
+        val rows = transactionDao.update(updated)
+        check(rows == 1) { "El movimiento ya no existe" }
+        return existing.id
     }
 }

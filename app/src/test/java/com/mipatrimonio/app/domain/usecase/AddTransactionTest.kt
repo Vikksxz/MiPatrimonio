@@ -1,5 +1,6 @@
 package com.mipatrimonio.app.domain.usecase
 
+import com.mipatrimonio.app.core.database.entity.TransactionEntity
 import com.mipatrimonio.app.core.model.IncomeKind
 import com.mipatrimonio.app.core.model.TransactionType
 import java.time.LocalDate
@@ -160,5 +161,57 @@ class AddTransactionTest {
         val entity = TransactionFactory.create(cash(merchant = "   "), createdAt)
 
         assertEquals("", entity.merchant)
+    }
+
+    @Test
+    fun applyToKeepsIdentityAndLinksButAppliesNewValues() {
+        val existing = TransactionEntity(
+            id = 42L,
+            type = TransactionType.CARD,
+            amountCents = 500,
+            amountBaseCents = 500,
+            date = date.toEpochDay(),
+            merchant = "Antiguo",
+            categoryId = 1L,
+            cardId = 7L,
+            receiptPath = "/ticket.jpg",
+            recurringId = 3L,
+            sharedExpenseId = 9L,
+            createdAt = createdAt,
+        )
+        val input = NewTransaction(
+            type = TransactionType.CASH,
+            amountCents = 1999,
+            merchant = "Nuevo",
+            date = date.plusDays(1),
+            categoryId = 2L,
+            note = "cambio",
+        )
+
+        val updated = TransactionFactory.applyTo(existing, input)
+
+        assertEquals(42L, updated.id)
+        assertEquals(createdAt, updated.createdAt)
+        assertEquals("/ticket.jpg", updated.receiptPath)
+        assertEquals(3L, updated.recurringId)
+        assertEquals(9L, updated.sharedExpenseId)
+        assertEquals(TransactionType.CASH, updated.type)
+        assertEquals(1999L, updated.amountCents)
+        assertEquals(1999L, updated.amountBaseCents)
+        assertEquals("Nuevo", updated.merchant)
+        assertEquals(date.plusDays(1).toEpochDay(), updated.date)
+        assertEquals(2L, updated.categoryId)
+        assertEquals("cambio", updated.note)
+        assertNull(updated.cardId)
+        assertNull(updated.incomeKind)
+    }
+
+    @Test
+    fun applyToValidatesTheNewData() {
+        val existing = TransactionFactory.create(cash(), createdAt)
+
+        assertThrows(IllegalArgumentException::class.java) {
+            TransactionFactory.applyTo(existing, cash(amountCents = 0))
+        }
     }
 }

@@ -9,8 +9,11 @@ import com.mipatrimonio.app.core.database.dao.CardDao
 import com.mipatrimonio.app.core.database.dao.CategoryDao
 import com.mipatrimonio.app.core.database.entity.CardEntity
 import com.mipatrimonio.app.core.database.entity.CategoryEntity
+import com.mipatrimonio.app.core.database.entity.TransactionEntity
 import com.mipatrimonio.app.domain.usecase.AddTransaction
+import com.mipatrimonio.app.domain.usecase.DeleteTransaction
 import com.mipatrimonio.app.domain.usecase.NewTransaction
+import com.mipatrimonio.app.domain.usecase.UpdateTransaction
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
@@ -28,6 +31,8 @@ class AddTransactionViewModel @Inject constructor(
     categoryDao: CategoryDao,
     cardDao: CardDao,
     private val addTransaction: AddTransaction,
+    private val updateTransaction: UpdateTransaction,
+    private val deleteTransaction: DeleteTransaction,
 ) : ViewModel() {
 
     val cards: StateFlow<List<CardEntity>> = cardDao.observeAll()
@@ -48,20 +53,43 @@ class AddTransactionViewModel @Inject constructor(
     }
 
     fun save(input: NewTransaction, onSaved: (Long) -> Unit) {
-        if (saving) return
-        saving = true
-        saveFailed = false
+        if (!begin()) return
         viewModelScope.launch {
             runCatching { addTransaction(input) }
-                .onSuccess { id ->
-                    // `saving` sigue true hasta que la hoja se cierre: evita un segundo insert.
-                    onSaved(id)
-                }
-                .onFailure { error ->
-                    saving = false
-                    if (error is CancellationException) throw error
-                    saveFailed = true
-                }
+                .onSuccess(onSaved)
+                .onFailure(::fail)
         }
+    }
+
+    fun update(existing: TransactionEntity, input: NewTransaction, onSaved: (Long) -> Unit) {
+        if (!begin()) return
+        viewModelScope.launch {
+            runCatching { updateTransaction(existing, input) }
+                .onSuccess(onSaved)
+                .onFailure(::fail)
+        }
+    }
+
+    fun delete(existing: TransactionEntity, onDeleted: () -> Unit) {
+        if (!begin()) return
+        viewModelScope.launch {
+            runCatching { deleteTransaction(existing) }
+                .onSuccess { onDeleted() }
+                .onFailure(::fail)
+        }
+    }
+
+    /** Marca la operación como en curso; false si ya había una en marcha. */
+    private fun begin(): Boolean {
+        if (saving) return false
+        saving = true
+        saveFailed = false
+        return true
+    }
+
+    private fun fail(error: Throwable) {
+        saving = false
+        if (error is CancellationException) throw error
+        saveFailed = true
     }
 }

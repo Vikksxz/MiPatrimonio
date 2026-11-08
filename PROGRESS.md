@@ -2,8 +2,8 @@
 
 ## Estado
 - Fase actual: 1
-- Última tarea cerrada: T1.7
-- Tarea en curso: T1.8 Lista de movimientos (sin empezar)
+- Última tarea cerrada: T1.8
+- Tarea en curso: T1.9 Inicio (sin empezar)
 
 ## Decisiones tomadas
 - (2026-11-02) Paquete: com.mipatrimonio.app
@@ -11,6 +11,10 @@
 - (2026-11-02) compileSdk 37 (requerido por Compose BOM 2026.09.00 / Compose 1.12), targetSdk 36, minSdk 26
 - (2026-11-02) Plataforma android-37.2 instalada en el SDK local (no venía por defecto; solo android-36)
 - (2026-11-02) Modelo de implementación: MiMo-V2.6-Flash (asume rol de implementador; revisión cruzada pendiente con otro agente)
+- (2026-11-08) T1.8: la lista de Movimientos filtra y busca en `TransactionsViewModel.buildDayGroups` (función pura, testeada). Orden: fecha descendente y luego id descendente; agrupación por `date` (epochDay).
+- (2026-11-08) T1.8: la edición reutiliza `ReviewSheet` con `editing: TransactionEntity?`; el borrado de la hoja pide confirmación. `TransactionFactory.applyTo` toca solo los campos editables (`existing.copy`) y `UpdateTransaction` relee la fila con `getById` antes de actualizar, para no pisar datos cambiados desde otra pantalla ni campos futuros.
+- (2026-11-08) T1.8: deshacer = borrado inmediato + Snackbar "Deshacer" (10 s) que reinserta la entidad con su id original (`TransactionDao.restore`, `REPLACE`). El Snackbar vive en la composición de la pantalla (ver deudas).
+- (2026-11-08) T1.8: `DeleteTransaction` y `RestoreTransaction` son casos de uso con `@Inject`; los errores de Room se capturan en el ViewModel (`actionFailed`) y se avisan con un Snackbar en lugar de cerrar la app.
 
 ## Dependencias (nombres exactos, versiones en libs.versions.toml)
 - AGP 9.5.0, Gradle 9.6.0, Kotlin 2.2.10 (embebido en AGP), KSP 2.3.13, Hilt 2.60.1, Room 2.8.5, DataStore 1.3.0, Navigation Compose 2.10.2, Compose BOM 2026.09.00, material-icons-core (BOM), core-ktx 1.19.1, activity-compose 1.13.0, lifecycle 2.11.0, coroutines 1.11.0, serialization 1.12.0, biometric 1.1.0
@@ -31,7 +35,14 @@
 - (T1.7) No hay tope máximo de importe; un valor absurdo podría desbordar los `SUM` de SQLite en Inicio/Análisis. Añadir límite en T4.9.
 - (T1.7) La opción "Escanear ticket (OCR)" está deshabilitada con "Próximamente" hasta T2.5.
 - (T1.7) `TransactionFactory` solo admite `currency == "EUR"` hasta T4.6 (multimoneda); el test lo verifica.
-- (T1.8) La lista actual de Movimientos es básica (grupo por día, tipo e importe); faltan buscador, filtros, categoría, detalle/edición y deslizar para borrar.
+- (T1.8) El "Deshacer" del borrado vive en `rememberCoroutineScope` de la pantalla: si el usuario cambia de pestaña o gira el móvil antes de pulsarlo, el Snackbar desaparece y el borrado queda firme. Mover el borrado pendiente al ViewModel (con temporizador) y el Snackbar a un host estable en T4.9.
+- (T1.8) Tras guardar desde el + con un filtro o búsqueda activos, la lista conserva ese filtro (el ViewModel sobrevive a `restoreState`), así que el movimiento nuevo puede no verse. §8.3 pide verlo arriba: limpiar filtros y hacer scroll en una tarea posterior.
+- (T1.8) La búsqueda distingue tildes ("nomina" no encuentra "nómina"); normalizar con `java.text.Normalizer` en T4.9.
+- (T1.8) El fondo del swipe ya no anuncia el icono (era decorativo); el gesto de deslizar no es accesible con TalkBack, pero la hoja de edición ofrece "Eliminar movimiento".
+- (T1.8) `TransactionDao.restore` usa `OnConflictStrategy.REPLACE`: si la fila ya existiera (p. ej. la recrea un recurrente), el deshacer la sobrescribe con la instantánea antigua. Revisar en T3.5.
+- (T1.8) Al borrar un movimiento no se borra `receiptPath`: cuando exista cifrado (T2.1) hay que eliminar el fichero solo al confirmar el borrado definitivo (no durante el deshacer).
+- (T1.8) No hay tests de `UpdateTransaction`/`DeleteTransaction`/`RestoreTransaction` (dependen del DAO real); sí los hay de `applyTo`, `create` y `buildDayGroups`.
+- (T1.8) §8.2 pide además filtros por tarjeta, categoría, etiqueta y rango de fechas en un panel, y el detalle con ticket/categoría/etiquetas. Pendiente (ticket y etiquetas dependen de T2.x).
 
 ## Notas para el próximo modelo
 - (2026-11-02) T1.1 cerrada: pantalla vacía oscura compilando.
@@ -45,4 +56,7 @@
 - (2026-11-06) T1.6 CERRADA: probada en RedMagic NX779J (Android 15) con datos limpios: alta (banco BBVA, crédito, nombre, diseño), persistencia tras `force-stop`, edición precargada, foto propia desde el selector del sistema (copia en `no_backup/card_photos`, "Quitar foto" borra el archivo), borrado con confirmación (Cancelar mantiene la hoja) y empty state. `assembleDebug`, 42 tests unitarios y 14 instrumentados en verde. Revisión visual con `@ui-reviewer`: aplicados `FlowRow` en los chips de banco (ya no se corta "Otro"), borde de 1 dp en las muestras de diseño, brillo de tarjeta 24 dp/alfa 0.55 y sombra de texto reforzada. Se descartaron dos observaciones que contradecían §5.1/§5.5 (banco duplicado a la derecha sin variante; texto oscuro en chips cuando la tabla fija tinte + texto neón).
 - (2026-11-07) T1.7 CERRADA (rama `t1-7-anadir-movimiento`): `AddMenuSheet` con las tres opciones de §8.3 (OCR deshabilitado hasta T2.5), `ReviewSheet` con chips de tipo, importe con `Money.parse`, comercio, fecha con `DatePicker`, tarjeta si `CARD`, categoría filtrada por gasto/ingreso, tipo de ingreso obligatorio (Nómina/Otros), nota y validación de importe > 0. Caso de uso `AddTransaction` + `TransactionFactory` en `domain/usecase` (valida importe > 0, `incomeKind` solo en INCOME, `cardId` solo en CARD, EUR hasta T4.6). Lista básica de Movimientos agrupada por día (T1.8 la completa). Probado en NX779J: gasto metálico (12,50 €), ingreso (2.500,00 €), gasto con tarjeta y fecha 3 nov, ingreso sin tipo (bloquea y avisa), doble toque en Guardar (un solo insert), persistencia tras `force-stop`; BD verificada (725 céntimos, cardId 1, categoryId 2). 54 tests unitarios en verde. Revisado por `@financial-auditor` y `@reasoning-expert` (deepseek implementa, no revisa `code-reviewer`); aplicados: no tragar `CancellationException`, mantener `saving` hasta cerrar la hoja, no preseleccionar el tipo de ingreso y rechazar monedas distintas de EUR.
 - (2026-11-06) Aprendizaje de APIs en este proyecto: no existe `rememberPickVisualMedia` (usar `rememberLauncherForActivityResult` + `ActivityResultContracts.PickVisualMedia`); `Modifier.weight` NO se importa (es extensión de `RowScope`/`ColumnScope`); `shadow` es `androidx.compose.ui.draw.shadow`; `material-icons-core` no trae `Icons.Filled.CreditCard`; en material3 1.4 usar `OutlinedTextFieldDefaults.colors(...)` y `rememberModalBottomSheetState`.
+- (2026-11-08) Aprendizaje: en material3 1.4 el `confirmValueChange` de `rememberSwipeToDismissBoxState` está deprecado; usar `SwipeToDismissBox(..., onDismiss = { value -> ... })`. El Snackbar de deshacer debe probarse con toques rápidos: dura 10 s y `uiautomator dump` tarda ~2 s, así que en automatización hay que encadenar swipe + tap en un solo `adb shell`.
+- (2026-11-08) T1.8 CERRADA (rama `t1-8-lista-movimientos`): buscador, chips Todos/Metálico/Tarjeta/Suscripciones/Ingresos, lista agrupada por día, edición reutilizando `ReviewSheet` (precarga con `Money.formatNumber`, "Guardar cambios", "Eliminar movimiento" con confirmación) y deslizar para borrar con deshacer (10 s). Revisión de `@reasoning-expert` aplicada: `applyTo` conserva campos no editables y cualquier campo futuro, `UpdateTransaction` relee la fila, borrar/deshacer capturan errores y avisan, estado `loaded` para no mostrar el vacío en el primer frame, icono del swipe decorativo y botones de la hoja a 44 dp. Probado en NX779J: búsqueda insensible a mayúsculas, filtro Tarjeta, edición con importe precargado y cambio guardado (BD 2.650 céntimos, `cardId` 1), borrado con deshacer verificado, borrado desde la hoja con confirmación, estado "Sin resultados" y persistencia tras `force-stop`. 64 tests unitarios en verde.
+- IMPORTANTE: el dispositivo tiene datos reales de George (p. ej. "nómina noviembre"); no borrarlos en las pruebas. Crear movimientos propios y eliminarlos.
 - No tocar archivos fuera del alcance de la tarea. local.properties ya está en .gitignore.
