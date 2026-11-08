@@ -60,6 +60,9 @@ dependencies {
     // Preferencias
     implementation(libs.androidx.datastore.preferences)
 
+    // Biometría (T1.10)
+    implementation(libs.androidx.biometric)
+
     // Base de datos (se configura desde T1.4)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
