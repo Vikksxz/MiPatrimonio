@@ -1,5 +1,7 @@
 package com.mipatrimonio.app.domain.usecase
 
+import com.mipatrimonio.app.core.database.dao.PlanWithContributions
+import com.mipatrimonio.app.core.database.dao.SavingsDao
 import com.mipatrimonio.app.core.database.dao.TransactionDao
 import com.mipatrimonio.app.core.database.entity.TransactionEntity
 import com.mipatrimonio.app.core.model.TransactionType
@@ -8,6 +10,16 @@ import java.time.YearMonth
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+
+/** Datos del plan activo para el panel de Inicio (§8.1). */
+data class ActivePlanSummary(
+    val planId: Long,
+    val name: String,
+    val targetCents: Long,
+    val contributedCents: Long,
+    val monthlyQuotaCents: Long,
+    val estimate: SavingsEstimate,
+)
 
 /**
  * Resumen del mes natural para la pantalla Inicio (MiPatrimonio.md §7.1).
@@ -21,6 +33,7 @@ data class MonthlySummary(
     val subscriptionCents: Long = 0L,
     val savingsCents: Long = 0L,
     val recent: List<TransactionEntity> = emptyList(),
+    val activePlan: ActivePlanSummary? = null,
 ) {
     /** Gastos del mes: metálico + tarjeta + suscripciones. */
     val expenseCents: Long get() = cashCents + cardCents + subscriptionCents
@@ -30,11 +43,12 @@ data class MonthlySummary(
 }
 
 /**
- * Caso de uso `GetMonthlySummary` (T1.9): calcula el resumen del mes actual y
- * los últimos movimientos. Las aportaciones a planes de ahorro se suman en T3.1.
+ * Caso de uso `GetMonthlySummary` (T1.9+T3.1): resumen del mes, últimos movimientos,
+ * aportaciones reales al ahorro (§7.1) y plan activo para Inicio (§8.1).
  */
 class GetMonthlySummary @Inject constructor(
     private val transactionDao: TransactionDao,
+    private val savingsDao: SavingsDao,
 ) {
 
     operator fun invoke(month: YearMonth = YearMonth.now()): Flow<MonthlySummary> {
@@ -43,8 +57,12 @@ class GetMonthlySummary @Inject constructor(
         return combine(
             transactionDao.observeByMonth(fromEpochDay, toEpochDayExclusive),
             transactionDao.observeRecent(RECENT_LIMIT),
-        ) { monthTransactions, recent ->
-            build(month, monthTransactions, recent)
+            savingsDao.observeMonthlyContributed(fromEpochDay, toEpochDayExclusive),
+            savingsDao.observePlansWithContributions(),
+        ) { monthTransactions, recent, monthlySaved, plans ->
+            val savingsCents = (monthlySaved ?: 0L).coerceAtLeast(0L)
+            val active = buildActivePlan(plans)
+            build(month, monthTransactions, recent, savingsCents, active)
         }
     }
 
@@ -53,7 +71,7 @@ class GetMonthlySummary @Inject constructor(
         /** §8.1: la pantalla Inicio muestra los 4 últimos movimientos. */
         const val RECENT_LIMIT = 4
 
-        /** Aportaciones a planes de ahorro: 0 hasta T3.1. */
+        /** Compatibilidad: valor por defecto cuando no hay datos de ahorro. */
         const val SAVINGS_CENTS = 0L
 
         /**
@@ -68,6 +86,7 @@ class GetMonthlySummary @Inject constructor(
             transactions: List<TransactionEntity>,
             recent: List<TransactionEntity>,
             savingsCents: Long = SAVINGS_CENTS,
+            activePlan: ActivePlanSummary? = null,
         ): MonthlySummary {
             var income = 0L
             var cash = 0L
@@ -92,6 +111,29 @@ class GetMonthlySummary @Inject constructor(
                 subscriptionCents = subscription,
                 savingsCents = savingsCents,
                 recent = recent.take(RECENT_LIMIT),
+                activePlan = activePlan,
+            )
+        }
+
+        /** Selecciona plan activo y calcula su estimación (§8.1/§7.2). */
+        fun buildActivePlan(plans: List<PlanWithContributions>, now: YearMonth = YearMonth.now()): ActivePlanSummary? {
+            val pwc = plans.firstOrNull { it.plan.isActive } ?: return null
+            val contributed = pwc.contributions.sumOf { it.amountCents }
+            val estimate = EstimateSavings.estimate(
+                targetCents = pwc.plan.targetCents,
+                contributedCents = contributed,
+                monthlyQuotaCents = pwc.plan.monthlyQuotaCents,
+                freeMonthlyCents = pwc.plan.monthlyQuotaCents,
+                initialEstimatedMonths = pwc.plan.initialEstimatedMonths,
+                now = now,
+            )
+            return ActivePlanSummary(
+                planId = pwc.plan.id,
+                name = pwc.plan.name,
+                targetCents = pwc.plan.targetCents,
+                contributedCents = contributed,
+                monthlyQuotaCents = pwc.plan.monthlyQuotaCents,
+                estimate = estimate,
             )
         }
 
