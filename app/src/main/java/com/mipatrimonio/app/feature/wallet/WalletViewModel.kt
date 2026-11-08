@@ -12,6 +12,8 @@ import com.mipatrimonio.app.core.database.entity.CardEntity
 import com.mipatrimonio.app.core.database.entity.CategoryEntity
 import com.mipatrimonio.app.core.database.entity.RecurringEntity
 import com.mipatrimonio.app.core.model.TransactionType
+import com.mipatrimonio.app.core.settings.SettingsRepository
+import com.mipatrimonio.app.feature.reminders.CashReminderWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -32,6 +34,7 @@ class WalletViewModel @Inject constructor(
     private val cardDao: CardDao,
     private val recurringDao: RecurringDao,
     private val categoryDao: CategoryDao,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
 
     private val _cards = MutableStateFlow<List<CardEntity>>(emptyList())
@@ -42,6 +45,9 @@ class WalletViewModel @Inject constructor(
 
     private val _expenseCategories = MutableStateFlow<List<CategoryEntity>>(emptyList())
     val expenseCategories = _expenseCategories.asStateFlow()
+
+    private val _cashReminderEnabled = MutableStateFlow(false)
+    val cashReminderEnabled = _cashReminderEnabled.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -54,6 +60,9 @@ class WalletViewModel @Inject constructor(
         }
         viewModelScope.launch {
             categoryDao.observeByIncome(false).collect { _expenseCategories.value = it }
+        }
+        viewModelScope.launch {
+            settingsRepository.cashReminderEnabled.collect { _cashReminderEnabled.value = it }
         }
     }
 
@@ -96,5 +105,12 @@ class WalletViewModel @Inject constructor(
 
     fun deleteRecurring(entity: RecurringEntity) {
         viewModelScope.launch { recurringDao.delete(entity) }
+    }
+
+    fun setCashReminderEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setCashReminderEnabled(enabled)
+            if (enabled) CashReminderWorker.schedule(context) else CashReminderWorker.cancel(context)
+        }
     }
 }

@@ -7,8 +7,15 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.mipatrimonio.app.core.notifications.AppNotificationChannels
+import com.mipatrimonio.app.core.settings.SettingsRepository
 import com.mipatrimonio.app.feature.alerts.AlertsWorker
 import com.mipatrimonio.app.feature.recurring.RecurringWorker
+import com.mipatrimonio.app.feature.reminders.CashReminderWorker
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import dagger.hilt.android.HiltAndroidApp
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -23,6 +30,11 @@ class MiPatrimonioApp : Application(), Configuration.Provider {
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
 
+    @Inject
+    lateinit var settingsRepository: SettingsRepository
+
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)
@@ -33,6 +45,15 @@ class MiPatrimonioApp : Application(), Configuration.Provider {
         AppNotificationChannels.createAll(this)
         scheduleRecurringWorker()
         scheduleAlertsWorker()
+        scheduleCashReminderIfEnabled()
+    }
+
+    private fun scheduleCashReminderIfEnabled() {
+        appScope.launch {
+            if (settingsRepository.cashReminderEnabled.first()) {
+                CashReminderWorker.schedule(this@MiPatrimonioApp)
+            }
+        }
     }
 
     private fun scheduleRecurringWorker() {

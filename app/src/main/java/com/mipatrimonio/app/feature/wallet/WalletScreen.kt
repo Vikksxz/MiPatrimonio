@@ -81,6 +81,7 @@ import com.mipatrimonio.app.core.model.RecurrencePeriod
 import com.mipatrimonio.app.core.model.TransactionType
 import com.mipatrimonio.app.core.money.Money
 import com.mipatrimonio.app.core.notifications.BudgetNotifier
+import com.mipatrimonio.app.core.notifications.CashReminderNotifier
 import com.mipatrimonio.app.core.notifications.NotificationPermission
 import com.mipatrimonio.app.core.notifications.SavingsNotifier
 import com.mipatrimonio.app.domain.usecase.RecurringSchedule
@@ -110,6 +111,7 @@ fun WalletScreen(
     val cards by viewModel.cards.collectAsStateWithLifecycle()
     val recurrings by viewModel.recurrings.collectAsStateWithLifecycle()
     val expenseCategories by viewModel.expenseCategories.collectAsStateWithLifecycle()
+    val cashReminderEnabled by viewModel.cashReminderEnabled.collectAsStateWithLifecycle()
     var showForm by remember { mutableStateOf(false) }
     var editingCard by remember { mutableStateOf<CardEntity?>(null) }
     var deleteTarget by remember { mutableStateOf<CardEntity?>(null) }
@@ -131,6 +133,8 @@ fun WalletScreen(
             onOpenDocuments = onOpenDocuments,
             onAddRecurring = { editingRecurring = null; showRecurringForm = true },
             onEditRecurring = { editingRecurring = it; showRecurringForm = true },
+            cashReminderEnabled = cashReminderEnabled,
+            onCashReminderEnabledChange = viewModel::setCashReminderEnabled,
             modifier = modifier,
         )
 
@@ -212,6 +216,8 @@ fun WalletContent(
     recurrings: List<RecurringEntity> = emptyList(),
     onAddRecurring: () -> Unit = {},
     onEditRecurring: (RecurringEntity) -> Unit = {},
+    cashReminderEnabled: Boolean = false,
+    onCashReminderEnabledChange: (Boolean) -> Unit = {},
 ) {
     val subscriptions = recurrings.filter { it.isSubscription }
     val fixed = recurrings.filter { !it.isSubscription }
@@ -280,7 +286,12 @@ fun WalletContent(
                 RecurringRow(r, dateFmt, onClick = { onEditRecurring(r) })
             }
         }
-        item { NotificationsSection() }
+        item {
+            NotificationsSection(
+                cashReminderEnabled = cashReminderEnabled,
+                onCashReminderEnabledChange = onCashReminderEnabledChange,
+            )
+        }
         item { Box(Modifier.padding(bottom = 16.dp)) }
     }
 }
@@ -489,7 +500,10 @@ private fun RecurringFormSheet(
 }
 
 @Composable
-private fun NotificationsSection() {
+private fun NotificationsSection(
+    cashReminderEnabled: Boolean = false,
+    onCashReminderEnabledChange: (Boolean) -> Unit = {},
+) {
     val context = LocalContext.current
     var granted by remember { mutableStateOf(NotificationPermission.isGranted(context)) }
     var showRationale by remember { mutableStateOf(false) }
@@ -516,11 +530,6 @@ private fun NotificationsSection() {
                         NeonButtonText(stringResource(R.string.notifications_enable))
                     }
                 } else {
-                    Text(
-                        text = stringResource(R.string.notifications_permission_explanation),
-                        color = NeonColor.chipText,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
                     NeonButton(
                         onClick = {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -537,6 +546,27 @@ private fun NotificationsSection() {
             if (granted) {
                 NeonButton(onClick = { SavingsNotifier.notifyTest(context); BudgetNotifier.notifyTest(context) }, secondary = true, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.notifications_test), color = NeonColor.neonCyan, style = MaterialTheme.typography.labelLarge)
+                }
+            }
+
+            HorizontalDivider(color = NeonColor.line)
+            Text(stringResource(R.string.cash_reminder_title), color = NeonColor.ink, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.cash_reminder_toggle),
+                    color = NeonColor.muted,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.weight(1f).padding(end = 8.dp),
+                )
+                Switch(
+                    checked = cashReminderEnabled,
+                    onCheckedChange = onCashReminderEnabledChange,
+                    colors = SwitchDefaults.colors(checkedThumbColor = NeonColor.neonCyan, checkedTrackColor = NeonColor.neonCyan.copy(alpha = 0.4f)),
+                )
+            }
+            if (granted) {
+                TextButton(onClick = { CashReminderNotifier.notify(context) }) {
+                    Text(stringResource(R.string.cash_reminder_test), color = NeonColor.neonCyan)
                 }
             }
 
