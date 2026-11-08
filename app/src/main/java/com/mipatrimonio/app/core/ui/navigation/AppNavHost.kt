@@ -3,6 +3,7 @@ package com.mipatrimonio.app.core.ui.navigation
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -28,7 +29,17 @@ fun AppNavHost(
         startDestination = Routes.HOME,
         modifier = modifier.fillMaxSize(),
     ) {
-        composable(Routes.HOME) { HomeScreen() }
+        composable(Routes.HOME) {
+            HomeScreen(
+                onOpenSavings = {
+                    navController.navigate(Routes.SAVINGS) {
+                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+            )
+        }
         composable(Routes.TRANSACTIONS) { TransactionsScreen() }
         composable(Routes.SAVINGS) { SavingsScreen() }
         composable(Routes.WALLET) {

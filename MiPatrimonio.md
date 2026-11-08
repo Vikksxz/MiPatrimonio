@@ -717,7 +717,7 @@ Cada tarea termina con la app **compilando**. Marca `[x]` al completar.
 - [x] **T2.7 Etiquetas y notas.** Tabla de etiquetas, selector en el formulario, filtro por etiqueta. *Aceptación:* etiquetar y filtrar funciona.
 
 ### Fase 3
-- [ ] **T3.1 Planes de ahorro.** CRUD de planes, hoja de crear/editar (nombre + importe objetivo), aportaciones, **importe objetivo de solo lectura en la tarjeta**, cuota con −/+ (25 €). Caso de uso `EstimateSavings` con tests. *Aceptación:* estimación se actualiza al cambiar objetivo o cuota.
+- [x] **T3.1 Planes de ahorro.** CRUD de planes, hoja de crear/editar (nombre + importe objetivo), aportaciones, **importe objetivo de solo lectura en la tarjeta**, cuota con −/+ (25 €). Caso de uso `EstimateSavings` con tests. *Aceptación:* estimación se actualiza al cambiar objetivo o cuota.
 - [ ] **T3.2 `ProgressNeonBar`.** Componente animado (5.4) usado en Inicio y Ahorro, con soporte de reducción de movimiento. *Aceptación:* animación fluida; sin animación si el sistema la desactiva.
 - [ ] **T3.3 Varios planes y prioridad.** Reordenar, plan activo. *Aceptación:* Inicio muestra el plan activo.
 - [ ] **T3.4 Presupuestos.** CRUD, barra por colores, avisos 80/100 % una vez al mes. *Aceptación:* tests de umbrales.

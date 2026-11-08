@@ -2,6 +2,7 @@ package com.mipatrimonio.app.feature.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,6 +39,8 @@ import com.mipatrimonio.app.R
 import com.mipatrimonio.app.core.database.entity.TransactionEntity
 import com.mipatrimonio.app.core.model.TransactionType
 import com.mipatrimonio.app.core.money.Money
+import com.mipatrimonio.app.core.ui.components.NeonButton
+import com.mipatrimonio.app.core.ui.components.NeonButtonText
 import com.mipatrimonio.app.core.ui.components.NeonCard
 import com.mipatrimonio.app.core.ui.components.ScreenTitle
 import com.mipatrimonio.app.core.ui.components.accentColor
@@ -45,8 +48,12 @@ import com.mipatrimonio.app.core.ui.components.label
 import com.mipatrimonio.app.core.ui.theme.MiPatrimonioTheme
 import com.mipatrimonio.app.core.ui.theme.NeonColor
 import com.mipatrimonio.app.core.ui.theme.NeonShape
+import com.mipatrimonio.app.domain.usecase.ActivePlanSummary
 import com.mipatrimonio.app.domain.usecase.GetMonthlySummary
 import com.mipatrimonio.app.domain.usecase.MonthlySummary
+import com.mipatrimonio.app.domain.usecase.SavingsStatus
+import com.mipatrimonio.app.feature.savings.toMonthYearLabel
+import kotlin.math.roundToInt
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -66,13 +73,14 @@ private val ShortDateFormatter: DateTimeFormatter =
 fun HomeScreen(
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
+    onOpenSavings: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.refreshMonth()
     }
     MiPatrimonioTheme {
-        HomeContent(state = state, modifier = modifier)
+        HomeContent(state = state, modifier = modifier, onOpenSavings = onOpenSavings)
     }
 }
 
@@ -80,6 +88,7 @@ fun HomeScreen(
 fun HomeContent(
     state: HomeUiState,
     modifier: Modifier = Modifier,
+    onOpenSavings: () -> Unit = {},
 ) {
     val summary = state.summary
     val month = summary?.month ?: YearMonth.now()
@@ -106,6 +115,9 @@ fun HomeContent(
 
         Spacer(modifier = Modifier.height(16.dp))
         BalanceCard(summary)
+
+        Spacer(modifier = Modifier.height(20.dp))
+        ActiveSavingsPanel(plan = summary.activePlan, onOpenSavings = onOpenSavings)
 
         Spacer(modifier = Modifier.height(20.dp))
         BreakdownCard(summary)
@@ -387,6 +399,76 @@ private fun formatMonth(month: YearMonth): String = month.atDay(1).format(MonthF
 
 private fun formatShortDate(epochDay: Long): String =
     LocalDate.ofEpochDay(epochDay).format(ShortDateFormatter)
+
+/** Panel del plan activo en Inicio (§8.1, T3.1). */
+@Composable
+private fun ActiveSavingsPanel(plan: ActivePlanSummary?, onOpenSavings: () -> Unit) {
+    if (plan == null) {
+        NeonButton(onClick = onOpenSavings, modifier = Modifier.fillMaxWidth()) {
+            NeonButtonText(text = stringResource(R.string.savings_create_plan))
+        }
+        return
+    }
+    val progress = if (plan.targetCents > 0L) {
+        (plan.contributedCents.toDouble() / plan.targetCents.toDouble()).toFloat().coerceIn(0f, 1f)
+    } else 0f
+    val percent = (progress * 100f).roundToInt()
+
+    NeonCard(glowColor = NeonColor.neonGreen, modifier = Modifier.fillMaxWidth().clickable { onOpenSavings() }) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = stringResource(R.string.home_savings_plan_active),
+                    color = NeonColor.muted,
+                    style = MaterialTheme.typography.labelSmall,
+                )
+                Text(
+                    text = "$percent%",
+                    color = NeonColor.neonCyan,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
+            Text(text = plan.name, color = NeonColor.ink, style = MaterialTheme.typography.titleMedium)
+            HomeSimpleProgressBar(progress = progress)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(
+                    text = "${Money.format(plan.contributedCents)} / ${Money.format(plan.targetCents)}",
+                    color = NeonColor.ink,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                val monthsText = if (plan.estimate.goalReached) {
+                    stringResource(R.string.savings_reaches_now)
+                } else {
+                    val tpl = if (plan.estimate.monthsEstimated == 1) R.string.home_savings_month_short else R.string.home_savings_months_short
+                    stringResource(tpl, plan.estimate.monthsEstimated, plan.estimate.targetYearMonth.toMonthYearLabel())
+                }
+                Text(text = monthsText, color = NeonColor.muted, style = MaterialTheme.typography.bodySmall)
+            }
+            val (statusText, statusColor, statusBg) = when (plan.estimate.status) {
+                SavingsStatus.BEHIND -> Triple(stringResource(R.string.savings_status_behind), NeonColor.expenseRed, NeonColor.expenseRed.copy(alpha = 0.15f))
+                SavingsStatus.AHEAD -> Triple(stringResource(R.string.savings_status_ahead), NeonColor.neonGreen, NeonColor.neonGreen.copy(alpha = 0.15f))
+                SavingsStatus.ON_TRACK -> Triple(stringResource(R.string.savings_status_on_track), NeonColor.neonGreen, NeonColor.neonGreen.copy(alpha = 0.15f))
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(NeonShape.chipRadius))
+                    .background(statusBg)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+            ) {
+                Text(text = statusText, style = MaterialTheme.typography.bodySmall, color = statusColor)
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeSimpleProgressBar(progress: Float) {
+    val shape = RoundedCornerShape(8.dp)
+    Box(modifier = Modifier.fillMaxWidth().height(10.dp).clip(shape).background(NeonColor.track)) {
+        Box(modifier = Modifier.fillMaxWidth(progress.coerceIn(0f, 1f)).height(10.dp).clip(shape).background(NeonColor.neonGreen))
+    }
+}
 
 @Preview(showBackground = true, backgroundColor = 0xFF070A12)
 @Composable

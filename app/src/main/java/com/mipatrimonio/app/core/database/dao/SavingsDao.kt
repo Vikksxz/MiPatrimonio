@@ -1,10 +1,8 @@
 package com.mipatrimonio.app.core.database.dao
 
 import androidx.room.Dao
-import androidx.room.Delete
 import androidx.room.Embedded
 import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Relation
 import androidx.room.Transaction
@@ -13,11 +11,22 @@ import com.mipatrimonio.app.core.database.entity.PlanContributionEntity
 import com.mipatrimonio.app.core.database.entity.SavingsPlanEntity
 import kotlinx.coroutines.flow.Flow
 
+/** Plan con sus aportaciones (relación 1:N). */
+data class PlanWithContributions(
+    @Embedded val plan: SavingsPlanEntity,
+    @Relation(parentColumn = "id", entityColumn = "planId")
+    val contributions: List<PlanContributionEntity>,
+)
+
 @Dao
 interface SavingsDao {
 
     @Query("SELECT * FROM savings_plans ORDER BY priority ASC, createdAt ASC")
     fun observePlans(): Flow<List<SavingsPlanEntity>>
+
+    @Transaction
+    @Query("SELECT * FROM savings_plans ORDER BY priority ASC, createdAt ASC")
+    fun observePlansWithContributions(): Flow<List<PlanWithContributions>>
 
     @Query("SELECT * FROM savings_plans WHERE isActive = 1 LIMIT 1")
     fun observeActivePlan(): Flow<SavingsPlanEntity?>
@@ -31,6 +40,9 @@ interface SavingsDao {
     @Query("SELECT SUM(amountCents) FROM plan_contributions WHERE planId = :planId")
     fun sumContributed(planId: Long): Flow<Long?>
 
+    @Query("SELECT SUM(amountCents) FROM plan_contributions WHERE planId = :planId")
+    suspend fun getContributed(planId: Long): Long?
+
     @Query("SELECT SUM(amountCents) FROM plan_contributions WHERE date >= :from AND date < :to")
     fun observeMonthlyContributed(from: Long, to: Long): Flow<Long?>
 
@@ -42,6 +54,18 @@ interface SavingsDao {
 
     @Update
     suspend fun updatePlan(plan: SavingsPlanEntity): Int
+
+    @Query("UPDATE savings_plans SET isActive = 0")
+    suspend fun clearActive()
+
+    @Transaction
+    suspend fun setActivePlan(planId: Long) {
+        clearActive()
+        activatePlan(planId)
+    }
+
+    @Query("UPDATE savings_plans SET isActive = 1 WHERE id = :planId")
+    suspend fun activatePlan(planId: Long)
 
     @Transaction
     suspend fun deletePlanWithContributions(planId: Long) {
