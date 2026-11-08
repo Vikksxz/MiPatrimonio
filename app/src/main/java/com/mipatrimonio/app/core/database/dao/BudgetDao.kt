@@ -26,6 +26,10 @@ interface BudgetDao {
     @Query("SELECT * FROM budgets")
     fun observeWithCategory(): Flow<List<BudgetWithCategory>>
 
+    @Transaction
+    @Query("SELECT * FROM budgets")
+    suspend fun getAllWithCategory(): List<BudgetWithCategory>
+
     data class BudgetWithCategory(
         @Embedded val budget: BudgetEntity,
         @Relation(parentColumn = "categoryId", entityColumn = "id") val category: CategoryEntity?

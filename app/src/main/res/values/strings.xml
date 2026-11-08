@@ -78,10 +78,34 @@
     <string name="savings_move_up">Subir prioridad</string>
     <string name="savings_move_down">Bajar prioridad</string>
 
-    <!-- Notificaciones / canales -->
+    <!-- Notificaciones / canales (§12) -->
+    <string name="channel_budgets">Presupuestos</string>
+    <string name="channel_savings">Ahorro</string>
     <string name="channel_subscriptions">Suscripciones y recurrentes</string>
+    <string name="channel_reminders">Recordatorios</string>
+    <string name="channel_reports">Informes</string>
     <string name="recurring_reminder_title">Suscripción próxima</string>
     <string name="recurring_reminder_text">%1$s: %2$s se cobra el %3$s</string>
+
+    <!-- Alertas presupuesto (§7.4, T3.6) -->
+    <string name="budget_notify_80">Has alcanzado el 80 %% de «%1$s»: %2$s de %3$s</string>
+    <string name="budget_notify_100">Has superado el presupuesto de «%1$s»: %2$s de %3$s</string>
+
+    <!-- Alertas ahorro (§7.3, T3.6) -->
+    <string name="savings_notify_ahead">Vas por delante: alcanzarás «%1$s» en %2$d meses (%3$s).</string>
+    <string name="savings_notify_behind">Con tus gastos actuales no llegas a la cuota de «%1$s». Baja la cuota o reduce gasto.</string>
+
+    <!-- Permiso y pruebas de avisos (T3.6) -->
+    <string name="notifications_section_title">Avisos</string>
+    <string name="notifications_permission_explanation">MiPatrimonio usa avisos para presupuestos, ahorro y suscripciones. Se piden solo cuando tú lo activas.</string>
+    <string name="notifications_enable">Activar avisos</string>
+    <string name="notifications_enabled">Avisos activados</string>
+    <string name="notifications_test">Enviar avisos de prueba</string>
+    <string name="notifications_test_savings_body">Aviso de prueba de ahorro: todo funciona correctamente.</string>
+    <string name="notifications_test_budget_body">Aviso de prueba de presupuesto: todo funciona correctamente.</string>
+    <string name="notifications_reliability">Fiabilidad de avisos</string>
+    <string name="notifications_reliability_hint">En algunos móviles (como REDMAGIC OS) conviene desactivar la optimización de batería para recibir avisos en segundo plano.</string>
+    <string name="notifications_open_battery_settings">Abrir ajustes de batería</string>
 
     <!-- Presupuestos (T3.4) -->
     <string name="budgets_title">Presupuestos por categoría</string>

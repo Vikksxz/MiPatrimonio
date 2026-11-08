@@ -7,6 +7,7 @@ import androidx.work.WorkerParameters
 import com.mipatrimonio.app.core.database.dao.RecurringDao
 import com.mipatrimonio.app.core.notifications.RecurringNotifier
 import com.mipatrimonio.app.domain.usecase.ProcessRecurringRules
+import com.mipatrimonio.app.feature.alerts.AlertsWorker
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.time.LocalDate
@@ -34,6 +35,8 @@ class RecurringWorker @AssistedInject constructor(
                     RecurringNotifier.notifyUpcoming(applicationContext, rule, next)
                 }
             }
+            // §12: tras ejecutar RecurringWorker, lanzar comprobaciones de alertas.
+            AlertsWorker.enqueueNow(applicationContext)
             Result.success()
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e

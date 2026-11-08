@@ -21,15 +21,7 @@ object RecurringNotifier {
     private val dateFmt = DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag("es-ES"))
 
     fun ensureChannels(context: Context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val nm = context.getSystemService(NotificationManager::class.java)
-            val ch = NotificationChannel(
-                CHANNEL_SUBSCRIPTIONS,
-                context.getString(R.string.channel_subscriptions),
-                NotificationManager.IMPORTANCE_DEFAULT,
-            )
-            nm.createNotificationChannel(ch)
-        }
+        AppNotificationChannels.createAll(context)
     }
 
     fun notifyUpcoming(context: Context, rule: RecurringEntity, nextDate: LocalDate) {

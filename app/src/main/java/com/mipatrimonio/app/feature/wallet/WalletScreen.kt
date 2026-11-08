@@ -1,6 +1,10 @@
 package com.mipatrimonio.app.feature.wallet
 
+import android.Manifest
+import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -39,6 +43,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DatePickerDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.font.FontWeight
@@ -75,6 +80,9 @@ import com.mipatrimonio.app.core.model.CardKind
 import com.mipatrimonio.app.core.model.RecurrencePeriod
 import com.mipatrimonio.app.core.model.TransactionType
 import com.mipatrimonio.app.core.money.Money
+import com.mipatrimonio.app.core.notifications.BudgetNotifier
+import com.mipatrimonio.app.core.notifications.NotificationPermission
+import com.mipatrimonio.app.core.notifications.SavingsNotifier
 import com.mipatrimonio.app.domain.usecase.RecurringSchedule
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -272,6 +280,7 @@ fun WalletContent(
                 RecurringRow(r, dateFmt, onClick = { onEditRecurring(r) })
             }
         }
+        item { NotificationsSection() }
         item { Box(Modifier.padding(bottom = 16.dp)) }
     }
 }
@@ -476,6 +485,71 @@ private fun RecurringFormSheet(
                 }
             },
         )
+    }
+}
+
+@Composable
+private fun NotificationsSection() {
+    val context = LocalContext.current
+    var granted by remember { mutableStateOf(NotificationPermission.isGranted(context)) }
+    var showRationale by remember { mutableStateOf(false) }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { isGranted -> granted = isGranted }
+
+    NeonCard(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = stringResource(R.string.notifications_section_title),
+                color = NeonColor.ink,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = stringResource(R.string.notifications_permission_explanation),
+                color = NeonColor.muted,
+                style = MaterialTheme.typography.bodySmall,
+            )
+            if (NotificationPermission.required() && !granted) {
+                if (!showRationale) {
+                    NeonButton(onClick = { showRationale = true }, modifier = Modifier.fillMaxWidth()) {
+                        NeonButtonText(stringResource(R.string.notifications_enable))
+                    }
+                } else {
+                    Text(
+                        text = stringResource(R.string.notifications_permission_explanation),
+                        color = NeonColor.chipText,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    NeonButton(
+                        onClick = {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { NeonButtonText(stringResource(R.string.notifications_enable)) }
+                }
+            } else {
+                Text(stringResource(R.string.notifications_enabled), color = NeonColor.neonGreen, style = MaterialTheme.typography.bodySmall)
+            }
+
+            if (granted) {
+                NeonButton(onClick = { SavingsNotifier.notifyTest(context); BudgetNotifier.notifyTest(context) }, secondary = true, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.notifications_test), color = NeonColor.neonCyan, style = MaterialTheme.typography.labelLarge)
+                }
+            }
+
+            HorizontalDivider(color = NeonColor.line)
+            Text(stringResource(R.string.notifications_reliability), color = NeonColor.ink, style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.notifications_reliability_hint), color = NeonColor.muted, style = MaterialTheme.typography.bodySmall)
+            TextButton(onClick = {
+                val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                context.startActivity(intent)
+            }) {
+                Text(stringResource(R.string.notifications_open_battery_settings), color = NeonColor.neonCyan)
+            }
+        }
     }
 }
 

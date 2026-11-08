@@ -70,6 +70,12 @@ interface SavingsDao {
     @Query("UPDATE savings_plans SET isActive = 1 WHERE id = :planId")
     suspend fun activatePlan(planId: Long)
 
+    @Query("SELECT * FROM savings_plans WHERE isActive = 1 ORDER BY priority ASC, createdAt ASC")
+    suspend fun getActivePlans(): List<SavingsPlanEntity>
+
+    @Query("UPDATE savings_plans SET lastNotifiedState = :state, lastNotifiedMonths = :months WHERE id = :id")
+    suspend fun updateNotifiedState(id: Long, state: String, months: Int): Int
+
     @Transaction
     suspend fun deletePlanWithContributions(planId: Long) {
         deleteContributionsForPlan(planId)

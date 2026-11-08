@@ -6,6 +6,8 @@ import androidx.work.Configuration
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.mipatrimonio.app.core.notifications.AppNotificationChannels
+import com.mipatrimonio.app.feature.alerts.AlertsWorker
 import com.mipatrimonio.app.feature.recurring.RecurringWorker
 import dagger.hilt.android.HiltAndroidApp
 import java.util.concurrent.TimeUnit
@@ -13,7 +15,7 @@ import javax.inject.Inject
 
 /**
  * Clase Application de la app. Punto de entrada de Hilt y configuración de WorkManager.
- * Los canales de notificación se crearán aquí (T3.6).
+ * Canales de notificación creados al inicio (§12, T3.6).
  */
 @HiltAndroidApp
 class MiPatrimonioApp : Application(), Configuration.Provider {
@@ -28,13 +30,24 @@ class MiPatrimonioApp : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        AppNotificationChannels.createAll(this)
         scheduleRecurringWorker()
+        scheduleAlertsWorker()
     }
 
     private fun scheduleRecurringWorker() {
         val request = PeriodicWorkRequestBuilder<RecurringWorker>(24, TimeUnit.HOURS).build()
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             RecurringWorker.NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            request,
+        )
+    }
+
+    private fun scheduleAlertsWorker() {
+        val request = PeriodicWorkRequestBuilder<AlertsWorker>(24, TimeUnit.HOURS).build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            AlertsWorker.NAME,
             ExistingPeriodicWorkPolicy.KEEP,
             request,
         )

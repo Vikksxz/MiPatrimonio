@@ -1,5 +1,6 @@
 package com.mipatrimonio.app.domain.usecase
 
+import android.util.Log
 import com.mipatrimonio.app.core.database.dao.TagDao
 import com.mipatrimonio.app.core.database.dao.TransactionDao
 import com.mipatrimonio.app.core.database.entity.TransactionEntity
@@ -105,6 +106,7 @@ object TransactionFactory {
 class AddTransaction @Inject constructor(
     private val transactionDao: TransactionDao,
     private val tagDao: TagDao,
+    private val evaluateBudgetAlerts: EvaluateBudgetAlerts,
 ) {
 
     suspend operator fun invoke(
@@ -114,6 +116,13 @@ class AddTransaction @Inject constructor(
         val entity = TransactionFactory.create(input, createdAtMillis)
         val id = transactionDao.insert(entity)
         if (input.tagIds.isNotEmpty()) tagDao.replaceTagsForTransaction(id, input.tagIds)
+        if (entity.type != TransactionType.INCOME) {
+            try {
+                evaluateBudgetAlerts.run()
+            } catch (e: Exception) {
+                Log.w("AddTransaction", "No se pudieron evaluar alertas de presupuesto", e)
+            }
+        }
         return id
     }
 }
@@ -125,6 +134,7 @@ class AddTransaction @Inject constructor(
 class UpdateTransaction @Inject constructor(
     private val transactionDao: TransactionDao,
     private val tagDao: TagDao,
+    private val evaluateBudgetAlerts: EvaluateBudgetAlerts,
 ) {
 
     suspend operator fun invoke(existing: TransactionEntity, input: NewTransaction): Long {
@@ -135,6 +145,13 @@ class UpdateTransaction @Inject constructor(
         val rows = transactionDao.update(updated)
         check(rows == 1) { "El movimiento ya no existe" }
         tagDao.replaceTagsForTransaction(existing.id, input.tagIds)
+        if (updated.type != TransactionType.INCOME) {
+            try {
+                evaluateBudgetAlerts.run()
+            } catch (e: Exception) {
+                Log.w("UpdateTransaction", "No se pudieron evaluar alertas de presupuesto", e)
+            }
+        }
         return existing.id
     }
 }
