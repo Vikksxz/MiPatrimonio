@@ -729,7 +729,7 @@ Cada tarea termina con la app **compilando**. Marca `[x]` al completar.
 ### Fase 4
 - [x] **T4.1 Exportación** CSV y PDF. *Aceptación:* archivo se abre fuera de la app.
 - [x] **T4.2 Copia local** `.mpbak` (cifrada con contraseña) y restauración. *Aceptación:* verificado por George.
-- [ ] **T4.3 Copia en Drive** (`AuthorizationClient` + REST `appDataFolder`), `BackupWorker`.
+- [ ] **T4.3 Copia en Drive** (`AuthorizationClient` + REST `appDataFolder`), `BackupWorker`. **— POSPUESTA** (2026-11-08, decisión George: límites/costes Google Cloud; suficiente con exportación local selectiva T4.1/T4.2).
 - [ ] **T4.4 Widget Glance** y shortcut.
 - [ ] **T4.5 Informe mensual.**
 - [ ] **T4.6 Multimoneda.**
