@@ -722,7 +722,7 @@ Cada tarea termina con la app **compilando**. Marca `[x]` al completar.
 - [x] **T3.3 Varios planes y prioridad.** Reordenar, plan activo. *Aceptación:* Inicio muestra el plan activo.
 - [x] **T3.4 Presupuestos.** CRUD, barra por colores, avisos 80/100 % una vez al mes. *Aceptación:* tests de umbrales.
 - [x] **T3.5 Recurrentes y suscripciones.** CRUD, `RecurringWorker`, coste anual, aviso previo. *Aceptación:* tests de generación con huecos de días.
-- [ ] **T3.6 Notificaciones.** Canales, permiso, `AlertsWorker`, avisos de ahorro (7.3). *Aceptación:* se reciben avisos de prueba.
+- [x] **T3.6 Notificaciones.** Canales, permiso, `AlertsWorker`, avisos de ahorro (7.3). *Aceptación:* se reciben avisos de prueba.
 - [ ] **T3.7 Análisis.** Gráfico por categoría, comparativa mes a mes, proyección a fin de mes, fijos vs. variables. *Aceptación:* cifras verificadas con tests.
 - [ ] **T3.8 Recordatorio nocturno** configurable.
 

@@ -2,8 +2,8 @@
 
 ## Estado
 - Fase actual: 3
-- Última tarea cerrada: T3.5
-- Tarea en curso: — (siguiente: T3.6 Notificaciones, §12/§18)
+- Última tarea cerrada: T3.6
+- Tarea en curso: — (siguiente: T3.7 Análisis, §7.5/§7.7/§8.2/§18)
 
 ## Decisiones tomadas
 - (2026-11-02) Paquete: com.mipatrimonio.app
@@ -94,5 +94,6 @@
 - (2026-11-08) T3.4 CERRADA (rama `t3-4-presupuestos`): `BudgetThresholds` (§7.4, `Long` céntimos) + 8 tests de umbrales (aceptación). CRUD presupuestos por categoría en Ahorro, barras por nivel (≤79% cian, 80–99% ámbar, ≥100% rojo), tracking `notified80Month`/`notified100Month` (YYYYMM, una vez/mes/umbral; notificaciones sistema en T3.6). Fix: `SeedCallback` siembra categorías por defecto también en `onOpen` si la tabla está vacía. Integración Inicio: presupuestos bajo “Dónde se va el dinero” con barra de urgencia (más intensidad/brillo y pulso sutil ámbar/rojo, respeta reducción de movimiento). **Aceptación confirmada por George en NX779J**.
 - (2026-11-08) Mejora ahorro (1+2a, coherente §7.1, rama `fix/savings-contribution-guard-withdrawal`): aportar bloqueado si supera el disponible del mes; retirada como aportación negativa (devuelve disponible) limitada a lo ahorrado, sin movimiento en Movimientos. `GetMonthlySummary` usa `Σ aportaciones` real (puede ser negativa por retirada). **Confirmado por George en NX779J**.
 - (2026-11-08) T3.5 CERRADA (rama `t3-5-recurrentes-suscripciones`): WorkManager 2.10.0 + `androidx.hilt` work/compiler 1.4.0 (`androidxHilt`); `MiPatrimonioApp` con `HiltWorkerFactory`, worker periódico diario `RecurringWorker` (`KEEP`) e inicializador WM desactivado en manifest; `POST_NOTIFICATIONS` declarado. `RecurringSchedule` (puro, `Long`, catch-up/huecos, coste anual §7.6) + `RecurringScheduleTest` (8 tests, criterio §18); `ProcessRecurringRules` genera vencidos (`nextDate<=hoy`) con `recurringId`, evita duplicados por `recurringId+date`, avanza `nextDate` (EUR/`amountBaseCents=amountCents`). Aviso previo suscripciones cuando `daysUntil==remindDaysBefore` (canal `subscriptions`, respeta permiso, relanza `CancellationException`). CRUD en Cartera (§8.5): Suscripciones/Gastos fijos (nombre, importe, periodicidad, próxima fecha, tarjeta, categoría; fijo CASH/CARD), coste anual por suscripción y **coste anual total**. Fix: confirmación de borrado única (eliminado diálogo duplicado). `assembleDebug`+`testDebugUnitTest` OK; verificado en NX779J (UI secciones/formulario). Generación/aviso dependen de ejecución periódica del worker (lógica testeada). Revisiones FIN/REV no ejecutadas por ahorro de límites.
-- (2026-11-08) Siguiente: T3.6 Notificaciones (§12/§18).
+- (2026-11-08) T3.6 CERRADA (rama `t3-6-notificaciones`): canales §12 centralizados en `AppNotificationChannels` (`budgets`,`savings`,`subscriptions`,`reminders`,`reports`) creados en `MiPatrimonioApp`; `POST_NOTIFICATIONS` con explicación previa (no al arrancar) en Cartera→Avisos + `RequestPermission` (Android 13+) y enlace a ajustes de batería/fiabilidad §12. `AlertsWorker` diario (KEEP) evalúa presupuestos (§7.4, `EvaluateBudgetAlerts`, prioridad 100%/80%, una vez mes/umbral) y planes de ahorro (§7.3, `EvaluateSavingsAlerts`, notifica cambio de estado o ≥1 mes; `freeMonthly` neutral como UI). `RecurringWorker` encola alertas one-time tras ejecutar (§12). Alertas de presupuesto inmediatas tras guardar/editar gasto (`AddTransaction`/`UpdateTransaction`, fallo de alerta no bloquea guardado). Avisos de prueba (ahorro+presupuesto) en Cartera. `assembleDebug`+`testDebugUnitTest` OK; **aceptación verificada en NX779J** (notificaciones de prueba recibidas en canales `savings`/`budgets`).
+- (2026-11-08) Siguiente: T3.7 Análisis (§7.5, §7.7, §8.2).
 - No tocar archivos fuera del alcance de la tarea. local.properties ya está en .gitignore.
