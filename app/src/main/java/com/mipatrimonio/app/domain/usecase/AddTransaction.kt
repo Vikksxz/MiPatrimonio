@@ -8,8 +8,9 @@ import java.time.LocalDate
 import javax.inject.Inject
 
 /**
- * Datos de un movimiento introducido a mano (T1.7).
+ * Datos de un movimiento introducido a mano (T1.7) o prellenado desde OCR (T2.5).
  * El importe siempre es positivo: el signo lo da [type] (MiPatrimonio.md §6).
+ * [receiptPath] es la ruta relativa del ticket cifrado en almacenamiento privado.
  */
 data class NewTransaction(
     val type: TransactionType,
@@ -21,6 +22,7 @@ data class NewTransaction(
     val categoryId: Long? = null,
     val cardId: Long? = null,
     val note: String = "",
+    val receiptPath: String? = null,
 )
 
 /**
@@ -50,6 +52,7 @@ object TransactionFactory {
             note = input.note.trim(),
             categoryId = input.categoryId,
             cardId = if (input.type == TransactionType.CARD) input.cardId else null,
+            receiptPath = input.receiptPath?.trim()?.takeIf { it.isNotBlank() },
             createdAt = createdAtMillis,
         )
     }
