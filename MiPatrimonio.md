@@ -714,7 +714,7 @@ Cada tarea termina con la app **compilando**. Marca `[x]` al completar.
 - [x] **T2.4 `ReceiptParser`.** Reglas de la sección 9 con tests (≥ 8 casos). *Aceptación:* tests pasan.
 - [x] **T2.5 Escaneo de ticket.** Integrar ML Kit Document Scanner (con alternativa de galería) → OCR → `ReviewSheet` rellenada, con miniatura adjunta. *Aceptación:* escanear un ticket real prellena importe, fecha y comercio editables.
 - [x] **T2.6 Compartir.** `ShareReceiverActivity`, copia inmediata, `DocumentClassifier`, flujo ticket/nómina. *Aceptación:* compartir un PDF desde CamScanner abre la hoja y guarda correctamente.
-- [ ] **T2.7 Etiquetas y notas.** Tabla de etiquetas, selector en el formulario, filtro por etiqueta. *Aceptación:* etiquetar y filtrar funciona.
+- [x] **T2.7 Etiquetas y notas.** Tabla de etiquetas, selector en el formulario, filtro por etiqueta. *Aceptación:* etiquetar y filtrar funciona.
 
 ### Fase 3
 - [ ] **T3.1 Planes de ahorro.** CRUD de planes, hoja de crear/editar (nombre + importe objetivo), aportaciones, **importe objetivo de solo lectura en la tarjeta**, cuota con −/+ (25 €). Caso de uso `EstimateSavings` con tests. *Aceptación:* estimación se actualiza al cambiar objetivo o cuota.

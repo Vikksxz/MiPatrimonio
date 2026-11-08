@@ -107,6 +107,7 @@ fun TransactionsScreen(
             onActionFailureShown = viewModel::consumeActionFailed,
             onQueryChange = viewModel::setQuery,
             onTypeFilterChange = viewModel::setTypeFilter,
+            onTagFilterChange = viewModel::setTagFilter,
             onEdit = { editing = it },
             onDelete = viewModel::delete,
             onRestore = viewModel::restore,
@@ -141,6 +142,7 @@ fun TransactionsContent(
     onActionFailureShown: () -> Unit = {},
     onQueryChange: (String) -> Unit = {},
     onTypeFilterChange: (TransactionType?) -> Unit = {},
+    onTagFilterChange: (Long?) -> Unit = {},
     onEdit: (TransactionEntity) -> Unit = {},
     onDelete: (TransactionEntity) -> Unit = {},
     onRestore: (TransactionEntity) -> Unit = {},
@@ -192,6 +194,32 @@ fun TransactionsContent(
                             onTypeFilterChange(if (state.typeFilter == type) null else type)
                         },
                     )
+                }
+            }
+
+            if (state.availableTags.isNotEmpty()) {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    item(key = "tag-all") {
+                        NeonChip(
+                            text = stringResource(R.string.transactions_filter_tag_all),
+                            accent = NeonColor.neonCyan,
+                            tint = NeonColor.neonCyan.copy(alpha = 0.14f),
+                            labelColor = NeonColor.neonCyan,
+                            selected = state.tagFilterId == null,
+                            onClick = { onTagFilterChange(null) },
+                        )
+                    }
+                    items(items = state.availableTags, key = { "tag-${it.id}" }) { tag ->
+                        val selected = state.tagFilterId == tag.id
+                        NeonChip(
+                            text = tag.name,
+                            accent = if (selected) NeonColor.neonCyan else NeonColor.muted,
+                            tint = if (selected) NeonColor.neonCyan.copy(alpha = 0.18f) else NeonColor.panelAlt,
+                            labelColor = if (selected) NeonColor.neonCyan else NeonColor.chipText,
+                            selected = selected,
+                            onClick = { onTagFilterChange(if (selected) null else tag.id) },
+                        )
+                    }
                 }
             }
 

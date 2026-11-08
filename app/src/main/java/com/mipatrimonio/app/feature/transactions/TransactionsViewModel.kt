@@ -5,8 +5,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mipatrimonio.app.core.database.dao.TagDao
 import com.mipatrimonio.app.core.database.dao.TransactionDao
+import com.mipatrimonio.app.core.database.entity.TagEntity
 import com.mipatrimonio.app.core.database.entity.TransactionEntity
+import com.mipatrimonio.app.core.database.entity.TransactionTagCrossRef
 import com.mipatrimonio.app.core.model.TransactionType
 import com.mipatrimonio.app.domain.usecase.DeleteTransaction
 import com.mipatrimonio.app.domain.usecase.RestoreTransaction
@@ -26,12 +29,14 @@ data class TransactionsDayGroup(
     val transactions: List<TransactionEntity>,
 )
 
-/** Estado de Movimientos: buscador, filtro por tipo y lista agrupada. */
+/** Estado de Movimientos: buscador, filtros y lista agrupada. */
 data class TransactionsUiState(
     val groups: List<TransactionsDayGroup> = emptyList(),
     val hasAnyTransactions: Boolean = false,
     val query: String = "",
     val typeFilter: TransactionType? = null,
+    val tagFilterId: Long? = null,
+    val availableTags: List<TagEntity> = emptyList(),
     val loaded: Boolean = false,
 )
 
@@ -42,26 +47,36 @@ data class TransactionsUiState(
 @HiltViewModel
 class TransactionsViewModel @Inject constructor(
     transactionDao: TransactionDao,
+    tagDao: TagDao,
     private val deleteTransaction: DeleteTransaction,
     private val restoreTransaction: RestoreTransaction,
 ) : ViewModel() {
 
     private val query = MutableStateFlow("")
     private val typeFilter = MutableStateFlow<TransactionType?>(null)
+    private val tagFilter = MutableStateFlow<Long?>(null)
 
     var actionFailed by mutableStateOf(false)
         private set
 
+    private val base = combine(transactionDao.observeAll(), query, typeFilter, tagFilter) { all, q, t, tag ->
+        TxFilterInput(all, q, t, tag)
+    }
+
     val uiState: StateFlow<TransactionsUiState> = combine(
-        transactionDao.observeAll(),
-        query,
-        typeFilter,
-    ) { all, currentQuery, currentType ->
+        base,
+        tagDao.observeAll(),
+        tagDao.observeAllCrossRefs(),
+    ) { input, tags, crossRefs ->
+        val txIdsForTag = if (input.tagFilter == null) null
+        else crossRefs.asSequence().filter { it.tagId == input.tagFilter }.map { it.transactionId }.toSet()
         TransactionsUiState(
-            groups = buildDayGroups(all, currentQuery, currentType),
-            hasAnyTransactions = all.isNotEmpty(),
-            query = currentQuery,
-            typeFilter = currentType,
+            groups = buildDayGroups(input.all, input.query, input.typeFilter, input.tagFilter, txIdsForTag),
+            hasAnyTransactions = input.all.isNotEmpty(),
+            query = input.query,
+            typeFilter = input.typeFilter,
+            tagFilterId = input.tagFilter,
+            availableTags = tags,
             loaded = true,
         )
     }.stateIn(
@@ -70,13 +85,18 @@ class TransactionsViewModel @Inject constructor(
         initialValue = TransactionsUiState(),
     )
 
-    fun setQuery(value: String) {
-        query.value = value
-    }
+    fun setQuery(value: String) { query.value = value }
 
-    fun setTypeFilter(value: TransactionType?) {
-        typeFilter.value = value
-    }
+    fun setTypeFilter(value: TransactionType?) { typeFilter.value = value }
+
+    fun setTagFilter(value: Long?) { tagFilter.value = value }
+
+    private data class TxFilterInput(
+        val all: List<TransactionEntity>,
+        val query: String,
+        val typeFilter: TransactionType?,
+        val tagFilter: Long?,
+    )
 
     fun delete(transaction: TransactionEntity) {
         viewModelScope.launch {
@@ -101,18 +121,20 @@ class TransactionsViewModel @Inject constructor(
     companion object {
 
         /**
-         * Filtra por tipo y por texto (comercio o nota, sin distinguir mayúsculas)
-         * y agrupa por día, con el más reciente primero. Función pura, testeable.
+         * Filtra por tipo, texto y etiqueta; agrupa por día (más reciente primero). Pura, testeable.
          */
         fun buildDayGroups(
             all: List<TransactionEntity>,
             query: String,
             typeFilter: TransactionType?,
+            tagFilterId: Long? = null,
+            txIdsForTag: Set<Long>? = null,
         ): List<TransactionsDayGroup> {
             val term = query.trim()
             return all.asSequence()
                 .filter { transaction ->
                     (typeFilter == null || transaction.type == typeFilter) &&
+                        (tagFilterId == null || txIdsForTag?.contains(transaction.id) == true) &&
                         (
                             term.isEmpty() ||
                                 transaction.merchant.contains(term, ignoreCase = true) ||

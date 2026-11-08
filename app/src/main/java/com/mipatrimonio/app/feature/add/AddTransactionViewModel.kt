@@ -9,9 +9,11 @@ import androidx.lifecycle.viewModelScope
 import com.mipatrimonio.app.core.database.dao.CardDao
 import com.mipatrimonio.app.core.database.dao.CategoryDao
 import com.mipatrimonio.app.core.database.dao.DocumentDao
+import com.mipatrimonio.app.core.database.dao.TagDao
 import com.mipatrimonio.app.core.database.entity.CardEntity
 import com.mipatrimonio.app.core.database.entity.CategoryEntity
 import com.mipatrimonio.app.core.database.entity.DocumentEntity
+import com.mipatrimonio.app.core.database.entity.TagEntity
 import com.mipatrimonio.app.core.database.entity.TransactionEntity
 import com.mipatrimonio.app.core.model.DocumentKind
 import com.mipatrimonio.app.core.model.IncomeKind
@@ -72,12 +74,16 @@ class AddTransactionViewModel @Inject constructor(
     private val receiptImageStore: ReceiptImageStore,
     private val documentStore: EncryptedDocumentStore,
     private val documentDao: DocumentDao,
+    private val tagDao: TagDao,
 ) : ViewModel() {
 
     val cards: StateFlow<List<CardEntity>> = cardDao.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val categories: StateFlow<List<CategoryEntity>> = categoryDao.observeAll()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val tags: StateFlow<List<TagEntity>> = tagDao.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     var saveFailed by mutableStateOf(false)
@@ -217,4 +223,19 @@ class AddTransactionViewModel @Inject constructor(
                 sameDate || sameTitle
             }
         }
+
+    suspend fun getTagIdsForTransaction(txId: Long): List<Long> = withContext(Dispatchers.IO) {
+        tagDao.getTagIdsForTransaction(txId)
+    }
+
+    fun createTag(name: String, onCreated: (Long) -> Unit) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        viewModelScope.launch {
+            val id = withContext(Dispatchers.IO) {
+                tagDao.getByName(trimmed)?.id ?: tagDao.insert(TagEntity(name = trimmed))
+            }
+            onCreated(id)
+        }
+    }
 }
