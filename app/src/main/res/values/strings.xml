@@ -31,6 +31,17 @@
     <string name="add_sheet_title">Añadir</string>
     <string name="placeholder_under_construction">En construcción</string>
 
+    <!-- T1.10: bloqueo de la app -->
+    <string name="lock_locked">Aplicación bloqueada</string>
+    <string name="lock_message">Desbloquea con tu huella o el PIN del dispositivo para ver tus finanzas.</string>
+    <string name="lock_unlock">Desbloquear</string>
+    <string name="lock_biometric_title">MiPatrimonio</string>
+    <string name="lock_biometric_subtitle">Confirma tu identidad</string>
+    <string name="lock_error">No se pudo verificar. Inténtalo de nuevo.</string>
+    <string name="lock_unavailable_title">Sin bloqueo configurado</string>
+    <string name="lock_unavailable_message">Este móvil no tiene huella ni PIN configurados. Añádelos en los ajustes del sistema para proteger la app.</string>
+    <string name="lock_continue">Continuar</string>
+
     <!-- T1.4: categorías seed (10 gastos + 2 ingresos) -->
     <string name="cat_food">Alimentación</string>
     <string name="cat_dining">Restauración</string>

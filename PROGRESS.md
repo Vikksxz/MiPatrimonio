@@ -2,8 +2,8 @@
 
 ## Estado
 - Fase actual: 1
-- Última tarea cerrada: T1.9
-- Tarea en curso: T1.10 Bloqueo (sin empezar)
+- Última tarea cerrada: T1.10
+- Tarea en curso: T2.1 CryptoManager (sin empezar)
 
 ## Decisiones tomadas
 - (2026-11-02) Paquete: com.mipatrimonio.app
@@ -18,6 +18,7 @@
 - (2026-11-08) T1.9: `GetMonthlySummary.build` es una función pura (`domain/usecase`) que suma `amountBaseCents` por tipo, filtra por `YearMonth`, calcula `expenseCents`/`availableCents` y recorta los recientes a 4. `GetMonthlySummary.segmentWeights` calcula los pesos de la barra (mínimo 6 % por tipo, suma 1) también como función pura y con tests.
 - (2026-11-08) T1.9: `HomeViewModel` guarda el mes en un `MutableStateFlow<YearMonth>` y `HomeScreen` lo refresca con `LifecycleEventEffect(ON_RESUME)`; así no se queda en el mes anterior al volver a Inicio. `HomeUiState.loaded` se usa para no pintar ceros en el primer frame.
 - (2026-11-08) T1.9: `label()`/`accentColor()` de `TransactionType` viven en `core/ui/components/TransactionTypeUi.kt` y los reutilizan Movimientos e Inicio. Tokens nuevos de la tarjeta de saldo en `NeonColor`: `balanceBorder #2B3A6E`, `balanceGradientStart #0B1B3A`, `balanceGradientEnd #1D0B3A`.
+- (2026-11-08) T1.10: `SettingsRepository` en DataStore guarda `lock_enabled`, `lock_timeout_minutes` (0/1/5), `hide_content`. `LockPolicy.shouldLock` (función pura) decide cuándo bloquear. `AppLockManager` gestiona el ciclo foreground/background con `authInProgress` para no rebloquear al volver del diálogo biométrico. `LockScreen` usa `BiometricPrompt` (huella/PIN/patrón) con fallback "Continuar" si no hay autenticador. `MainActivity` aplica `FLAG_SECURE` según `hide_content` y respeta `isChangingConfigurations` en `onStop`. Manifest con `allowBackup="false"`, `dataExtractionRules`/`fullBackupContent` excluyendo todo. Icono adaptativo añadido (tres barras neón cian/violeta/magenta sobre fondo `#0B0F1A`). 6 tests de `LockPolicy`.
 
 ## Dependencias (nombres exactos, versiones en libs.versions.toml)
 - AGP 9.5.0, Gradle 9.6.0, Kotlin 2.2.10 (embebido en AGP), KSP 2.3.13, Hilt 2.60.1, Room 2.8.5, DataStore 1.3.0, Navigation Compose 2.10.2, Compose BOM 2026.09.00, material-icons-core (BOM), core-ktx 1.19.1, activity-compose 1.13.0, lifecycle 2.11.0, coroutines 1.11.0, serialization 1.12.0, biometric 1.1.0
@@ -52,6 +53,10 @@
 - (T1.9) El saldo grande usa `maxLines = 1` con elipsis: un disponible de muchos millones se corta. Considerar autosize o dos líneas en T4.9.
 - (T1.9) Faltan en Inicio el plan de ahorro activo (§8.1.3, T3.1), los avisos (T3.4/T3.6) y la proyección a fin de mes (§7.5). El orden vertical está preparado para insertarlos.
 - (T1.9) La barra por tipo y los puntos de la leyenda son decorativos (el tipo también se escribe), y no hay elementos interactivos en Inicio todavía; al añadir el botón del plan habrá que darle 44 dp.
+- (T1.10) `LockScreen` usa `BiometricPrompt.AuthenticationCallback` en `LaunchedEffect`: si el usuario cancela el prompt, `onAuthenticationError` con `ERROR_USER_CANCELED` no rebloquea (queda en la pantalla de bloqueo con botón "Desbloquear"). Si falla por otros códigos, muestra error y permite reintentar.
+- (T1.10) `FLAG_SECURE` se aplica en `onStart`/`onStop` leyendo DataStore; si el usuario cambia el ajuste mientras la app está en primer plano, el flag se actualiza en la siguiente emisión del flow (correcto).
+- (T1.10) `LockPolicyTest` cubre límites (0, 1, 5 min) pero no prueba `elapsedMillis` nulo con `unlockedInSession=true` y `enabled=true` (no bloquea, correcto por "sin tiempo en segundo plano").
+- (T1.10) El icono adaptativo usa `ic_launcher_background.xml` (`#0B0F1A`), `ic_launcher_foreground.xml` (tres barras neón) y `ic_launcher_monochrome.xml` (blanco). `android:roundIcon` apunta al mismo adaptive-icon.
 
 ## Notas para el próximo modelo
 - (2026-11-02) T1.1 cerrada: pantalla vacía oscura compilando.
@@ -69,5 +74,6 @@
 - (2026-11-08) T1.8 CERRADA (rama `t1-8-lista-movimientos`): buscador, chips Todos/Metálico/Tarjeta/Suscripciones/Ingresos, lista agrupada por día, edición reutilizando `ReviewSheet` (precarga con `Money.formatNumber`, "Guardar cambios", "Eliminar movimiento" con confirmación) y deslizar para borrar con deshacer (10 s). Revisión de `@reasoning-expert` aplicada: `applyTo` conserva campos no editables y cualquier campo futuro, `UpdateTransaction` relee la fila, borrar/deshacer capturan errores y avisan, estado `loaded` para no mostrar el vacío en el primer frame, icono del swipe decorativo y botones de la hoja a 44 dp. Probado en NX779J: búsqueda insensible a mayúsculas, filtro Tarjeta, edición con importe precargado y cambio guardado (BD 2.650 céntimos, `cardId` 1), borrado con deshacer verificado, borrado desde la hoja con confirmación, estado "Sin resultados" y persistencia tras `force-stop`. 64 tests unitarios en verde.
 - IMPORTANTE: el dispositivo tiene datos reales de George (p. ej. "nómina noviembre"); no borrarlos en las pruebas. Crear movimientos propios y eliminarlos.
 - (2026-11-08) T1.9 CERRADA (rama `t1-9-inicio`): tarjeta de saldo con degradado azul-violeta, borde `#2B3A6E` y brillo cian (Disponible grande en Orbitron, mini-paneles de Ingresos/Gastos), barra segmentada por tipo con mínimo visible y leyenda de 4 filas, y los 4 últimos movimientos con barra vertical de 6 dp y su brillo. Caso de uso `GetMonthlySummary` + `segmentWeights` con 14 tests. Revisión de `@financial-auditor`, `@ui-reviewer` y `@reasoning-expert` aplicada: pesos normalizados (la barra ya no deja hueco con gasto 0), lógica de la barra en dominio, refresco del mes al volver a Inicio, `loaded` consumido y texto del estado vacío sin "este mes". Probado en NX779J: noviembre con ingresos 0 y gasto 12,50 → disponible −12,50; ingreso temporal de 100 € → disponible 87,50 y leyenda 100,00; movimiento de prueba eliminado y datos reales intactos. 78 tests unitarios en verde.
-- (2026-11-08) Siguiente: T1.10 Bloqueo y seguridad (BiometricPrompt + PIN, FLAG_SECURE, `dataExtractionRules`/`fullBackupContent`).
+- (2026-11-08) T1.10 CERRADA (rama `t1-10-bloqueo`): bloqueo con `BiometricPrompt` (huella/PIN/patrón), timeouts configurables (inmediato/1/5 min), pantalla de bloqueo con estética neón y fallback "Continuar" si no hay autenticador. `FLAG_SECURE` activado por defecto (`hide_content=true`), `allowBackup=false`, reglas de extracción excluyendo todo. `AppLockManager` evita rebloqueo al volver del diálogo y respeta rotaciones. Icono adaptativo añadido. 6 tests de `LockPolicy`. Probado en NX779J: bloqueo al abrir, cancelar → pantalla "Aplicación bloqueada", "Desbloquear" reabre prompt; desactivar `lock_enabled` en DataStore → entra directo; captura de pantalla con `FLAG_SECURE` sale negra. 84 tests unitarios en verde.
+- (2026-11-08) Siguiente: T2.1 `CryptoManager` (AES-GCM con Keystore, cifrar/descifrar streams, tests instrumentados).
 - No tocar archivos fuera del alcance de la tarea. local.properties ya está en .gitignore.
