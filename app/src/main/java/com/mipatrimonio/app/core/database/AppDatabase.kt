@@ -9,8 +9,12 @@ import com.mipatrimonio.app.core.database.dao.BudgetDao
 import com.mipatrimonio.app.core.database.dao.CardDao
 import com.mipatrimonio.app.core.database.dao.CategoryDao
 import com.mipatrimonio.app.core.database.dao.DocumentDao
+import com.mipatrimonio.app.core.database.dao.ExchangeRateDao
+import com.mipatrimonio.app.core.database.dao.PersonDao
 import com.mipatrimonio.app.core.database.dao.RecurringDao
 import com.mipatrimonio.app.core.database.dao.SavingsDao
+import com.mipatrimonio.app.core.database.dao.SharedExpenseDao
+import com.mipatrimonio.app.core.database.dao.SharedShareDao
 import com.mipatrimonio.app.core.database.dao.TagDao
 import com.mipatrimonio.app.core.database.dao.TransactionDao
 import com.mipatrimonio.app.core.database.entity.BudgetEntity
@@ -65,6 +69,10 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun budgetDao(): BudgetDao
     abstract fun documentDao(): DocumentDao
     abstract fun tagDao(): TagDao
+    abstract fun exchangeRateDao(): ExchangeRateDao
+    abstract fun personDao(): PersonDao
+    abstract fun sharedExpenseDao(): SharedExpenseDao
+    abstract fun sharedShareDao(): SharedShareDao
 
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null

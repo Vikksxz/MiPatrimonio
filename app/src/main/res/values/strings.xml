@@ -132,6 +132,25 @@
     <string name="export_pdf_projection">Proyección de gasto</string>
     <string name="export_pdf_footer">Generado por MiPatrimonio</string>
 
+    <!-- Copia local cifrada (T4.2, §13) -->
+    <string name="backup_section_title">Copia de seguridad</string>
+    <string name="backup_section_hint">Guarda o restaura todos tus datos en un archivo .mpbak cifrado con contraseña.</string>
+    <string name="backup_create">Crear copia local</string>
+    <string name="backup_restore">Restaurar copia</string>
+    <string name="backup_password">Contraseña</string>
+    <string name="backup_password_confirm">Confirmar contraseña</string>
+    <string name="backup_password_hint">Mínimo 8 caracteres. La app no puede recuperar la contraseña si la olvidas.</string>
+    <string name="backup_password_short">La contraseña debe tener al menos 8 caracteres</string>
+    <string name="backup_password_mismatch">Las contraseñas no coinciden</string>
+    <string name="backup_password_restore_hint">Introduce la contraseña de la copia</string>
+    <string name="backup_restore_confirm_title">Restaurar copia</string>
+    <string name="backup_restore_confirm_text">Esto borrará todos tus datos actuales y los sustituirá por los de la copia. Esta acción no se puede deshacer.</string>
+    <string name="backup_restore_confirm_action">Restaurar</string>
+    <string name="backup_in_progress">Procesando copia…</string>
+    <string name="backup_created">Copia creada correctamente</string>
+    <string name="backup_restored">Copia restaurada correctamente</string>
+    <string name="backup_error">No se pudo completar la copia. Comprueba la contraseña y el archivo.</string>
+
     <!-- Presupuestos (T3.4) -->
     <string name="budgets_title">Presupuestos por categoría</string>
     <string name="budgets_empty">Sin presupuestos. Añade un límite por categoría.</string>

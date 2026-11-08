@@ -3,6 +3,7 @@ package com.mipatrimonio.app.core.database.dao
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.mipatrimonio.app.core.database.entity.DocumentEntity
@@ -14,6 +15,9 @@ interface DocumentDao {
 
     @Query("SELECT * FROM documents ORDER BY date DESC")
     fun observeAll(): Flow<List<DocumentEntity>>
+
+    @Query("SELECT * FROM documents ORDER BY date DESC")
+    suspend fun getAll(): List<DocumentEntity>
 
     @Query("SELECT * FROM documents WHERE kind = :kind ORDER BY date DESC")
     fun observeByKind(kind: DocumentKind): Flow<List<DocumentEntity>>
@@ -30,9 +34,15 @@ interface DocumentDao {
     @Insert
     suspend fun insert(document: DocumentEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(items: List<DocumentEntity>)
+
     @Update
     suspend fun update(document: DocumentEntity): Int
 
     @Delete
     suspend fun delete(document: DocumentEntity)
+
+    @Query("DELETE FROM documents")
+    suspend fun deleteAll()
 }

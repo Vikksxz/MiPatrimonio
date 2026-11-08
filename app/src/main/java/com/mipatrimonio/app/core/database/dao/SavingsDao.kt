@@ -3,6 +3,7 @@ package com.mipatrimonio.app.core.database.dao
 import androidx.room.Dao
 import androidx.room.Embedded
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Relation
 import androidx.room.Transaction
@@ -87,4 +88,23 @@ interface SavingsDao {
 
     @Query("DELETE FROM savings_plans WHERE id = :id")
     suspend fun deletePlan(id: Long)
+
+    // Backup/restore (T4.2)
+    @Query("SELECT * FROM savings_plans")
+    suspend fun getAllPlans(): List<SavingsPlanEntity>
+
+    @Query("SELECT * FROM plan_contributions")
+    suspend fun getAllContributions(): List<PlanContributionEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAllPlans(items: List<SavingsPlanEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAllContributions(items: List<PlanContributionEntity>)
+
+    @Query("DELETE FROM plan_contributions")
+    suspend fun deleteAllContributions()
+
+    @Query("DELETE FROM savings_plans")
+    suspend fun deleteAllPlans()
 }

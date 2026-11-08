@@ -3,6 +3,7 @@ package com.mipatrimonio.app.core.database.dao
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.mipatrimonio.app.core.database.entity.RecurringEntity
@@ -23,11 +24,17 @@ interface RecurringDao {
     @Query("SELECT * FROM recurring WHERE active = 1 AND nextDate <= :onEpochDay ORDER BY nextDate ASC")
     suspend fun getDueUpTo(onEpochDay: Long): List<RecurringEntity>
 
+    @Query("SELECT * FROM recurring")
+    suspend fun getAll(): List<RecurringEntity>
+
     @Query("SELECT * FROM recurring WHERE id = :id")
     suspend fun getById(id: Long): RecurringEntity?
 
     @Insert
     suspend fun insert(recurring: RecurringEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(items: List<RecurringEntity>)
 
     @Update
     suspend fun update(recurring: RecurringEntity): Int
@@ -40,4 +47,7 @@ interface RecurringDao {
 
     @Query("UPDATE recurring SET nextDate = :nextDate WHERE id = :id")
     suspend fun updateNextDate(id: Long, nextDate: Long): Int
+
+    @Query("DELETE FROM recurring")
+    suspend fun deleteAll()
 }

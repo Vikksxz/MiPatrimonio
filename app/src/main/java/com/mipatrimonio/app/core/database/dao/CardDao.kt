@@ -14,6 +14,9 @@ interface CardDao {
     @Query("SELECT * FROM cards ORDER BY createdAt DESC")
     fun observeAll(): Flow<List<CardEntity>>
 
+    @Query("SELECT * FROM cards ORDER BY createdAt DESC")
+    suspend fun getAll(): List<CardEntity>
+
     @Query("SELECT * FROM cards WHERE id = :id")
     suspend fun getById(id: Long): CardEntity?
 
@@ -31,4 +34,7 @@ interface CardDao {
 
     @Delete
     suspend fun delete(card: CardEntity)
+
+    @Query("DELETE FROM cards")
+    suspend fun deleteAll()
 }
