@@ -3,17 +3,17 @@ package com.mipatrimonio.app.core.security
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.FilterInputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.security.GeneralSecurityException
 import java.security.KeyStore
 import javax.crypto.Cipher
+import javax.crypto.CipherInputStream
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
@@ -35,6 +35,7 @@ class CryptoManager @Inject constructor(
     private val ANDROID_KEYSTORE = "AndroidKeyStore"
     private val AES_GCM = "AES/GCM/NoPadding"
     private val IV_LENGTH = 12 // 96 bits, recomendado para GCM
+    private val TAG_BIT_LENGTH = 128
     private val BUFFER_SIZE = 8192
 
     private val keyStore: KeyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
@@ -71,35 +72,56 @@ class CryptoManager @Inject constructor(
 
     /**
      * Descifra un stream de entrada (formato: [IV][ciphertext+tag]) y devuelve
-     * un InputStream con los datos descifrados.
-     * Útil para leer documentos sin escribir a disco.
+     * un InputStream con los datos descifrados en streaming (sin cargar todo en memoria).
+     * El llamador DEBE cerrar el stream devuelto (usa `.use {}`), lo que también cierra [input].
+     * La verificación del tag GCM ocurre al llegar al final del stream.
      */
     @Throws(IOException::class)
     fun decrypt(input: InputStream): InputStream {
         val iv = ByteArray(IV_LENGTH)
         val ivRead = input.read(iv)
         if (ivRead != IV_LENGTH) {
+            try { input.close() } catch (_: IOException) {}
             throw IOException("Archivo corrupto: IV incompleto")
         }
 
-        try {
-            val cipher = Cipher.getInstance(AES_GCM)
-            cipher.init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(128, iv))
-
-            val output = ByteArrayOutputStream()
-            val buffer = ByteArray(BUFFER_SIZE)
-            var bytesRead: Int
-            while (input.read(buffer).also { bytesRead = it } != -1) {
-                val decrypted = cipher.update(buffer, 0, bytesRead)
-                if (decrypted != null) output.write(decrypted)
+        val cipher = try {
+            Cipher.getInstance(AES_GCM).apply {
+                init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(TAG_BIT_LENGTH, iv))
             }
-            val finalBytes = cipher.doFinal()
-            if (finalBytes.isNotEmpty()) output.write(finalBytes)
-
-            return ByteArrayInputStream(output.toByteArray())
         } catch (e: GeneralSecurityException) {
+            try { input.close() } catch (_: IOException) {}
             throw IOException("Archivo corrupto o manipulado", e)
         }
+
+        val cipherIn = CipherInputStream(input, cipher)
+        return object : FilterInputStream(cipherIn) {
+            override fun read(): Int = wrapRead { super.read() }
+            override fun read(b: ByteArray, off: Int, len: Int): Int = wrapRead { super.read(b, off, len) }
+            override fun close() {
+                try {
+                    super.close()
+                } catch (e: IOException) {
+                    throw normalize(e)
+                }
+            }
+            private inline fun <T> wrapRead(block: () -> T): T = try {
+                block()
+            } catch (e: IOException) {
+                throw normalize(e)
+            }
+        }
+    }
+
+    private fun normalize(e: IOException): IOException {
+        val cause = e.cause
+        return if (cause is GeneralSecurityException ||
+            e.message?.contains("mac", ignoreCase = true) == true ||
+            e.message?.contains("tag", ignoreCase = true) == true ||
+            e.message?.contains("pad", ignoreCase = true) == true
+        ) {
+            IOException("Archivo corrupto o manipulado", e)
+        } else e
     }
 
     /**
@@ -110,14 +132,22 @@ class CryptoManager @Inject constructor(
     @Throws(IOException::class)
     fun decryptToTempFile(encryptedFile: File, prefix: String = "view_", suffix: String = ".pdf"): File {
         val tempFile = File.createTempFile(prefix, suffix, context.cacheDir)
-        FileInputStream(encryptedFile).use { fis ->
-            FileOutputStream(tempFile).use { fos ->
-                decrypt(fis).use { decrypted ->
-                    decrypted.copyTo(fos)
+        return try {
+            FileInputStream(encryptedFile).use { fis ->
+                FileOutputStream(tempFile).use { fos ->
+                    decrypt(fis).use { decrypted ->
+                        decrypted.copyTo(fos)
+                    }
                 }
             }
+            tempFile
+        } catch (e: IOException) {
+            tempFile.delete()
+            throw e
+        } catch (e: RuntimeException) {
+            tempFile.delete()
+            throw e
         }
-        return tempFile
     }
 
     /** Obtiene la clave del Keystore o la crea si no existe. */
