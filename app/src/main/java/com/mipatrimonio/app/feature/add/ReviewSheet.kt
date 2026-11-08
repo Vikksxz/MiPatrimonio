@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -48,6 +49,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mipatrimonio.app.R
 import com.mipatrimonio.app.core.database.entity.CardEntity
 import com.mipatrimonio.app.core.database.entity.CategoryEntity
+import com.mipatrimonio.app.core.database.entity.TagEntity
 import com.mipatrimonio.app.core.database.entity.TransactionEntity
 import com.mipatrimonio.app.core.model.CardKind
 import com.mipatrimonio.app.core.model.IncomeKind
@@ -93,7 +95,12 @@ fun ReviewSheet(
 ) {
     val cards by viewModel.cards.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val allTags by viewModel.tags.collectAsStateWithLifecycle()
+    var initialTagIds by remember(editing?.id) { mutableStateOf<List<Long>>(emptyList()) }
 
+    LaunchedEffect(editing?.id) {
+        initialTagIds = if (editing != null) viewModel.getTagIdsForTransaction(editing.id) else emptyList()
+    }
     LaunchedEffect(editing?.id, scanDraft?.thumbnail, payrollDraft?.sourceFilePath) {
         viewModel.reset()
     }
@@ -105,6 +112,9 @@ fun ReviewSheet(
         payrollDraft = payrollDraft,
         cards = cards,
         categories = categories,
+        allTags = allTags,
+        initialTagIds = initialTagIds,
+        onCreateTag = { name, onCreated -> viewModel.createTag(name, onCreated) },
         saving = viewModel.saving,
         saveFailed = viewModel.saveFailed,
         onSave = { input ->
@@ -128,6 +138,9 @@ fun ReviewContent(
     initialType: TransactionType,
     cards: List<CardEntity>,
     categories: List<CategoryEntity>,
+    allTags: List<TagEntity>,
+    initialTagIds: List<Long>,
+    onCreateTag: (String, (Long) -> Unit) -> Unit,
     saving: Boolean,
     saveFailed: Boolean,
     onSave: (NewTransaction) -> Unit,
@@ -141,6 +154,10 @@ fun ReviewContent(
     val state = remember(initialType, editing?.id, scanDraft?.thumbnail, payrollDraft?.sourceFilePath) {
         ReviewState(initialType, editing, scanDraft, payrollDraft)
     }
+    LaunchedEffect(initialTagIds) {
+        if (initialTagIds.isNotEmpty() || editing != null) state.selectedTagIds = initialTagIds.toSet()
+    }
+    var tagInput by remember { mutableStateOf("") }
     val visibleCategories = categories.filter {
         it.isIncome == (state.type == TransactionType.INCOME)
     }
@@ -354,6 +371,61 @@ fun ReviewContent(
             }
         }
 
+        FormSection(title = stringResource(R.string.review_tags)) {
+            if (allTags.isNotEmpty()) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    allTags.forEach { tag ->
+                        val selected = tag.id in state.selectedTagIds
+                        NeonChip(
+                            text = tag.name,
+                            accent = if (selected) NeonColor.neonCyan else NeonColor.muted,
+                            tint = if (selected) NeonColor.neonCyan.copy(alpha = 0.18f) else NeonColor.panelAlt,
+                            labelColor = if (selected) NeonColor.neonCyan else NeonColor.chipText,
+                            selected = selected,
+                            onClick = {
+                                state.selectedTagIds = if (selected) state.selectedTagIds - tag.id else state.selectedTagIds + tag.id
+                            },
+                        )
+                    }
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedTextField(
+                    value = tagInput,
+                    onValueChange = { tagInput = it },
+                    label = { Text(stringResource(R.string.review_tag_new)) },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = NeonColor.neonCyan,
+                        unfocusedBorderColor = NeonColor.lineInput,
+                        focusedLabelColor = NeonColor.neonCyan,
+                        unfocusedLabelColor = NeonColor.muted,
+                        focusedTextColor = NeonColor.ink,
+                        unfocusedTextColor = NeonColor.ink,
+                        cursorColor = NeonColor.neonCyan,
+                    ),
+                )
+                TextButton(onClick = {
+                    val name = tagInput.trim()
+                    if (name.isNotEmpty()) {
+                        onCreateTag(name) { id ->
+                            state.selectedTagIds = state.selectedTagIds + id
+                            tagInput = ""
+                        }
+                    }
+                }) { Text(stringResource(R.string.review_tag_add), color = NeonColor.neonCyan) }
+            }
+        }
+
         NeonTextField(
             value = state.note,
             onValueChange = { state.note = it },
@@ -386,6 +458,7 @@ fun ReviewContent(
                             cardId = if (state.type == TransactionType.CARD) state.cardId else null,
                             note = state.note,
                             receiptPath = state.receiptPath,
+                            tagIds = state.selectedTagIds.toList(),
                         ),
                     )
                 }
@@ -542,6 +615,7 @@ private class ReviewState(
     var cardId by mutableStateOf(editing?.cardId)
     var note by mutableStateOf(editing?.note ?: "")
     var incomeKind by mutableStateOf(editing?.incomeKind ?: if (payrollDraft != null) IncomeKind.PAYROLL else null)
+    var selectedTagIds by mutableStateOf(emptySet<Long>())
     // En escaneo el ticket/nómina se persiste al confirmar; en edición se conserva.
     val receiptPath: String? = editing?.receiptPath
     var showAmountError by mutableStateOf(false)
@@ -642,6 +716,9 @@ private fun ReviewContentPreview() {
                 sampleCategory(2L, "Transporte", "#22D3EE", false),
                 sampleCategory(3L, "Nómina", "#39FF88", true),
             ),
+            allTags = emptyList(),
+            initialTagIds = emptyList(),
+            onCreateTag = { _, _ -> },
             saving = false,
             saveFailed = false,
             onSave = {},

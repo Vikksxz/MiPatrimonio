@@ -1,5 +1,6 @@
 package com.mipatrimonio.app.domain.usecase
 
+import com.mipatrimonio.app.core.database.dao.TagDao
 import com.mipatrimonio.app.core.database.dao.TransactionDao
 import com.mipatrimonio.app.core.database.entity.TransactionEntity
 import com.mipatrimonio.app.core.model.IncomeKind
@@ -23,6 +24,7 @@ data class NewTransaction(
     val cardId: Long? = null,
     val note: String = "",
     val receiptPath: String? = null,
+    val tagIds: List<Long> = emptyList(),
 )
 
 /**
@@ -102,6 +104,7 @@ object TransactionFactory {
  */
 class AddTransaction @Inject constructor(
     private val transactionDao: TransactionDao,
+    private val tagDao: TagDao,
 ) {
 
     suspend operator fun invoke(
@@ -109,7 +112,9 @@ class AddTransaction @Inject constructor(
         createdAtMillis: Long = System.currentTimeMillis(),
     ): Long {
         val entity = TransactionFactory.create(input, createdAtMillis)
-        return transactionDao.insert(entity)
+        val id = transactionDao.insert(entity)
+        if (input.tagIds.isNotEmpty()) tagDao.replaceTagsForTransaction(id, input.tagIds)
+        return id
     }
 }
 
@@ -119,6 +124,7 @@ class AddTransaction @Inject constructor(
  */
 class UpdateTransaction @Inject constructor(
     private val transactionDao: TransactionDao,
+    private val tagDao: TagDao,
 ) {
 
     suspend operator fun invoke(existing: TransactionEntity, input: NewTransaction): Long {
@@ -128,6 +134,7 @@ class UpdateTransaction @Inject constructor(
         val updated = TransactionFactory.applyTo(current, input)
         val rows = transactionDao.update(updated)
         check(rows == 1) { "El movimiento ya no existe" }
+        tagDao.replaceTagsForTransaction(existing.id, input.tagIds)
         return existing.id
     }
 }

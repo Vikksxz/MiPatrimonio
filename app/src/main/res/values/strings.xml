@@ -112,6 +112,13 @@
     <string name="duplicate_payroll_title">Posible nómina duplicada</string>
     <string name="duplicate_payroll_message">Ya existe una nómina con la misma fecha o título. ¿Quieres continuar de todos modos?</string>
     <string name="duplicate_continue">Continuar</string>
+
+    <!-- Etiquetas (T2.7) -->
+    <string name="review_tags">Etiquetas</string>
+    <string name="review_tag_new">Nueva etiqueta</string>
+    <string name="review_tag_add">Añadir</string>
+    <string name="transactions_filter_tag">Etiqueta</string>
+    <string name="transactions_filter_tag_all">Todas</string>
     <string name="review_title_expense">Nuevo gasto</string>
     <string name="review_title_income">Nuevo ingreso</string>
     <string name="review_title_edit">Editar movimiento</string>
