@@ -27,6 +27,11 @@ object NeonColor {
     val neonAmber = Color(0xFFFFB020)   // #FFB020 Metálico, avisos
     val expenseRed = Color(0xFFFF7A93)  // #FF7A93 Texto de gastos y errores
 
+    // Tarjeta de saldo de Inicio (sección 8.1): degradado azul-violeta, borde y brillo cian
+    val balanceBorder = Color(0xFF2B3A6E)     // #2B3A6E
+    val balanceGradientStart = Color(0xFF0B1B3A) // #0B1B3A
+    val balanceGradientEnd = Color(0xFF1D0B3A)   // #1D0B3A
+
     // Fondos de alerta (sección 5.1)
     val alertAmberBg = Color(0xFF2A1F08)
     val alertAmberBorder = Color(0xFF6B4A0E)

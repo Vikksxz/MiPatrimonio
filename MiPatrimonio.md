@@ -704,7 +704,7 @@ Cada tarea termina con la app **compilando**. Marca `[x]` al completar.
 - [x] **T1.6 Tarjetas.** `WalletScreen` (lista de tarjetas) y `CardFormSheet` (banco, variante, tipo, nombre, 6 diseños, foto propia con `PickVisualMedia` copiada a almacenamiento privado, vista previa en vivo, editar/eliminar con confirmación). *Aceptación:* alta, edición, borrado y foto funcionan y persisten.
 - [x] **T1.7 Añadir movimiento manual.** `AddMenuSheet` y `ReviewSheet` (tipo, importe, comercio, fecha, categoría, tarjeta si aplica, nota). Casos de uso `AddTransaction`. *Aceptación:* un movimiento guardado aparece en la lista.
 - [x] **T1.8 Lista de movimientos.** Filtros por tipo, buscador, agrupado por día, edición, borrado con deshacer. *Aceptación:* filtros correctos; tests de ViewModel.
-- [ ] **T1.9 Inicio.** Tarjeta de saldo, barra por tipo, leyenda, últimos movimientos (con los colores por tipo y su brillo). Caso de uso `GetMonthlySummary` con tests. *Aceptación:* cifras coinciden con los movimientos.
+- [x] **T1.9 Inicio.** Tarjeta de saldo, barra por tipo, leyenda, últimos movimientos (con los colores por tipo y su brillo). Caso de uso `GetMonthlySummary` con tests. *Aceptación:* cifras coinciden con los movimientos.
 - [ ] **T1.10 Bloqueo.** `BiometricPrompt` + ajustes de bloqueo en DataStore, `FLAG_SECURE`. *Aceptación:* al volver a la app se pide autenticación.
 
 ### Fase 2

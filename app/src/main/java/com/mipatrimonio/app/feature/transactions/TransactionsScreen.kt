@@ -49,7 +49,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -65,6 +64,8 @@ import com.mipatrimonio.app.core.ui.components.MovementChipType
 import com.mipatrimonio.app.core.ui.components.NeonCard
 import com.mipatrimonio.app.core.ui.components.NeonChip
 import com.mipatrimonio.app.core.ui.components.ScreenTitle
+import com.mipatrimonio.app.core.ui.components.accentColor
+import com.mipatrimonio.app.core.ui.components.label
 import com.mipatrimonio.app.core.ui.theme.MiPatrimonioTheme
 import com.mipatrimonio.app.core.ui.theme.NeonColor
 import com.mipatrimonio.app.feature.add.ReviewSheet
@@ -438,28 +439,11 @@ private fun NoResultsState(modifier: Modifier = Modifier) {
     }
 }
 
-@Composable
-private fun TransactionType.label(): String = stringResource(
-    when (this) {
-        TransactionType.CASH -> R.string.type_cash
-        TransactionType.CARD -> R.string.type_card
-        TransactionType.SUBSCRIPTION -> R.string.type_subscription
-        TransactionType.INCOME -> R.string.type_income
-    },
-)
-
 private fun TransactionType.chipType(): MovementChipType = when (this) {
     TransactionType.CASH -> MovementChipType.CASH
     TransactionType.CARD -> MovementChipType.CARD
     TransactionType.SUBSCRIPTION -> MovementChipType.SUBSCRIPTION
     TransactionType.INCOME -> MovementChipType.INCOME
-}
-
-private fun TransactionType.accentColor(): Color = when (this) {
-    TransactionType.CASH -> NeonColor.MovementType.cashAccent
-    TransactionType.CARD -> NeonColor.MovementType.cardAccent
-    TransactionType.SUBSCRIPTION -> NeonColor.MovementType.subscriptionAccent
-    TransactionType.INCOME -> NeonColor.MovementType.incomeAccent
 }
 
 private fun formatDay(epochDay: Long): String {

@@ -2,8 +2,8 @@
 
 ## Estado
 - Fase actual: 1
-- Última tarea cerrada: T1.8
-- Tarea en curso: T1.9 Inicio (sin empezar)
+- Última tarea cerrada: T1.9
+- Tarea en curso: T1.10 Bloqueo (sin empezar)
 
 ## Decisiones tomadas
 - (2026-11-02) Paquete: com.mipatrimonio.app
@@ -15,6 +15,9 @@
 - (2026-11-08) T1.8: la edición reutiliza `ReviewSheet` con `editing: TransactionEntity?`; el borrado de la hoja pide confirmación. `TransactionFactory.applyTo` toca solo los campos editables (`existing.copy`) y `UpdateTransaction` relee la fila con `getById` antes de actualizar, para no pisar datos cambiados desde otra pantalla ni campos futuros.
 - (2026-11-08) T1.8: deshacer = borrado inmediato + Snackbar "Deshacer" (10 s) que reinserta la entidad con su id original (`TransactionDao.restore`, `REPLACE`). El Snackbar vive en la composición de la pantalla (ver deudas).
 - (2026-11-08) T1.8: `DeleteTransaction` y `RestoreTransaction` son casos de uso con `@Inject`; los errores de Room se capturan en el ViewModel (`actionFailed`) y se avisan con un Snackbar en lugar de cerrar la app.
+- (2026-11-08) T1.9: `GetMonthlySummary.build` es una función pura (`domain/usecase`) que suma `amountBaseCents` por tipo, filtra por `YearMonth`, calcula `expenseCents`/`availableCents` y recorta los recientes a 4. `GetMonthlySummary.segmentWeights` calcula los pesos de la barra (mínimo 6 % por tipo, suma 1) también como función pura y con tests.
+- (2026-11-08) T1.9: `HomeViewModel` guarda el mes en un `MutableStateFlow<YearMonth>` y `HomeScreen` lo refresca con `LifecycleEventEffect(ON_RESUME)`; así no se queda en el mes anterior al volver a Inicio. `HomeUiState.loaded` se usa para no pintar ceros en el primer frame.
+- (2026-11-08) T1.9: `label()`/`accentColor()` de `TransactionType` viven en `core/ui/components/TransactionTypeUi.kt` y los reutilizan Movimientos e Inicio. Tokens nuevos de la tarjeta de saldo en `NeonColor`: `balanceBorder #2B3A6E`, `balanceGradientStart #0B1B3A`, `balanceGradientEnd #1D0B3A`.
 
 ## Dependencias (nombres exactos, versiones en libs.versions.toml)
 - AGP 9.5.0, Gradle 9.6.0, Kotlin 2.2.10 (embebido en AGP), KSP 2.3.13, Hilt 2.60.1, Room 2.8.5, DataStore 1.3.0, Navigation Compose 2.10.2, Compose BOM 2026.09.00, material-icons-core (BOM), core-ktx 1.19.1, activity-compose 1.13.0, lifecycle 2.11.0, coroutines 1.11.0, serialization 1.12.0, biometric 1.1.0
@@ -43,6 +46,12 @@
 - (T1.8) Al borrar un movimiento no se borra `receiptPath`: cuando exista cifrado (T2.1) hay que eliminar el fichero solo al confirmar el borrado definitivo (no durante el deshacer).
 - (T1.8) No hay tests de `UpdateTransaction`/`DeleteTransaction`/`RestoreTransaction` (dependen del DAO real); sí los hay de `applyTo`, `create` y `buildDayGroups`.
 - (T1.8) §8.2 pide además filtros por tarjeta, categoría, etiqueta y rango de fechas en un panel, y el detalle con ticket/categoría/etiquetas. Pendiente (ticket y etiquetas dependen de T2.x).
+- (T1.9) El brillo con `Modifier.shadow(ambientColor/spotColor)` solo se dibuja en API ≥ 28; en minSdk 26/27 la tarjeta de saldo y las barras pierden el halo (mismo caso que `NeonCard`). Si importa, añadir un `drawBehind`/`setShadowLayer` para 26/27 en T4.9.
+- (T1.9) El resumen vive en `HomeViewModel` y se refresca al volver a Inicio; si la app queda en primer plano cruzando la medianoche del día 1, el mes no cambia hasta el siguiente `ON_RESUME`. Añadir un ticker o `ACTION_DATE_CHANGED` en T4.9.
+- (T1.9) Los recientes muestran `amountCents` (como Movimientos) mientras el resumen suma `amountBaseCents`; hoy son iguales porque solo se admite EUR. En T4.6 decidir la moneda y el símbolo que se pinta.
+- (T1.9) El saldo grande usa `maxLines = 1` con elipsis: un disponible de muchos millones se corta. Considerar autosize o dos líneas en T4.9.
+- (T1.9) Faltan en Inicio el plan de ahorro activo (§8.1.3, T3.1), los avisos (T3.4/T3.6) y la proyección a fin de mes (§7.5). El orden vertical está preparado para insertarlos.
+- (T1.9) La barra por tipo y los puntos de la leyenda son decorativos (el tipo también se escribe), y no hay elementos interactivos en Inicio todavía; al añadir el botón del plan habrá que darle 44 dp.
 
 ## Notas para el próximo modelo
 - (2026-11-02) T1.1 cerrada: pantalla vacía oscura compilando.
@@ -59,4 +68,6 @@
 - (2026-11-08) Aprendizaje: en material3 1.4 el `confirmValueChange` de `rememberSwipeToDismissBoxState` está deprecado; usar `SwipeToDismissBox(..., onDismiss = { value -> ... })`. El Snackbar de deshacer debe probarse con toques rápidos: dura 10 s y `uiautomator dump` tarda ~2 s, así que en automatización hay que encadenar swipe + tap en un solo `adb shell`.
 - (2026-11-08) T1.8 CERRADA (rama `t1-8-lista-movimientos`): buscador, chips Todos/Metálico/Tarjeta/Suscripciones/Ingresos, lista agrupada por día, edición reutilizando `ReviewSheet` (precarga con `Money.formatNumber`, "Guardar cambios", "Eliminar movimiento" con confirmación) y deslizar para borrar con deshacer (10 s). Revisión de `@reasoning-expert` aplicada: `applyTo` conserva campos no editables y cualquier campo futuro, `UpdateTransaction` relee la fila, borrar/deshacer capturan errores y avisan, estado `loaded` para no mostrar el vacío en el primer frame, icono del swipe decorativo y botones de la hoja a 44 dp. Probado en NX779J: búsqueda insensible a mayúsculas, filtro Tarjeta, edición con importe precargado y cambio guardado (BD 2.650 céntimos, `cardId` 1), borrado con deshacer verificado, borrado desde la hoja con confirmación, estado "Sin resultados" y persistencia tras `force-stop`. 64 tests unitarios en verde.
 - IMPORTANTE: el dispositivo tiene datos reales de George (p. ej. "nómina noviembre"); no borrarlos en las pruebas. Crear movimientos propios y eliminarlos.
+- (2026-11-08) T1.9 CERRADA (rama `t1-9-inicio`): tarjeta de saldo con degradado azul-violeta, borde `#2B3A6E` y brillo cian (Disponible grande en Orbitron, mini-paneles de Ingresos/Gastos), barra segmentada por tipo con mínimo visible y leyenda de 4 filas, y los 4 últimos movimientos con barra vertical de 6 dp y su brillo. Caso de uso `GetMonthlySummary` + `segmentWeights` con 14 tests. Revisión de `@financial-auditor`, `@ui-reviewer` y `@reasoning-expert` aplicada: pesos normalizados (la barra ya no deja hueco con gasto 0), lógica de la barra en dominio, refresco del mes al volver a Inicio, `loaded` consumido y texto del estado vacío sin "este mes". Probado en NX779J: noviembre con ingresos 0 y gasto 12,50 → disponible −12,50; ingreso temporal de 100 € → disponible 87,50 y leyenda 100,00; movimiento de prueba eliminado y datos reales intactos. 78 tests unitarios en verde.
+- (2026-11-08) Siguiente: T1.10 Bloqueo y seguridad (BiometricPrompt + PIN, FLAG_SECURE, `dataExtractionRules`/`fullBackupContent`).
 - No tocar archivos fuera del alcance de la tarea. local.properties ya está en .gitignore.
