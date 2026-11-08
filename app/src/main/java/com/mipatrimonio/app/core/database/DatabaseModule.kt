@@ -5,8 +5,12 @@ import com.mipatrimonio.app.core.database.dao.BudgetDao
 import com.mipatrimonio.app.core.database.dao.CardDao
 import com.mipatrimonio.app.core.database.dao.CategoryDao
 import com.mipatrimonio.app.core.database.dao.DocumentDao
+import com.mipatrimonio.app.core.database.dao.ExchangeRateDao
+import com.mipatrimonio.app.core.database.dao.PersonDao
 import com.mipatrimonio.app.core.database.dao.RecurringDao
 import com.mipatrimonio.app.core.database.dao.SavingsDao
+import com.mipatrimonio.app.core.database.dao.SharedExpenseDao
+import com.mipatrimonio.app.core.database.dao.SharedShareDao
 import com.mipatrimonio.app.core.database.dao.TagDao
 import com.mipatrimonio.app.core.database.dao.TransactionDao
 import com.mipatrimonio.app.core.database.seed.SeedCallback
@@ -64,6 +68,22 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideTagDao(db: AppDatabase): TagDao = db.tagDao()
+
+    @Provides
+    @Singleton
+    fun provideExchangeRateDao(db: AppDatabase): ExchangeRateDao = db.exchangeRateDao()
+
+    @Provides
+    @Singleton
+    fun providePersonDao(db: AppDatabase): PersonDao = db.personDao()
+
+    @Provides
+    @Singleton
+    fun provideSharedExpenseDao(db: AppDatabase): SharedExpenseDao = db.sharedExpenseDao()
+
+    @Provides
+    @Singleton
+    fun provideSharedShareDao(db: AppDatabase): SharedShareDao = db.sharedShareDao()
 
     @Provides
     @Singleton

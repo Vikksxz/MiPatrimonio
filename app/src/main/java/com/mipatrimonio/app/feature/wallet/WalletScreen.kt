@@ -46,6 +46,7 @@ import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.font.FontWeight
 import java.time.Instant
 import java.time.ZoneId
@@ -76,6 +77,7 @@ import com.mipatrimonio.app.R
 import com.mipatrimonio.app.core.database.entity.CardEntity
 import com.mipatrimonio.app.core.database.entity.CategoryEntity
 import com.mipatrimonio.app.core.database.entity.RecurringEntity
+import com.mipatrimonio.app.core.backup.BackupFormat
 import com.mipatrimonio.app.core.export.ExportFileSharer
 import com.mipatrimonio.app.core.model.CardKind
 import com.mipatrimonio.app.core.model.RecurrencePeriod
@@ -121,6 +123,34 @@ fun WalletScreen(
     var editingRecurring by remember { mutableStateOf<RecurringEntity?>(null) }
     var exportError by remember { mutableStateOf(false) }
 
+    val backupBusy by viewModel.backupBusy.collectAsStateWithLifecycle()
+    var backupMessage by remember { mutableStateOf<String?>(null) }
+    var showCreatePassword by remember { mutableStateOf(false) }
+    var showRestoreConfirm by remember { mutableStateOf(false) }
+    var showRestorePassword by remember { mutableStateOf(false) }
+    var pendingCreatePassword by remember { mutableStateOf<String?>(null) }
+    var pendingRestoreUri by remember { mutableStateOf<Uri?>(null) }
+
+    val createBackupLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(BackupFormat.MIME_TYPE),
+    ) { uri ->
+        val pwd = pendingCreatePassword
+        pendingCreatePassword = null
+        if (uri != null && pwd != null) {
+            viewModel.createBackup(uri, pwd.toCharArray()) { ok ->
+                backupMessage = context.getString(if (ok) R.string.backup_created else R.string.backup_error)
+            }
+        }
+    }
+    val restoreBackupLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) {
+            pendingRestoreUri = uri
+            showRestorePassword = true
+        }
+    }
+
     MiPatrimonioTheme {
         WalletContent(
             cards = cards,
@@ -154,6 +184,9 @@ fun WalletScreen(
                     onError = { exportError = true },
                 )
             },
+            backupBusy = backupBusy,
+            onCreateBackup = { showCreatePassword = true },
+            onRestoreBackup = { showRestoreConfirm = true },
             modifier = modifier,
         )
 
@@ -170,6 +203,83 @@ fun WalletScreen(
                         Text(stringResource(R.string.common_accept), color = NeonColor.neonCyan)
                     }
                 },
+            )
+        }
+
+        if (showCreatePassword) {
+            BackupCreatePasswordDialog(
+                onDismiss = { showCreatePassword = false },
+                onConfirm = { pwd ->
+                    showCreatePassword = false
+                    pendingCreatePassword = pwd
+                    createBackupLauncher.launch(viewModel.defaultBackupFileName())
+                },
+            )
+        }
+
+        if (showRestoreConfirm) {
+            AlertDialog(
+                onDismissRequest = { showRestoreConfirm = false },
+                containerColor = NeonColor.panel,
+                titleContentColor = NeonColor.ink,
+                textContentColor = NeonColor.muted,
+                title = { Text(stringResource(R.string.backup_restore_confirm_title)) },
+                text = { Text(stringResource(R.string.backup_restore_confirm_text)) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showRestoreConfirm = false
+                        restoreBackupLauncher.launch(arrayOf("*/*"))
+                    }) { Text(stringResource(R.string.backup_restore_confirm_action), color = NeonColor.expenseRed) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showRestoreConfirm = false }) {
+                        Text(stringResource(R.string.common_cancel), color = NeonColor.neonCyan)
+                    }
+                },
+            )
+        }
+
+        if (showRestorePassword && pendingRestoreUri != null) {
+            BackupRestorePasswordDialog(
+                onDismiss = { showRestorePassword = false; pendingRestoreUri = null },
+                onConfirm = { pwd ->
+                    val uri = pendingRestoreUri
+                    showRestorePassword = false
+                    pendingRestoreUri = null
+                    if (uri != null) {
+                        viewModel.restoreBackup(uri, pwd.toCharArray()) { ok ->
+                            backupMessage = context.getString(if (ok) R.string.backup_restored else R.string.backup_error)
+                        }
+                    }
+                },
+            )
+        }
+
+        if (backupMessage != null) {
+            AlertDialog(
+                onDismissRequest = { backupMessage = null },
+                containerColor = NeonColor.panel,
+                titleContentColor = NeonColor.ink,
+                textContentColor = NeonColor.muted,
+                title = { Text(stringResource(R.string.backup_section_title)) },
+                text = { Text(backupMessage!!) },
+                confirmButton = {
+                    TextButton(onClick = { backupMessage = null }) {
+                        Text(stringResource(R.string.common_accept), color = NeonColor.neonCyan)
+                    }
+                },
+            )
+        }
+
+        if (backupBusy) {
+            AlertDialog(
+                onDismissRequest = {},
+                containerColor = NeonColor.panel,
+                titleContentColor = NeonColor.ink,
+                textContentColor = NeonColor.muted,
+                title = { Text(stringResource(R.string.backup_section_title)) },
+                text = { Text(stringResource(R.string.backup_in_progress)) },
+                confirmButton = {},
             )
         }
 
@@ -255,6 +365,9 @@ fun WalletContent(
     onCashReminderEnabledChange: (Boolean) -> Unit = {},
     onExportCsv: () -> Unit = {},
     onExportPdf: () -> Unit = {},
+    backupBusy: Boolean = false,
+    onCreateBackup: () -> Unit = {},
+    onRestoreBackup: () -> Unit = {},
 ) {
     val subscriptions = recurrings.filter { it.isSubscription }
     val fixed = recurrings.filter { !it.isSubscription }
@@ -333,6 +446,13 @@ fun WalletContent(
             ExportSection(
                 onExportCsv = onExportCsv,
                 onExportPdf = onExportPdf,
+            )
+        }
+        item {
+            BackupSection(
+                busy = backupBusy,
+                onCreate = onCreateBackup,
+                onRestore = onRestoreBackup,
             )
         }
         item { Box(Modifier.padding(bottom = 16.dp)) }
@@ -572,6 +692,132 @@ private fun ExportSection(
             }
         }
     }
+}
+
+@Composable
+private fun BackupSection(
+    busy: Boolean,
+    onCreate: () -> Unit,
+    onRestore: () -> Unit,
+) {
+    NeonCard(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = stringResource(R.string.backup_section_title),
+                color = NeonColor.ink,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = stringResource(R.string.backup_section_hint),
+                color = NeonColor.muted,
+                style = MaterialTheme.typography.bodySmall,
+            )
+            NeonButton(onClick = { if (!busy) onCreate() }, modifier = Modifier.fillMaxWidth()) {
+                NeonButtonText(stringResource(R.string.backup_create))
+            }
+            NeonButton(onClick = { if (!busy) onRestore() }, secondary = true, modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = stringResource(R.string.backup_restore),
+                    color = NeonColor.expenseRed,
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BackupCreatePasswordDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    var pwd by remember { mutableStateOf("") }
+    var confirm by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    val shortMsg = stringResource(R.string.backup_password_short)
+    val mismatchMsg = stringResource(R.string.backup_password_mismatch)
+    val fieldColors = OutlinedTextFieldDefaults.colors(
+        focusedBorderColor = NeonColor.neonCyan, unfocusedBorderColor = NeonColor.lineInput,
+        focusedLabelColor = NeonColor.neonCyan, unfocusedLabelColor = NeonColor.muted,
+        focusedTextColor = NeonColor.ink, unfocusedTextColor = NeonColor.ink, cursorColor = NeonColor.neonCyan,
+    )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = NeonColor.panel,
+        titleContentColor = NeonColor.ink,
+        textContentColor = NeonColor.muted,
+        title = { Text(stringResource(R.string.backup_create)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.backup_password_hint), style = MaterialTheme.typography.bodySmall, color = NeonColor.muted)
+                OutlinedTextField(
+                    value = pwd, onValueChange = { pwd = it; error = null },
+                    label = { Text(stringResource(R.string.backup_password)) },
+                    singleLine = true, visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(), colors = fieldColors,
+                )
+                OutlinedTextField(
+                    value = confirm, onValueChange = { confirm = it; error = null },
+                    label = { Text(stringResource(R.string.backup_password_confirm)) },
+                    singleLine = true, visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(), colors = fieldColors,
+                )
+                if (error != null) Text(error!!, color = NeonColor.expenseRed, style = MaterialTheme.typography.bodySmall)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                when {
+                    pwd.length < 8 -> error = shortMsg
+                    pwd != confirm -> error = mismatchMsg
+                    else -> onConfirm(pwd)
+                }
+            }) { Text(stringResource(R.string.common_accept), color = NeonColor.neonCyan) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel), color = NeonColor.neonCyan) }
+        },
+    )
+}
+
+@Composable
+private fun BackupRestorePasswordDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    var pwd by remember { mutableStateOf("") }
+    val fieldColors = OutlinedTextFieldDefaults.colors(
+        focusedBorderColor = NeonColor.neonCyan, unfocusedBorderColor = NeonColor.lineInput,
+        focusedLabelColor = NeonColor.neonCyan, unfocusedLabelColor = NeonColor.muted,
+        focusedTextColor = NeonColor.ink, unfocusedTextColor = NeonColor.ink, cursorColor = NeonColor.neonCyan,
+    )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = NeonColor.panel,
+        titleContentColor = NeonColor.ink,
+        textContentColor = NeonColor.muted,
+        title = { Text(stringResource(R.string.backup_restore)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.backup_password_restore_hint), style = MaterialTheme.typography.bodySmall, color = NeonColor.muted)
+                OutlinedTextField(
+                    value = pwd, onValueChange = { pwd = it },
+                    label = { Text(stringResource(R.string.backup_password)) },
+                    singleLine = true, visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(), colors = fieldColors,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { if (pwd.isNotEmpty()) onConfirm(pwd) }) {
+                Text(stringResource(R.string.backup_restore_confirm_action), color = NeonColor.neonCyan)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel), color = NeonColor.neonCyan) }
+        },
+    )
 }
 
 @Composable

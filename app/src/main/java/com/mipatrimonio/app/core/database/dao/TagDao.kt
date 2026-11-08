@@ -16,6 +16,9 @@ interface TagDao {
     @Query("SELECT * FROM tags ORDER BY name ASC")
     fun observeAll(): Flow<List<TagEntity>>
 
+    @Query("SELECT * FROM tags ORDER BY name ASC")
+    suspend fun getAll(): List<TagEntity>
+
     @Query("SELECT * FROM tags WHERE id = :id")
     suspend fun getById(id: Long): TagEntity?
 
@@ -24,6 +27,9 @@ interface TagDao {
 
     @Insert
     suspend fun insert(tag: TagEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(items: List<TagEntity>)
 
     @Delete
     suspend fun delete(tag: TagEntity)
@@ -46,11 +52,20 @@ interface TagDao {
     @Query("SELECT * FROM transaction_tags")
     fun observeAllCrossRefs(): Flow<List<TransactionTagCrossRef>>
 
+    @Query("SELECT * FROM transaction_tags")
+    suspend fun getAllCrossRefs(): List<TransactionTagCrossRef>
+
     @Query("DELETE FROM transaction_tags WHERE transactionId = :txId")
     suspend fun clearTagsForTransaction(txId: Long)
 
     @Query("DELETE FROM transaction_tags WHERE transactionId = :txId AND tagId = :tagId")
     suspend fun removeTagFromTransaction(txId: Long, tagId: Long)
+
+    @Query("DELETE FROM transaction_tags")
+    suspend fun deleteAllCrossRefs()
+
+    @Query("DELETE FROM tags")
+    suspend fun deleteAll()
 
     @Transaction
     suspend fun replaceTagsForTransaction(txId: Long, tagIds: List<Long>) {

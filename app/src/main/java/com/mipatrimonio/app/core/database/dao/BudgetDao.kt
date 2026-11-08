@@ -19,6 +19,9 @@ interface BudgetDao {
     @Query("SELECT * FROM budgets ORDER BY categoryId")
     fun observeAll(): Flow<List<BudgetEntity>>
 
+    @Query("SELECT * FROM budgets ORDER BY categoryId")
+    suspend fun getAll(): List<BudgetEntity>
+
     @Query("SELECT * FROM budgets WHERE categoryId = :categoryId")
     suspend fun getByCategory(categoryId: Long): BudgetEntity?
 
@@ -38,9 +41,15 @@ interface BudgetDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(budget: BudgetEntity)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(items: List<BudgetEntity>)
+
     @Delete
     suspend fun delete(budget: BudgetEntity)
 
     @Query("UPDATE budgets SET notified80Month = :m80, notified100Month = :m100 WHERE id = :id")
     suspend fun updateNotifiedMonths(id: Long, m80: Int, m100: Int): Int
+
+    @Query("DELETE FROM budgets")
+    suspend fun deleteAll()
 }

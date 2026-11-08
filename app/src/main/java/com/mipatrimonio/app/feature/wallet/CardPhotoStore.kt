@@ -57,6 +57,14 @@ object CardPhotoStore {
         }
     }
 
+    /** Guarda bytes de imagen (JPEG) en la carpeta privada y devuelve la ruta absoluta (T4.2). */
+    fun saveBytes(context: Context, bytes: ByteArray): String? = runCatching {
+        val directory = photosDirectory(context).apply { mkdirs() }
+        val file = File(directory, "card_${System.currentTimeMillis()}_${bytes.size}.jpg")
+        file.outputStream().use { it.write(bytes) }
+        file.absolutePath
+    }.getOrNull()
+
     private fun photosDirectory(context: Context): File =
         File(context.noBackupFilesDir, DIRECTORY)
 

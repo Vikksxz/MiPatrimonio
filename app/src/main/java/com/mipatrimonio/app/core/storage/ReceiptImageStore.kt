@@ -34,6 +34,12 @@ class ReceiptImageStore @Inject constructor(
             }
             out.toByteArray()
         }
+        return saveBytes(bytes)
+    }
+
+    /** Guarda bytes de imagen (p. ej. JPEG) cifrados con Keystore. Usado en restauración (T4.2). */
+    @Throws(IOException::class)
+    fun saveBytes(bytes: ByteArray): String {
         val id = UUID.randomUUID().toString()
         val file = File(receiptsDir, "$id.bin")
         try {

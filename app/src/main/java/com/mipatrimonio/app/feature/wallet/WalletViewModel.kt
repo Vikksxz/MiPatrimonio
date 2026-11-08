@@ -5,7 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.room.withTransaction
 import com.mipatrimonio.app.core.database.AppDatabase
+import android.net.Uri
 import com.mipatrimonio.app.R
+import com.mipatrimonio.app.core.backup.BackupManager
 import com.mipatrimonio.app.core.database.dao.BudgetDao
 import com.mipatrimonio.app.core.database.dao.CardDao
 import com.mipatrimonio.app.core.database.dao.CategoryDao
@@ -50,6 +52,7 @@ class WalletViewModel @Inject constructor(
     private val budgetDao: BudgetDao,
     private val settingsRepository: SettingsRepository,
     private val getMonthlySummary: GetMonthlySummary,
+    private val backupManager: BackupManager,
 ) : ViewModel() {
 
     private val _cards = MutableStateFlow<List<CardEntity>>(emptyList())
@@ -63,6 +66,9 @@ class WalletViewModel @Inject constructor(
 
     private val _cashReminderEnabled = MutableStateFlow(false)
     val cashReminderEnabled = _cashReminderEnabled.asStateFlow()
+
+    private val _backupBusy = MutableStateFlow(false)
+    val backupBusy = _backupBusy.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -169,6 +175,48 @@ class WalletViewModel @Inject constructor(
             } catch (_: Exception) {
                 onError()
             }
+        }
+    }
+
+    fun defaultBackupFileName(): String = backupManager.defaultFileName()
+
+    fun createBackup(uri: Uri, password: CharArray, onDone: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            _backupBusy.value = true
+            val ok = withContext(Dispatchers.IO) {
+                try {
+                    context.contentResolver.openOutputStream(uri)?.use { out ->
+                        backupManager.exportToStream(password, out)
+                    } ?: return@withContext false
+                    true
+                } catch (_: Exception) {
+                    false
+                } finally {
+                    password.fill('\u0000')
+                }
+            }
+            _backupBusy.value = false
+            onDone(ok)
+        }
+    }
+
+    fun restoreBackup(uri: Uri, password: CharArray, onDone: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            _backupBusy.value = true
+            val ok = withContext(Dispatchers.IO) {
+                try {
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        backupManager.importFromStream(password, input)
+                    } ?: return@withContext false
+                    true
+                } catch (_: Exception) {
+                    false
+                } finally {
+                    password.fill('\u0000')
+                }
+            }
+            _backupBusy.value = false
+            onDone(ok)
         }
     }
 }
