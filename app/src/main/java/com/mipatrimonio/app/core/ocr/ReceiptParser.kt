@@ -69,8 +69,8 @@ object ReceiptParser {
         data class Candidate(val cents: Long, val lineIndex: Int, val hasKeyword: Boolean)
         val candidates = mutableListOf<Candidate>()
         lines.forEachIndexed { index, line ->
-            if (AMOUNT_EXCLUDE.any { line.contains(it) } && !hasTotalKeyword(line)) return@forEachIndexed
             val hasKeyword = hasTotalKeyword(line)
+            if (AMOUNT_EXCLUDE.any { line.contains(it) } && !hasKeyword) return@forEachIndexed
             AMOUNT_REGEX.findAll(line).forEach { match ->
                 val cents = parseAmountMatch(match.value) ?: return@forEach
                 candidates += Candidate(cents, index, hasKeyword)
@@ -80,13 +80,15 @@ object ReceiptParser {
 
         val keywordCandidates = candidates.filter { it.hasKeyword }
         if (keywordCandidates.isNotEmpty()) {
+            // §9.2: si hay varios, quedarse con el último.
             return keywordCandidates.last().cents to FieldConfidence.HIGH
         }
         // Sin palabra clave: importe mayor en el tercio inferior
         val start = max(0, (lines.size * 2) / 3)
         val bottom = candidates.filter { it.lineIndex >= start }
         val pool = bottom.ifEmpty { candidates }
-        return pool.maxByOrNull { it.cents }!!.cents to FieldConfidence.LOW
+        val best = pool.maxByOrNull { it.cents } ?: candidates.maxByOrNull { it.cents }
+        return if (best != null) best.cents to FieldConfidence.LOW else null to FieldConfidence.LOW
     }
 
     private fun hasTotalKeyword(line: String): Boolean = TOTAL_KEYWORDS.any { line.contains(it) }
