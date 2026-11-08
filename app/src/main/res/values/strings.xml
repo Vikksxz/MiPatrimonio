@@ -43,6 +43,33 @@
     <string name="savings_withdraw_confirm">Confirmar retirada</string>
     <string name="savings_error_insufficient_available">No hay disponible suficiente este mes para esa aportación</string>
     <string name="savings_error_exceeds_saved">No puedes retirar más de lo ahorrado en este plan</string>
+
+    <!-- Recurrentes y suscripciones (T3.5) -->
+    <string name="wallet_subscriptions">Suscripciones</string>
+    <string name="wallet_recurring">Gastos fijos</string>
+    <string name="wallet_recurring_add">Añadir</string>
+    <string name="wallet_recurring_edit">Editar</string>
+    <string name="wallet_recurring_empty_subs">Sin suscripciones</string>
+    <string name="wallet_recurring_empty_fixed">Sin gastos fijos recurrentes</string>
+    <string name="recurring_name">Nombre</string>
+    <string name="recurring_amount">Importe (€)</string>
+    <string name="recurring_period">Periodicidad</string>
+    <string name="recurring_next_date">Próxima fecha</string>
+    <string name="recurring_card">Tarjeta</string>
+    <string name="recurring_category">Categoría</string>
+    <string name="recurring_no_category">Sin categoría</string>
+    <string name="recurring_fixed_type">Pago</string>
+    <string name="recurring_remind_days">Avisar (días antes)</string>
+    <string name="recurring_is_subscription">Es suscripción</string>
+    <string name="recurring_annual_cost">Coste anual: %1$s</string>
+    <string name="recurring_annual_total">Coste anual total: %1$s</string>
+    <string name="recurring_save">Guardar</string>
+    <string name="recurring_delete">Eliminar</string>
+    <string name="recurring_delete_confirm">¿Eliminar esta regla recurrente?</string>
+    <string name="period_weekly">Semanal</string>
+    <string name="period_monthly">Mensual</string>
+    <string name="period_quarterly">Trimestral</string>
+    <string name="period_yearly">Anual</string>
     <string name="savings_plans_title">Planes</string>
     <string name="savings_create_plan">Crear plan de ahorro</string>
     <string name="savings_no_plans">Aún no tienes planes de ahorro.</string>
@@ -50,6 +77,11 @@
     <string name="savings_priority">Prioridad %1$d</string>
     <string name="savings_move_up">Subir prioridad</string>
     <string name="savings_move_down">Bajar prioridad</string>
+
+    <!-- Notificaciones / canales -->
+    <string name="channel_subscriptions">Suscripciones y recurrentes</string>
+    <string name="recurring_reminder_title">Suscripción próxima</string>
+    <string name="recurring_reminder_text">%1$s: %2$s se cobra el %3$s</string>
 
     <!-- Presupuestos (T3.4) -->
     <string name="budgets_title">Presupuestos por categoría</string>

@@ -30,9 +30,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DatePickerDefaults
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.font.FontWeight
+import java.time.Instant
+import java.time.ZoneId
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -58,7 +69,16 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mipatrimonio.app.R
 import com.mipatrimonio.app.core.database.entity.CardEntity
+import com.mipatrimonio.app.core.database.entity.CategoryEntity
+import com.mipatrimonio.app.core.database.entity.RecurringEntity
 import com.mipatrimonio.app.core.model.CardKind
+import com.mipatrimonio.app.core.model.RecurrencePeriod
+import com.mipatrimonio.app.core.model.TransactionType
+import com.mipatrimonio.app.core.money.Money
+import com.mipatrimonio.app.domain.usecase.RecurringSchedule
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import com.mipatrimonio.app.core.ui.components.NeonButton
 import com.mipatrimonio.app.core.ui.components.NeonButtonText
 import com.mipatrimonio.app.core.ui.components.NeonCard
@@ -80,13 +100,18 @@ fun WalletScreen(
     modifier: Modifier = Modifier,
 ) {
     val cards by viewModel.cards.collectAsStateWithLifecycle()
+    val recurrings by viewModel.recurrings.collectAsStateWithLifecycle()
+    val expenseCategories by viewModel.expenseCategories.collectAsStateWithLifecycle()
     var showForm by remember { mutableStateOf(false) }
     var editingCard by remember { mutableStateOf<CardEntity?>(null) }
     var deleteTarget by remember { mutableStateOf<CardEntity?>(null) }
+    var showRecurringForm by remember { mutableStateOf(false) }
+    var editingRecurring by remember { mutableStateOf<RecurringEntity?>(null) }
 
     MiPatrimonioTheme {
         WalletContent(
             cards = cards,
+            recurrings = recurrings,
             onAdd = {
                 editingCard = null
                 showForm = true
@@ -96,6 +121,8 @@ fun WalletScreen(
                 showForm = true
             },
             onOpenDocuments = onOpenDocuments,
+            onAddRecurring = { editingRecurring = null; showRecurringForm = true },
+            onEditRecurring = { editingRecurring = it; showRecurringForm = true },
             modifier = modifier,
         )
 
@@ -144,6 +171,25 @@ fun WalletScreen(
                 },
             )
         }
+
+        if (showRecurringForm) {
+            RecurringFormSheet(
+                existing = editingRecurring,
+                cards = cards,
+                categories = expenseCategories,
+                onDismiss = { showRecurringForm = false; editingRecurring = null },
+                onSave = { entity ->
+                    viewModel.saveRecurring(entity)
+                    showRecurringForm = false
+                    editingRecurring = null
+                },
+                onDelete = { entity ->
+                    viewModel.deleteRecurring(entity)
+                    showRecurringForm = false
+                    editingRecurring = null
+                },
+            )
+        }
     }
 }
 
@@ -155,69 +201,291 @@ fun WalletContent(
     onEdit: (CardEntity) -> Unit,
     onOpenDocuments: () -> Unit = {},
     modifier: Modifier = Modifier,
+    recurrings: List<RecurringEntity> = emptyList(),
+    onAddRecurring: () -> Unit = {},
+    onEditRecurring: (RecurringEntity) -> Unit = {},
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
+    val subscriptions = recurrings.filter { it.isSubscription }
+    val fixed = recurrings.filter { !it.isSubscription }
+    val dateFmt = remember { DateTimeFormatter.ofPattern("d MMM yyyy", Locale.forLanguageTag("es-ES")) }
+
+    LazyColumn(
+        modifier = modifier.fillMaxSize().padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        ScreenTitle(text = stringResource(R.string.wallet_title))
-
-        Text(
-            text = stringResource(R.string.wallet_empty_text),
-            color = NeonColor.muted,
-            fontSize = NeonType.secondary,
-        )
-
-        NeonCard(modifier = Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onOpenDocuments)) {
-            Text(
-                text = stringResource(R.string.wallet_documents),
-                color = NeonColor.ink,
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Text(
-                text = stringResource(R.string.wallet_documents_hint),
-                color = NeonColor.neonGreen,
-                style = MaterialTheme.typography.bodySmall,
-            )
+        item { ScreenTitle(text = stringResource(R.string.wallet_title)) }
+        item {
+            Text(text = stringResource(R.string.wallet_empty_text), color = NeonColor.muted, fontSize = NeonType.secondary)
+        }
+        item {
+            NeonCard(modifier = Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onOpenDocuments)) {
+                Text(text = stringResource(R.string.wallet_documents), color = NeonColor.ink, style = MaterialTheme.typography.titleMedium)
+                Text(text = stringResource(R.string.wallet_documents_hint), color = NeonColor.neonGreen, style = MaterialTheme.typography.bodySmall)
+            }
         }
 
+        // Tarjetas
         if (cards.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                contentAlignment = Alignment.Center,
-            ) {
+            item {
                 NeonCard(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = stringResource(R.string.wallet_empty_title),
-                        color = NeonColor.muted,
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    Text(text = stringResource(R.string.wallet_empty_title), color = NeonColor.muted, style = MaterialTheme.typography.titleMedium)
                 }
             }
         } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                items(items = cards, key = { it.id }) { card ->
-                    CardListItem(card = card, onClick = { onEdit(card) })
-                }
+            items(items = cards, key = { "card-${it.id}" }) { card ->
+                CardListItem(card = card, onClick = { onEdit(card) })
+            }
+        }
+        item {
+            DashedAddCardButton(text = stringResource(R.string.wallet_add_card), onClick = onAdd)
+        }
+
+        // Suscripciones (T3.5)
+        item {
+            SectionHeader(title = stringResource(R.string.wallet_subscriptions), onAdd = onAddRecurring)
+        }
+        if (subscriptions.isEmpty()) {
+            item { Text(stringResource(R.string.wallet_recurring_empty_subs), color = NeonColor.muted, style = MaterialTheme.typography.bodySmall) }
+        } else {
+            val annualTotal = subscriptions.sumOf { RecurringSchedule.annualCostCents(it.amountCents, it.period) }
+            item {
+                Text(
+                    text = stringResource(R.string.recurring_annual_total, Money.format(annualTotal)),
+                    color = NeonColor.neonViolet,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            items(items = subscriptions, key = { "sub-${it.id}" }) { r ->
+                RecurringRow(r, dateFmt, onClick = { onEditRecurring(r) })
             }
         }
 
-        DashedAddCardButton(
-            text = stringResource(R.string.wallet_add_card),
-            onClick = onAdd,
-            modifier = Modifier.padding(bottom = 16.dp),
+        // Gastos fijos recurrentes (T3.5)
+        item {
+            SectionHeader(title = stringResource(R.string.wallet_recurring), onAdd = onAddRecurring)
+        }
+        if (fixed.isEmpty()) {
+            item { Text(stringResource(R.string.wallet_recurring_empty_fixed), color = NeonColor.muted, style = MaterialTheme.typography.bodySmall) }
+        } else {
+            items(items = fixed, key = { "rec-${it.id}" }) { r ->
+                RecurringRow(r, dateFmt, onClick = { onEditRecurring(r) })
+            }
+        }
+        item { Box(Modifier.padding(bottom = 16.dp)) }
+    }
+}
+
+@Composable
+private fun SectionHeader(title: String, onAdd: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Text(title, style = MaterialTheme.typography.titleMedium, color = NeonColor.ink, fontWeight = FontWeight.Bold)
+        TextButton(onClick = onAdd) { Text(stringResource(R.string.wallet_recurring_add), color = NeonColor.neonCyan) }
+    }
+}
+
+@Composable
+private fun RecurringRow(r: RecurringEntity, dateFmt: DateTimeFormatter, onClick: () -> Unit) {
+    val next = LocalDate.ofEpochDay(r.nextDate)
+    val annual = RecurringSchedule.annualCostCents(r.amountCents, r.period)
+    NeonCard(modifier = Modifier.fillMaxWidth().clickable { onClick() }) {
+        Row(Modifier.padding(12.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(r.name, color = NeonColor.ink, style = MaterialTheme.typography.bodyLarge)
+                Text("${Money.format(r.amountCents)} · ${periodLabel(r.period)} · ${next.format(dateFmt)}", color = NeonColor.muted, style = MaterialTheme.typography.bodySmall)
+                if (r.isSubscription) {
+                    Text(stringResource(R.string.recurring_annual_cost, Money.format(annual)), color = NeonColor.neonViolet, style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun periodLabel(p: RecurrencePeriod): String = when (p) {
+    RecurrencePeriod.WEEKLY -> stringResource(R.string.period_weekly)
+    RecurrencePeriod.MONTHLY -> stringResource(R.string.period_monthly)
+    RecurrencePeriod.QUARTERLY -> stringResource(R.string.period_quarterly)
+    RecurrencePeriod.YEARLY -> stringResource(R.string.period_yearly)
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun RecurringFormSheet(
+    existing: RecurringEntity?,
+    cards: List<CardEntity>,
+    categories: List<CategoryEntity>,
+    onDismiss: () -> Unit,
+    onSave: (RecurringEntity) -> Unit,
+    onDelete: (RecurringEntity) -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var name by remember { mutableStateOf(existing?.name ?: "") }
+    var amountText by remember { mutableStateOf(existing?.let { Money.formatNumber(it.amountCents) } ?: "") }
+    var period by remember { mutableStateOf(existing?.period ?: RecurrencePeriod.MONTHLY) }
+    var isSub by remember { mutableStateOf(existing?.isSubscription ?: true) }
+    var fixedType by remember {
+        mutableStateOf(
+            when (existing?.type) {
+                TransactionType.CASH -> TransactionType.CASH
+                else -> TransactionType.CARD
+            }
         )
     }
+    var cardId by remember { mutableStateOf(existing?.cardId) }
+    var categoryId by remember { mutableStateOf(existing?.categoryId) }
+    var nextDate by remember { mutableStateOf(existing?.let { LocalDate.ofEpochDay(it.nextDate) } ?: LocalDate.now()) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val invalidAmount = stringResource(R.string.savings_invalid_amount)
+    val invalidName = stringResource(R.string.savings_invalid_name)
+    val dateFmt = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.forLanguageTag("es-ES")) }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = NeonColor.panel, contentColor = NeonColor.ink) {
+        Column(
+            Modifier.padding(16.dp).padding(bottom = 24.dp).verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(stringResource(if (existing == null) R.string.wallet_recurring_add else R.string.wallet_recurring_edit), style = MaterialTheme.typography.titleLarge, color = NeonColor.ink)
+            RecurringTextField(name, { name = it }, stringResource(R.string.recurring_name))
+            RecurringTextField(amountText, { amountText = it }, stringResource(R.string.recurring_amount), KeyboardType.Decimal)
+
+            Text(stringResource(R.string.recurring_period), color = NeonColor.muted, style = MaterialTheme.typography.labelLarge)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                RecurrencePeriod.entries.forEach { p ->
+                    val selected = period == p
+                    NeonChip(
+                        text = periodLabel(p),
+                        accent = NeonColor.neonCyan,
+                        tint = if (selected) NeonColor.neonCyan.copy(alpha = 0.18f) else NeonColor.panelAlt,
+                        labelColor = if (selected) NeonColor.neonCyan else NeonColor.chipText,
+                        selected = selected,
+                        onClick = { period = p },
+                    )
+                }
+            }
+
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.recurring_is_subscription), color = NeonColor.ink)
+                Switch(
+                    checked = isSub,
+                    onCheckedChange = { isSub = it },
+                    colors = SwitchDefaults.colors(checkedThumbColor = NeonColor.neonViolet, checkedTrackColor = NeonColor.neonViolet.copy(alpha = 0.4f)),
+                )
+            }
+
+            if (!isSub) {
+                Text(stringResource(R.string.recurring_fixed_type), color = NeonColor.muted, style = MaterialTheme.typography.labelLarge)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val cashSel = fixedType == TransactionType.CASH
+                    NeonChip(text = stringResource(R.string.type_cash), accent = NeonColor.neonAmber, tint = if (cashSel) NeonColor.neonAmber.copy(alpha = 0.18f) else NeonColor.panelAlt, labelColor = if (cashSel) NeonColor.neonAmber else NeonColor.chipText, selected = cashSel, onClick = { fixedType = TransactionType.CASH; cardId = null })
+                    val cardSel = fixedType == TransactionType.CARD
+                    NeonChip(text = stringResource(R.string.type_card), accent = NeonColor.neonCyan, tint = if (cardSel) NeonColor.neonCyan.copy(alpha = 0.18f) else NeonColor.panelAlt, labelColor = if (cardSel) NeonColor.neonCyan else NeonColor.chipText, selected = cardSel, onClick = { fixedType = TransactionType.CARD })
+                }
+            }
+
+            if (isSub || fixedType == TransactionType.CARD) {
+                Text(stringResource(R.string.recurring_card), color = NeonColor.muted, style = MaterialTheme.typography.labelLarge)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val noneSel = cardId == null
+                    NeonChip(text = stringResource(R.string.review_card_none), accent = NeonColor.neonCyan, tint = if (noneSel) NeonColor.neonCyan.copy(alpha = 0.18f) else NeonColor.panelAlt, labelColor = if (noneSel) NeonColor.neonCyan else NeonColor.chipText, selected = noneSel, onClick = { cardId = null })
+                    cards.forEach { c ->
+                        val sel = cardId == c.id
+                        NeonChip(text = c.alias, accent = NeonColor.neonCyan, tint = if (sel) NeonColor.neonCyan.copy(alpha = 0.18f) else NeonColor.panelAlt, labelColor = if (sel) NeonColor.neonCyan else NeonColor.chipText, selected = sel, onClick = { cardId = c.id })
+                    }
+                }
+            }
+
+            Text(stringResource(R.string.recurring_category), color = NeonColor.muted, style = MaterialTheme.typography.labelLarge)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                val noneCat = categoryId == null
+                NeonChip(text = stringResource(R.string.recurring_no_category), accent = NeonColor.neonMagenta, tint = if (noneCat) NeonColor.neonMagenta.copy(alpha = 0.18f) else NeonColor.panelAlt, labelColor = if (noneCat) NeonColor.neonMagenta else NeonColor.chipText, selected = noneCat, onClick = { categoryId = null })
+                categories.forEach { cat ->
+                    val sel = categoryId == cat.id
+                    NeonChip(text = cat.name, accent = NeonColor.neonMagenta, tint = if (sel) NeonColor.neonMagenta.copy(alpha = 0.18f) else NeonColor.panelAlt, labelColor = if (sel) NeonColor.neonMagenta else NeonColor.chipText, selected = sel, onClick = { categoryId = cat.id })
+                }
+            }
+
+            TextButton(onClick = { showDatePicker = true }) {
+                Text("${stringResource(R.string.recurring_next_date)}: ${nextDate.format(dateFmt)}", color = NeonColor.neonCyan)
+            }
+
+            val annual = try { Money.parse(amountText) } catch (_: Exception) { 0L }
+            if (isSub && annual > 0) {
+                Text(stringResource(R.string.recurring_annual_cost, Money.format(RecurringSchedule.annualCostCents(annual, period))), color = NeonColor.neonViolet, style = MaterialTheme.typography.bodySmall)
+            }
+
+            if (error != null) Text(error!!, color = NeonColor.expenseRed, style = MaterialTheme.typography.bodySmall)
+
+            NeonButton(onClick = {
+                if (name.trim().isEmpty()) { error = invalidName; return@NeonButton }
+                val cents = try { Money.parse(amountText) } catch (_: Exception) { null }
+                if (cents == null || cents <= 0L) { error = invalidAmount; return@NeonButton }
+                val type = if (isSub) TransactionType.SUBSCRIPTION else fixedType
+                val effectiveCardId = if (type == TransactionType.CARD) cardId else null
+                onSave(
+                    (existing ?: RecurringEntity(name = "", type = type, amountCents = 0, period = period, nextDate = nextDate.toEpochDay(), isSubscription = isSub)).copy(
+                        name = name.trim(),
+                        type = type,
+                        amountCents = cents,
+                        period = period,
+                        nextDate = nextDate.toEpochDay(),
+                        cardId = effectiveCardId,
+                        categoryId = categoryId,
+                        isSubscription = isSub,
+                        remindDaysBefore = existing?.remindDaysBefore ?: 2,
+                        active = true,
+                    )
+                )
+            }, modifier = Modifier.fillMaxWidth()) { NeonButtonText(stringResource(R.string.recurring_save)) }
+
+            if (existing != null) {
+                NeonButton(onClick = { showDeleteConfirm = true }, secondary = true, accent = NeonColor.expenseRed, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.recurring_delete), color = NeonColor.expenseRed, style = MaterialTheme.typography.labelLarge)
+                }
+            }
+        }
+    }
+
+    if (showDatePicker) {
+        val state = rememberDatePickerState(initialSelectedDateMillis = nextDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli())
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = { TextButton(onClick = { state.selectedDateMillis?.let { nextDate = Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate() }; showDatePicker = false }) { Text("OK", color = NeonColor.neonCyan) } },
+            dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.common_cancel), color = NeonColor.neonCyan) } },
+            colors = DatePickerDefaults.colors(containerColor = NeonColor.panel),
+        ) { DatePicker(state = state) }
+    }
+
+    if (showDeleteConfirm && existing != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            containerColor = NeonColor.panel,
+            title = { Text(stringResource(R.string.recurring_delete), color = NeonColor.ink) },
+            text = { Text(stringResource(R.string.recurring_delete_confirm), color = NeonColor.muted) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirm = false
+                    onDelete(existing)
+                }) { Text(stringResource(R.string.recurring_delete), color = NeonColor.expenseRed) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text(stringResource(R.string.common_cancel), color = NeonColor.neonCyan)
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun RecurringTextField(value: String, onValueChange: (String) -> Unit, label: String, keyboardType: KeyboardType = KeyboardType.Text) {
+    OutlinedTextField(
+        value = value, onValueChange = onValueChange, label = { Text(label) }, singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType), modifier = Modifier.fillMaxWidth(),
+        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = NeonColor.neonCyan, unfocusedBorderColor = NeonColor.lineInput, focusedLabelColor = NeonColor.neonCyan, unfocusedLabelColor = NeonColor.muted, focusedTextColor = NeonColor.ink, unfocusedTextColor = NeonColor.ink, cursorColor = NeonColor.neonCyan),
+    )
 }
 
 @Composable

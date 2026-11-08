@@ -20,6 +20,9 @@ interface RecurringDao {
     @Query("SELECT * FROM recurring WHERE active = 1 AND nextDate = :onEpochDay")
     suspend fun getDue(onEpochDay: Long): List<RecurringEntity>
 
+    @Query("SELECT * FROM recurring WHERE active = 1 AND nextDate <= :onEpochDay ORDER BY nextDate ASC")
+    suspend fun getDueUpTo(onEpochDay: Long): List<RecurringEntity>
+
     @Query("SELECT * FROM recurring WHERE id = :id")
     suspend fun getById(id: Long): RecurringEntity?
 

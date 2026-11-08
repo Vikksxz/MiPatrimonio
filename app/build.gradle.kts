@@ -74,7 +74,12 @@ dependencies {
     // Inyección de dependencias
     implementation(libs.hilt.android)
     implementation(libs.androidx.hilt.navigation.compose)
+    implementation(libs.androidx.hilt.work)
     ksp(libs.hilt.android.compiler)
+    ksp(libs.androidx.hilt.compiler)
+
+    // Tareas en segundo plano (T3.5+)
+    implementation(libs.androidx.work.runtime.ktx)
 
     // Tests
     testImplementation(libs.junit)
