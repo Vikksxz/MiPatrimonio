@@ -20,6 +20,13 @@
     <string name="tab_savings">Ahorro</string>
     <string name="tab_wallet">Cartera</string>
     <string name="home_title">Resumen</string>
+    <string name="home_available">Disponible este mes</string>
+    <string name="home_income">Ingresos</string>
+    <string name="home_expenses">Gastos</string>
+    <string name="home_breakdown_title">Dónde se va el dinero</string>
+    <string name="home_recent_title">Últimos movimientos</string>
+    <string name="home_no_recent">Todavía no hay movimientos</string>
+    <string name="home_recent_date_type">%1$s · %2$s</string>
     <string name="add_movement">Añadir movimiento</string>
     <string name="add_sheet_title">Añadir</string>
     <string name="placeholder_under_construction">En construcción</string>

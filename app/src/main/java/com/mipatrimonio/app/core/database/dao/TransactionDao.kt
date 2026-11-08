@@ -23,6 +23,10 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE id = :id LIMIT 1")
     suspend fun getById(id: Long): TransactionEntity?
 
+    /** Últimos movimientos para el resumen de Inicio (T1.9), sin filtrar por mes. */
+    @Query("SELECT * FROM transactions ORDER BY date DESC, id DESC LIMIT :limit")
+    fun observeRecent(limit: Int): Flow<List<TransactionEntity>>
+
     @Query("SELECT type, SUM(amountBaseCents) as totalCents FROM transactions WHERE date >= :from AND date < :to GROUP BY type")
     fun observeTotalsByType(from: Long, to: Long): Flow<List<TypeTotal>>
 
