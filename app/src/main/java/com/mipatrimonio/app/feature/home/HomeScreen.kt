@@ -114,13 +114,19 @@ fun HomeContent(
             .padding(horizontal = 20.dp),
     ) {
         Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = formatMonth(month),
-            color = NeonColor.muted,
-            style = MaterialTheme.typography.bodyMedium,
-        )
-        Spacer(modifier = Modifier.height(2.dp))
-        ScreenTitle(text = stringResource(R.string.home_title))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            ScreenTitle(text = stringResource(R.string.home_title))
+            Text(
+                text = formatMonth(month),
+                color = NeonColor.muted,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(bottom = 2.dp),
+            )
+        }
 
         if (!state.loaded || summary == null) {
             Spacer(modifier = Modifier.height(24.dp))
@@ -136,7 +142,7 @@ fun HomeContent(
                 HomeBlock.PROJECTION -> summary.projection?.visible == true
             }
             if (!willRender) return@forEach
-            Spacer(modifier = Modifier.height(if (renderedAny) 20.dp else 16.dp))
+            Spacer(modifier = Modifier.height(if (renderedAny) 28.dp else 16.dp))
             renderedAny = true
             when (cfg.block) {
                 HomeBlock.BALANCE -> BalanceCard(summary)
