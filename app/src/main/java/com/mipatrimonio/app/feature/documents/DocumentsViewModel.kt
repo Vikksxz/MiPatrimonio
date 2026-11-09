@@ -113,6 +113,22 @@ class DocumentsViewModel @Inject constructor(
         dismissPendingPayroll(deleteFile = false) // savePayroll ya borra el temporal
     }
 
+    fun updateDocument(document: DocumentEntity, title: String, kind: DocumentKind, expiresAt: Long?) {
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    documentDao.update(
+                        document.copy(
+                            title = title.trim().ifBlank { document.title },
+                            kind = kind,
+                            expiresAt = expiresAt,
+                        ),
+                    )
+                }
+            } catch (_: Exception) { error.value = true }
+        }
+    }
+
     fun delete(document: DocumentEntity) {
         viewModelScope.launch {
             try {

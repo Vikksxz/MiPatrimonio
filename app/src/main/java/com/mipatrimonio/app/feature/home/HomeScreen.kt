@@ -48,6 +48,8 @@ import com.mipatrimonio.app.R
 import com.mipatrimonio.app.core.database.entity.TransactionEntity
 import com.mipatrimonio.app.core.model.TransactionType
 import com.mipatrimonio.app.core.money.Money
+import com.mipatrimonio.app.core.settings.HomeBlock
+import com.mipatrimonio.app.core.settings.HomeDashboardConfig
 import com.mipatrimonio.app.core.ui.components.NeonButton
 import com.mipatrimonio.app.core.ui.components.NeonButtonText
 import com.mipatrimonio.app.core.ui.components.NeonCard
@@ -125,22 +127,26 @@ fun HomeContent(
             return@Column
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-        BalanceCard(summary)
-
-        Spacer(modifier = Modifier.height(20.dp))
-        ActiveSavingsPanel(plan = summary.activePlan, onOpenSavings = onOpenSavings)
-
-        Spacer(modifier = Modifier.height(20.dp))
-        BreakdownCard(summary)
-
-        if (summary.budgets.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(20.dp))
-            BudgetsCard(budgets = summary.budgets)
+        var renderedAny = false
+        state.dashboardConfig.forEach { cfg ->
+            if (!cfg.visible) return@forEach
+            val willRender = when (cfg.block) {
+                HomeBlock.BALANCE, HomeBlock.SAVINGS_PLAN, HomeBlock.BREAKDOWN, HomeBlock.RECENT -> true
+                HomeBlock.ALERTS -> summary.budgets.isNotEmpty()
+                HomeBlock.PROJECTION -> summary.projection?.visible == true
+            }
+            if (!willRender) return@forEach
+            Spacer(modifier = Modifier.height(if (renderedAny) 20.dp else 16.dp))
+            renderedAny = true
+            when (cfg.block) {
+                HomeBlock.BALANCE -> BalanceCard(summary)
+                HomeBlock.SAVINGS_PLAN -> ActiveSavingsPanel(plan = summary.activePlan, onOpenSavings = onOpenSavings)
+                HomeBlock.BREAKDOWN -> BreakdownCard(summary)
+                HomeBlock.ALERTS -> BudgetsCard(budgets = summary.budgets)
+                HomeBlock.PROJECTION -> ProjectionCard(projectedExpenseCents = summary.projection!!.projectedExpenseCents)
+                HomeBlock.RECENT -> RecentSection(recent = summary.recent)
+            }
         }
-
-        Spacer(modifier = Modifier.height(20.dp))
-        RecentSection(recent = summary.recent)
 
         Spacer(modifier = Modifier.height(24.dp))
     }
@@ -186,15 +192,6 @@ private fun BalanceCard(summary: MonthlySummary) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            val projection = summary.projection
-            if (projection != null && projection.visible) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = stringResource(R.string.home_projection, Money.format(projection.projectedExpenseCents)),
-                    color = NeonColor.muted,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
             Spacer(modifier = Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 MiniPanel(
@@ -304,6 +301,18 @@ private fun SegmentedBar(summary: MonthlySummary) {
                     .background(color),
             )
         }
+    }
+}
+
+/** Proyección a fin de mes como bloque independiente (§8.1, T4.8). */
+@Composable
+private fun ProjectionCard(projectedExpenseCents: Long) {
+    NeonCard(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = stringResource(R.string.home_projection, Money.format(projectedExpenseCents)),
+            color = NeonColor.muted,
+            style = MaterialTheme.typography.bodyMedium,
+        )
     }
 }
 

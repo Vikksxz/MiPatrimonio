@@ -13,6 +13,7 @@ object Routes {
     const val DOCUMENT_VIEW = "documents/view/{documentId}"
     const val ANALYSIS = "analysis"
     const val SHARED = "shared"
+    const val HOME_SETTINGS = "home_settings"
 
     fun documentView(documentId: Long): String = "documents/view/$documentId"
 

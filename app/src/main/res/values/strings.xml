@@ -196,6 +196,31 @@
     <string name="shared_settle">Liquidar</string>
     <string name="shared_unsettle">Reactivar</string>
     <string name="shared_settle_hint">Al liquidar tu parte se crea un movimiento (cobro si te pagan, gasto si pagas). Al reactivar no se borra el movimiento.</string>
+
+    <!-- Dashboard personalizable (T4.8, §16) -->
+    <string name="home_settings_title">Personalizar Inicio</string>
+    <string name="home_settings_hint">Ordena los bloques y elige cuáles mostrar en Inicio.</string>
+    <string name="home_settings_move_up">Subir</string>
+    <string name="home_settings_move_down">Bajar</string>
+    <string name="home_block_balance">Saldo y resumen</string>
+    <string name="home_block_savings_plan">Plan de ahorro activo</string>
+    <string name="home_block_breakdown">Dónde se va el dinero</string>
+    <string name="home_block_alerts">Avisos y presupuestos</string>
+    <string name="home_block_projection">Proyección a fin de mes</string>
+    <string name="home_block_recent">Últimos movimientos</string>
+    <string name="wallet_customize_home">Personalizar Inicio</string>
+    <string name="wallet_customize_home_hint">Orden y visibilidad de los bloques</string>
+
+    <!-- Vencimiento de documentos (T4.8, §16) -->
+    <string name="channel_documents">Documentos</string>
+    <string name="document_edit">Editar documento</string>
+    <string name="document_expiry">Fecha de vencimiento</string>
+    <string name="document_expiry_none">Sin vencimiento</string>
+    <string name="document_expiry_pick">Elegir fecha</string>
+    <string name="document_expiry_clear">Quitar vencimiento</string>
+    <string name="document_expiry_notification_title">Documento próximo a vencer</string>
+    <string name="document_expiry_notification_text">%1$s vence el %2$s</string>
+    <string name="document_expires_row">Vence: %1$s</string>
     <string name="shared_delete_title">Eliminar gasto</string>
     <string name="shared_delete_confirm">Se eliminará el gasto compartido y, si pagaste tú, tu movimiento asociado.</string>
     <string name="shared_concept">Concepto</string>

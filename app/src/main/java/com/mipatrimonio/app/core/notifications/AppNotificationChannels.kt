@@ -13,6 +13,7 @@ object AppNotificationChannels {
     const val SUBSCRIPTIONS = "subscriptions"
     const val REMINDERS = "reminders"
     const val REPORTS = "reports"
+    const val DOCUMENTS = "documents"
 
     fun createAll(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -31,6 +32,9 @@ object AppNotificationChannels {
         )
         nm.createNotificationChannel(
             NotificationChannel(REPORTS, context.getString(R.string.channel_reports), NotificationManager.IMPORTANCE_DEFAULT)
+        )
+        nm.createNotificationChannel(
+            NotificationChannel(DOCUMENTS, context.getString(R.string.channel_documents), NotificationManager.IMPORTANCE_DEFAULT)
         )
     }
 }
