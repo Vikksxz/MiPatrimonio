@@ -731,7 +731,7 @@ Cada tarea termina con la app **compilando**. Marca `[x]` al completar.
 - [x] **T4.2 Copia local** `.mpbak` (cifrada con contraseña) y restauración. *Aceptación:* verificado por George.
 - [ ] **T4.3 Copia en Drive** (`AuthorizationClient` + REST `appDataFolder`), `BackupWorker`. **— POSPUESTA** (2026-11-08, decisión George: límites/costes Google Cloud; suficiente con exportación local selectiva T4.1/T4.2).
 - [x] **T4.4 Widget Glance** y shortcut. *Aceptación:* verificado en NX779J (widget 2×2/redimensionable, “Disponible este mes”, gastos/ingresos, proyección, barra plan activo sin animación, botón `+ Gasto` con deep link `mipatrimonio://add` y acceso directo; refresco tras mutaciones + worker 30 min).
-- [ ] **T4.5 Informe mensual.**
+- [x] **T4.5 Informe mensual.** *Aceptación:* PDF del mes anterior (§8.7: ingresos/gastos por tipo, comparativa, categorías, top 5 comercios, planes, consejos; importes `Long`/`Money`), generación manual en Cartera y `MonthlyReportWorker` (día 1, canal `reports`, dedupe). Revisión `@financial-auditor` aplicada (gasto total consistente, % en aritmética entera, consejo general). Tests unitarios en verde; verificado en NX779J.
 - [ ] **T4.6 Multimoneda.**
 - [ ] **T4.7 Gastos compartidos.**
 - [ ] **T4.8 Dashboard personalizable** y vencimiento de documentos.

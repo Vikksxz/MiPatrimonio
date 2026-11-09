@@ -2,8 +2,8 @@
 
 ## Estado
 - Fase actual: 4
-- Última tarea cerrada: T4.4
-- Tarea en curso: — (siguiente: T4.5 Informe mensual, §16/§18)
+- Última tarea cerrada: T4.5
+- Tarea en curso: — (siguiente: T4.6 Multimoneda, §16/§18)
 
 ## Decisiones tomadas
 - (2026-11-02) Paquete: com.mipatrimonio.app
@@ -101,5 +101,6 @@
 - (2026-11-08) T4.2 CERRADA (rama `t4-2-copia-local-cifrada`, plan RSN/reasoning-expert): copia local `.mpbak` cifrada con contraseña y restauración (§11, §13.1–§13.4). `BackupCrypto` PBKDF2-HMAC-SHA256 (sal 16B, 600.000 iter) + AES-256-GCM, cabecera `[MPBK][v1][salt][IV]`, 6 tests. ZIP cifrado (blob único) con `meta.json` (schema/app/fecha), `data.json` (todas las tablas, `org.json`) y `files/` (docs, tickets, fotos tarjeta). `BackupManager` export/import SAF; restauración **reemplaza todo** con confirmación, transacción + `clearAllTables` e **ID remapping** FK; Keystore no transferible → docs/tickets se re-cifran con Keystore del dispositivo (`EncryptedDocumentStore`/`ReceiptImageStore.saveBytes`), fotos en `noBackupFilesDir` (`CardPhotoStore.saveBytes`). DAOs `getAll/deleteAll/insertAll` + `ExchangeRateDao/PersonDao/SharedExpenseDao/SharedShareDao` (sin migración). UI Cartera→Copia de seguridad (crear contraseña+confirmar, mínimo 8, aviso irrecuperable; restaurar con confirmación destructiva). `assembleDebug`+`testDebugUnitTest` OK; instalado NX779J. **Aceptación verificada por George** (funcionamiento correcto).
 - (2026-11-08) **T4.3 POSPUESTA** por decisión de George: se omite integración Google Drive por límites/costes de Google Cloud; la exportación local selectiva (T4.1 CSV/PDF, T4.2 `.mpbak`) se considera suficiente por ahora. Rama `t4-3-copia-drive` creada sin cambios de código.
 - (2026-11-08) T4.4: Glance `androidx.glance:glance-appwidget`/`glance-material3` 1.2.0 (Google Maven, estable). Widget 2×2 (redimensionable) con “Disponible este mes”, gastos/ingresos, proyección (§7.5) y barra de plan activo (sin animación); `+ Gasto` abre `mipatrimonio://add` (intent-filter `VIEW` en `MainActivity` `singleTop`, respeta bloqueo vía `AppGate`). Acceso directo “Añadir gasto”. Datos vía Hilt `EntryPointAccessors` (`WidgetEntryPoint`: `TransactionDao`,`SavingsDao`). Refresco `WidgetUpdater` tras add/update/delete/restore de transacciones y mutaciones de ahorro/planes + `WidgetUpdateWorker` periódico 30 min (`KEEP`). Fix crítico: `ColorProvider` de Glance toma **ID de recurso** con `Int` (no ARGB) → usar `ColorProvider(R.color.widget_*)`.
-- (2026-11-08) Siguiente: T4.5 Informe mensual (§16/§18).
+- (2026-11-09) T4.5: informe mensual §8.7/§12 del mes anterior en PDF (`MonthlyReportPdfExporter`, `PdfDocument` A4, compartible) con resumen, comparativa, gastos por categoría, top 5 comercios, planes de ahorro y consejos (reglas simples). Lógica pura `MonthlyReportBuilder` (`Long` céntimos) + 7 tests. `MonthlyReportWorker` diario (día 1, dedupe `last_monthly_report_month` YYYYMM, canal `reports`) + generación manual en Cartera. Revisión `@financial-auditor`: aplicado gasto total vía `expenseTotal` (consistente), % en aritmética entera `Long` (sin `Double`) y consejo `GENERAL` por defecto (1–3). `./gradlew testDebugUnitTest installDebug` OK; verificado en NX779J.
+- (2026-11-09) Siguiente: T4.6 Multimoneda (§16/§18).
 - No tocar archivos fuera del alcance de la tarea. local.properties ya está en .gitignore.

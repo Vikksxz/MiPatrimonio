@@ -19,10 +19,12 @@ import com.mipatrimonio.app.core.database.entity.CategoryEntity
 import com.mipatrimonio.app.core.database.entity.RecurringEntity
 import com.mipatrimonio.app.core.export.CsvExporter
 import com.mipatrimonio.app.core.export.ExportFileSharer
+import com.mipatrimonio.app.core.export.MonthlyReportPdfExporter
 import com.mipatrimonio.app.core.export.PdfReportExporter
 import com.mipatrimonio.app.core.model.TransactionType
 import com.mipatrimonio.app.core.settings.SettingsRepository
 import com.mipatrimonio.app.domain.usecase.GetMonthlySummary
+import com.mipatrimonio.app.domain.usecase.MonthlyReportBuilder
 import com.mipatrimonio.app.feature.reminders.CashReminderWorker
 import kotlinx.coroutines.flow.first
 import java.io.File
@@ -169,6 +171,29 @@ class WalletViewModel @Inject constructor(
                     val summary = getMonthlySummary(month).first()
                     val name = "mipatrimonio-resumen-${month.year}-${month.monthValue.toString().padStart(2, '0')}.pdf"
                     val out = PdfReportExporter.generate(context, summary, name)
+                    out to "application/pdf"
+                }
+                onReady(file, mime)
+            } catch (_: Exception) {
+                onError()
+            }
+        }
+    }
+
+    fun generateMonthlyReport(onReady: (File, String) -> Unit, onError: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                val (file, mime) = withContext(Dispatchers.IO) {
+                    val target = YearMonth.now().minusMonths(1)
+                    val from = target.minusMonths(1).atDay(1).toEpochDay()
+                    val to = target.plusMonths(1).atDay(1).toEpochDay()
+                    val txs = transactionDao.getByMonth(from, to)
+                    val categories = categoryDao.getAll()
+                    val plans = savingsDao.getAllPlans()
+                    val contributions = savingsDao.getAllContributions()
+                    val report = MonthlyReportBuilder.build(target, txs, categories, plans, contributions)
+                    val name = "informe-mensual-${target.year}-${target.monthValue.toString().padStart(2, '0')}.pdf"
+                    val out = MonthlyReportPdfExporter.generate(context, report, name)
                     out to "application/pdf"
                 }
                 onReady(file, mime)

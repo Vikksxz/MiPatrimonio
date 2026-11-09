@@ -142,6 +142,29 @@
     <string name="widget_add_expense">+ Gasto</string>
     <string name="widget_no_plan">Sin plan activo</string>
 
+    <!-- Informe mensual (T4.5, §8.7, §12) -->
+    <string name="monthly_report_section_title">Informe mensual</string>
+    <string name="monthly_report_section_hint">Resumen del mes anterior con comparativa, categorías, ahorro y consejos.</string>
+    <string name="monthly_report_generate">Generar informe del mes anterior</string>
+    <string name="monthly_report_share">Compartir informe mensual</string>
+    <string name="monthly_report_notification_title">Informe mensual</string>
+    <string name="monthly_report_notification_text">Tu informe de %1$s está listo.</string>
+    <string name="monthly_report_error">No se pudo generar el informe mensual</string>
+    <string name="monthly_report_tip_category_up">%1$s subió un %2$d%% respecto al mes anterior.</string>
+    <string name="monthly_report_tip_over_income">Tus gastos superan tus ingresos este mes.</string>
+    <string name="monthly_report_tip_savings">Aportaste %1$s al ahorro este mes.</string>
+    <string name="monthly_report_tip_general">Sigue registrando tus movimientos para ver consejos personalizados.</string>
+    <string name="monthly_report_pdf_title">Informe mensual</string>
+    <string name="monthly_report_pdf_summary">Resumen</string>
+    <string name="monthly_report_pdf_compare">Comparativa con %1$s</string>
+    <string name="monthly_report_pdf_prev_expenses">Gastos mes anterior</string>
+    <string name="monthly_report_pdf_delta">Diferencia</string>
+    <string name="monthly_report_pdf_by_category">Gastos por categoría</string>
+    <string name="monthly_report_pdf_top_merchants">Top 5 comercios</string>
+    <string name="monthly_report_pdf_savings_plans">Planes de ahorro</string>
+    <string name="monthly_report_pdf_tips">Consejos</string>
+    <string name="monthly_report_pdf_no_data">Sin datos</string>
+
     <!-- Copia local cifrada (T4.2, §13) -->
     <string name="backup_section_title">Copia de seguridad</string>
     <string name="backup_section_hint">Guarda o restaura todos tus datos en un archivo .mpbak cifrado con contraseña.</string>

@@ -11,6 +11,7 @@ import com.mipatrimonio.app.core.settings.SettingsRepository
 import com.mipatrimonio.app.feature.alerts.AlertsWorker
 import com.mipatrimonio.app.feature.recurring.RecurringWorker
 import com.mipatrimonio.app.feature.reminders.CashReminderWorker
+import com.mipatrimonio.app.feature.reports.MonthlyReportWorker
 import com.mipatrimonio.app.feature.widget.WidgetUpdateWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -46,8 +47,13 @@ class MiPatrimonioApp : Application(), Configuration.Provider {
         AppNotificationChannels.createAll(this)
         scheduleRecurringWorker()
         scheduleAlertsWorker()
+        scheduleMonthlyReportWorker()
         scheduleCashReminderIfEnabled()
         WidgetUpdateWorker.schedule(this)
+    }
+
+    private fun scheduleMonthlyReportWorker() {
+        MonthlyReportWorker.schedule(this)
     }
 
     private fun scheduleCashReminderIfEnabled() {
