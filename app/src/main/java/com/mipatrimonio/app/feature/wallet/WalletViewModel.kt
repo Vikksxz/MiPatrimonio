@@ -11,11 +11,13 @@ import com.mipatrimonio.app.core.backup.BackupManager
 import com.mipatrimonio.app.core.database.dao.BudgetDao
 import com.mipatrimonio.app.core.database.dao.CardDao
 import com.mipatrimonio.app.core.database.dao.CategoryDao
+import com.mipatrimonio.app.core.database.dao.ExchangeRateDao
 import com.mipatrimonio.app.core.database.dao.RecurringDao
 import com.mipatrimonio.app.core.database.dao.SavingsDao
 import com.mipatrimonio.app.core.database.dao.TransactionDao
 import com.mipatrimonio.app.core.database.entity.CardEntity
 import com.mipatrimonio.app.core.database.entity.CategoryEntity
+import com.mipatrimonio.app.core.database.entity.ExchangeRateEntity
 import com.mipatrimonio.app.core.database.entity.RecurringEntity
 import com.mipatrimonio.app.core.export.CsvExporter
 import com.mipatrimonio.app.core.export.ExportFileSharer
@@ -52,6 +54,7 @@ class WalletViewModel @Inject constructor(
     private val transactionDao: TransactionDao,
     private val savingsDao: SavingsDao,
     private val budgetDao: BudgetDao,
+    private val exchangeRateDao: ExchangeRateDao,
     private val settingsRepository: SettingsRepository,
     private val getMonthlySummary: GetMonthlySummary,
     private val backupManager: BackupManager,
@@ -68,6 +71,9 @@ class WalletViewModel @Inject constructor(
 
     private val _cashReminderEnabled = MutableStateFlow(false)
     val cashReminderEnabled = _cashReminderEnabled.asStateFlow()
+
+    private val _exchangeRates = MutableStateFlow<List<ExchangeRateEntity>>(emptyList())
+    val exchangeRates = _exchangeRates.asStateFlow()
 
     private val _backupBusy = MutableStateFlow(false)
     val backupBusy = _backupBusy.asStateFlow()
@@ -86,6 +92,29 @@ class WalletViewModel @Inject constructor(
         }
         viewModelScope.launch {
             settingsRepository.cashReminderEnabled.collect { _cashReminderEnabled.value = it }
+        }
+        viewModelScope.launch {
+            exchangeRateDao.observeAll().collect { _exchangeRates.value = it }
+        }
+    }
+
+    fun saveExchangeRate(currency: String, rateText: String, onError: () -> Unit = {}, onSaved: () -> Unit = {}) {
+        val code = currency.trim().uppercase()
+        val rate = rateText.trim().replace(',', '.').toDoubleOrNull()
+        if (code.isBlank() || code == "EUR" || rate == null || !rate.isFinite() || rate <= 0.0) {
+            onError(); return
+        }
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                exchangeRateDao.upsert(ExchangeRateEntity(code, rate, System.currentTimeMillis()))
+            }
+            onSaved()
+        }
+    }
+
+    fun deleteExchangeRate(currency: String) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { exchangeRateDao.delete(currency.trim().uppercase()) }
         }
     }
 

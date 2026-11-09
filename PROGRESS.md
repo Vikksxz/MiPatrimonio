@@ -2,8 +2,8 @@
 
 ## Estado
 - Fase actual: 4
-- Última tarea cerrada: T4.5
-- Tarea en curso: — (siguiente: T4.6 Multimoneda, §16/§18)
+- Última tarea cerrada: T4.6
+- Tarea en curso: — (siguiente: T4.7 Gastos compartidos, §16/§18)
 
 ## Decisiones tomadas
 - (2026-11-02) Paquete: com.mipatrimonio.app
@@ -102,5 +102,6 @@
 - (2026-11-08) **T4.3 POSPUESTA** por decisión de George: se omite integración Google Drive por límites/costes de Google Cloud; la exportación local selectiva (T4.1 CSV/PDF, T4.2 `.mpbak`) se considera suficiente por ahora. Rama `t4-3-copia-drive` creada sin cambios de código.
 - (2026-11-08) T4.4: Glance `androidx.glance:glance-appwidget`/`glance-material3` 1.2.0 (Google Maven, estable). Widget 2×2 (redimensionable) con “Disponible este mes”, gastos/ingresos, proyección (§7.5) y barra de plan activo (sin animación); `+ Gasto` abre `mipatrimonio://add` (intent-filter `VIEW` en `MainActivity` `singleTop`, respeta bloqueo vía `AppGate`). Acceso directo “Añadir gasto”. Datos vía Hilt `EntryPointAccessors` (`WidgetEntryPoint`: `TransactionDao`,`SavingsDao`). Refresco `WidgetUpdater` tras add/update/delete/restore de transacciones y mutaciones de ahorro/planes + `WidgetUpdateWorker` periódico 30 min (`KEEP`). Fix crítico: `ColorProvider` de Glance toma **ID de recurso** con `Int` (no ARGB) → usar `ColorProvider(R.color.widget_*)`.
 - (2026-11-09) T4.5: informe mensual §8.7/§12 del mes anterior en PDF (`MonthlyReportPdfExporter`, `PdfDocument` A4, compartible) con resumen, comparativa, gastos por categoría, top 5 comercios, planes de ahorro y consejos (reglas simples). Lógica pura `MonthlyReportBuilder` (`Long` céntimos) + 7 tests. `MonthlyReportWorker` diario (día 1, dedupe `last_monthly_report_month` YYYYMM, canal `reports`) + generación manual en Cartera. Revisión `@financial-auditor`: aplicado gasto total vía `expenseTotal` (consistente), % en aritmética entera `Long` (sin `Double`) y consejo `GENERAL` por defecto (1–3). `./gradlew testDebugUnitTest installDebug` OK; verificado en NX779J.
-- (2026-11-09) Siguiente: T4.6 Multimoneda (§16/§18).
+- (2026-11-09) T4.6: multimoneda §7.8/§16 (base EUR). `TransactionFactory` calcula `amountBaseCents = round(amountCents × rateToBase)` (`Long`, `roundToLong`) para monedas != EUR (rate > 0 obligatorio; normaliza moneda); EUR sin cambio. `Money.format/formatSigned` admiten moneda (símbolo por código, fallback al código) manteniendo compatibilidad EUR. `ReviewSheet` añade selector de moneda + tipo de cambio manual (prefill desde `exchange_rates`/rate implícito al editar), guarda el rate usado; `AddTransactionViewModel` expone/guarda rates. Movimientos/Inicio muestran importe original con su moneda; totales usan `amountBaseCents` (EUR). Cartera: sección “Tipos de cambio” (CRUD). `ExchangeRateDao` (`observeAll/upsert/delete`), sin migración (tabla en esquema v1; `rateToBase` es factor `Double` en esquema existente, no un importe). `AddTransactionTest` +4 casos (rate obligatorio, conversión, redondeo, normalización). `./gradlew testDebugUnitTest` OK; verificado en NX779J.
+- (2026-11-09) Siguiente: T4.7 Gastos compartidos (§16/§18).
 - No tocar archivos fuera del alcance de la tarea. local.properties ya está en .gitignore.

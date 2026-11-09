@@ -165,6 +165,15 @@
     <string name="monthly_report_pdf_tips">Consejos</string>
     <string name="monthly_report_pdf_no_data">Sin datos</string>
 
+    <!-- Tipos de cambio (T4.6, §7.8, §16) -->
+    <string name="exchange_rates_title">Tipos de cambio</string>
+    <string name="exchange_rates_hint">Moneda base EUR. Indica cuántos EUR vale 1 unidad de la moneda.</string>
+    <string name="exchange_rate_currency">Moneda</string>
+    <string name="exchange_rate_value">1 unidad = EUR</string>
+    <string name="exchange_rate_save">Guardar</string>
+    <string name="exchange_rate_delete">Eliminar</string>
+    <string name="exchange_rate_invalid">Tipo de cambio no válido</string>
+
     <!-- Copia local cifrada (T4.2, §13) -->
     <string name="backup_section_title">Copia de seguridad</string>
     <string name="backup_section_hint">Guarda o restaura todos tus datos en un archivo .mpbak cifrado con contraseña.</string>
@@ -317,7 +326,10 @@
     <string name="review_title_income">Nuevo ingreso</string>
     <string name="review_title_edit">Editar movimiento</string>
     <string name="review_type">Tipo</string>
-    <string name="review_amount">Importe (€)</string>
+    <string name="review_amount">Importe</string>
+    <string name="review_currency">Moneda</string>
+    <string name="review_exchange_rate">Tipo de cambio a EUR</string>
+    <string name="review_rate_hint">1 %1$s = ? EUR</string>
     <string name="review_merchant">Comercio o concepto</string>
     <string name="review_date">Fecha</string>
     <string name="review_category">Categoría</string>
@@ -332,6 +344,7 @@
     <string name="review_delete_confirm">¿Eliminar este movimiento? Esta acción no se puede deshacer.</string>
     <string name="review_save_failed">No se pudo guardar el movimiento</string>
     <string name="review_error_amount">Escribe un importe mayor que 0</string>
+    <string name="review_error_rate">Introduce un tipo de cambio válido (mayor que 0)</string>
     <string name="review_error_income_kind">Elige Nómina u Otros ingresos</string>
     <string name="income_kind_title">Tipo de ingreso</string>
     <string name="income_kind_payroll">Nómina</string>

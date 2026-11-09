@@ -49,6 +49,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mipatrimonio.app.R
 import com.mipatrimonio.app.core.database.entity.CardEntity
 import com.mipatrimonio.app.core.database.entity.CategoryEntity
+import com.mipatrimonio.app.core.database.entity.ExchangeRateEntity
 import com.mipatrimonio.app.core.database.entity.TagEntity
 import com.mipatrimonio.app.core.database.entity.TransactionEntity
 import com.mipatrimonio.app.core.model.CardKind
@@ -96,6 +97,7 @@ fun ReviewSheet(
     val cards by viewModel.cards.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     val allTags by viewModel.tags.collectAsStateWithLifecycle()
+    val exchangeRates by viewModel.exchangeRatesFlow.collectAsStateWithLifecycle()
     var initialTagIds by remember(editing?.id) { mutableStateOf<List<Long>>(emptyList()) }
 
     LaunchedEffect(editing?.id) {
@@ -114,6 +116,8 @@ fun ReviewSheet(
         categories = categories,
         allTags = allTags,
         initialTagIds = initialTagIds,
+        exchangeRates = exchangeRates,
+        onSaveExchangeRate = viewModel::saveExchangeRate,
         onCreateTag = { name, onCreated -> viewModel.createTag(name, onCreated) },
         saving = viewModel.saving,
         saveFailed = viewModel.saveFailed,
@@ -150,12 +154,20 @@ fun ReviewContent(
     scanDraft: ReceiptScanDraft? = null,
     payrollDraft: PayrollDraft? = null,
     onDelete: (() -> Unit)? = null,
+    exchangeRates: List<ExchangeRateEntity> = emptyList(),
+    onSaveExchangeRate: (String, Double) -> Unit = { _, _ -> },
 ) {
     val state = remember(initialType, editing?.id, scanDraft?.thumbnail, payrollDraft?.sourceFilePath) {
         ReviewState(initialType, editing, scanDraft, payrollDraft)
     }
     LaunchedEffect(initialTagIds) {
         if (initialTagIds.isNotEmpty() || editing != null) state.selectedTagIds = initialTagIds.toSet()
+    }
+    LaunchedEffect(state.currency, exchangeRates) {
+        if (state.currency != Money.BASE_CURRENCY && state.rateText.isBlank()) {
+            val saved = exchangeRates.firstOrNull { it.currency == state.currency }?.rateToBase
+            if (saved != null) state.rateText = formatRate(saved)
+        }
     }
     var tagInput by remember { mutableStateOf("") }
     val visibleCategories = categories.filter {
@@ -257,6 +269,50 @@ fun ReviewContent(
                 color = NeonColor.expenseRed,
                 style = MaterialTheme.typography.bodySmall,
             )
+        }
+
+        FormSection(title = stringResource(R.string.review_currency)) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Money.SUPPORTED_CURRENCIES.forEach { code ->
+                    val selected = state.currency == code
+                    NeonChip(
+                        text = code,
+                        accent = if (selected) NeonColor.neonCyan else NeonColor.muted,
+                        tint = if (selected) NeonColor.neonCyan.copy(alpha = 0.18f) else NeonColor.panelAlt,
+                        labelColor = if (selected) NeonColor.neonCyan else NeonColor.chipText,
+                        selected = selected,
+                        onClick = {
+                            state.currency = code
+                            state.showRateError = false
+                            if (code == Money.BASE_CURRENCY) state.rateText = ""
+                        },
+                    )
+                }
+            }
+            if (state.currency != Money.BASE_CURRENCY) {
+                val hint = stringResource(R.string.review_rate_hint, state.currency)
+                NeonTextField(
+                    value = state.rateText,
+                    onValueChange = {
+                        state.rateText = it
+                        state.showRateError = false
+                    },
+                    label = hint,
+                    isError = state.showRateError,
+                    keyboardType = KeyboardType.Decimal,
+                )
+                if (state.showRateError) {
+                    Text(
+                        text = stringResource(R.string.review_error_rate),
+                        color = NeonColor.expenseRed,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
         }
 
         NeonTextField(
@@ -438,17 +494,23 @@ fun ReviewContent(
             onClick = {
                 if (saving) return@NeonButton
                 val amountCents = parseAmount(state.amountText)
+                val rateToBase = if (state.currency == Money.BASE_CURRENCY) null else parseRate(state.rateText)
                 if (amountCents == null) {
                     state.showAmountError = true
+                } else if (state.currency != Money.BASE_CURRENCY && (rateToBase == null || rateToBase <= 0.0)) {
+                    state.showRateError = true
                 } else if (state.type == TransactionType.INCOME && state.incomeKind == null) {
                     state.showIncomeKindError = true
                 } else {
+                    if (rateToBase != null) onSaveExchangeRate(state.currency, rateToBase)
                     onSave(
                         NewTransaction(
                             type = state.type,
                             amountCents = amountCents,
                             merchant = state.merchant,
                             date = state.date,
+                            currency = state.currency,
+                            rateToBase = rateToBase,
                             incomeKind = if (state.type == TransactionType.INCOME) {
                                 state.incomeKind
                             } else {
@@ -604,6 +666,14 @@ private class ReviewState(
             ?: scanDraft?.amountCents?.let { Money.formatNumber(it) }
             ?: "",
     )
+    var currency by mutableStateOf(editing?.currency?.trim()?.uppercase()?.takeIf { it.isNotBlank() } ?: Money.BASE_CURRENCY)
+    var rateText by mutableStateOf(
+        editing?.let { tx ->
+            if (tx.currency.trim().uppercase() != Money.BASE_CURRENCY && tx.amountCents > 0L) {
+                formatRate(tx.amountBaseCents.toDouble() / tx.amountCents.toDouble())
+            } else ""
+        } ?: "",
+    )
     var merchant by mutableStateOf(
         editing?.merchant ?: payrollDraft?.displayName?.removeSuffix(".pdf")?.removeSuffix(".PDF")
             ?: scanDraft?.merchant.orEmpty(),
@@ -620,6 +690,7 @@ private class ReviewState(
     val receiptPath: String? = editing?.receiptPath
     var showAmountError by mutableStateOf(false)
     var showIncomeKindError by mutableStateOf(false)
+    var showRateError by mutableStateOf(false)
 }
 
 @Composable
@@ -682,6 +753,18 @@ private fun categoryColor(hex: String): Color =
     runCatching { Color(android.graphics.Color.parseColor(hex)) }
         .getOrDefault(NeonColor.neonCyan)
 
+private fun formatRate(rate: Double): String {
+    if (!rate.isFinite() || rate <= 0.0) return ""
+    val s = String.format(Locale.ROOT, "%.6f", rate).trimEnd('0').trimEnd('.')
+    return s.replace('.', ',')
+}
+
+private fun parseRate(text: String): Double? {
+    val normalized = text.trim().replace(',', '.')
+    if (normalized.isEmpty()) return null
+    return normalized.toDoubleOrNull()?.takeIf { it.isFinite() && it > 0.0 }
+}
+
 private fun sampleCategory(id: Long, name: String, colorHex: String, isIncome: Boolean) =
     CategoryEntity(
         id = id,
@@ -723,6 +806,7 @@ private fun ReviewContentPreview() {
             saveFailed = false,
             onSave = {},
             onDismiss = {},
+            exchangeRates = emptyList(),
         )
     }
 }

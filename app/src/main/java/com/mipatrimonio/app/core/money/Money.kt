@@ -8,17 +8,21 @@ import java.util.Locale
 import java.util.regex.Pattern
 
 /**
- * Utilidades de formato y parseo de dinero (MiPatrimonio.md §7.10).
+ * Utilidades de formato y parseo de dinero (MiPatrimonio.md §7.10, §7.8).
  * - Los importes se almacenan en **céntimos** (`Long`).
  * - Formato: `1.234,56 €` (miles `.`, decimal `,`, símbolo al final con espacio).
  * - Gastos: prefijo `−` (U+2212), ingresos: prefijo `+`.
  * - Parseo flexible: acepta `23,45`, `23.45`, `1.234,56`.
+ * - Moneda base EUR; otras monedas usan su símbolo al mostrar importes originales.
  */
 object Money {
 
+    const val BASE_CURRENCY = "EUR"
     private const val EURO_SYMBOL = "€"
     private val LOCALE_ES = Locale("es", "ES")
     private val MINUS_SIGN = "\u2212" // U+2212, no el guion ASCII
+
+    val SUPPORTED_CURRENCIES = listOf("EUR", "USD", "GBP", "CHF", "JPY", "MXN", "ARS", "COP", "CLP")
 
     private val symbols = DecimalFormatSymbols(LOCALE_ES).apply {
         groupingSeparator = '.'
@@ -31,18 +35,31 @@ object Money {
         maximumFractionDigits = 2
     }
 
-    /** Formatea céntimos a String con símbolo € y separadores ES. Siempre valor absoluto. */
-    fun format(cents: Long): String {
+    fun symbolFor(currency: String): String = when (currency.uppercase(Locale.ROOT)) {
+        "EUR" -> "€"
+        "USD" -> "$"
+        "GBP" -> "£"
+        "CHF" -> "CHF"
+        "JPY" -> "¥"
+        "MXN" -> "MX$"
+        "ARS" -> "$"
+        "COP" -> "$"
+        "CLP" -> "$"
+        else -> currency.uppercase(Locale.ROOT)
+    }
+
+    /** Formatea céntimos con símbolo de [currency] y separadores ES. Siempre valor absoluto. */
+    fun format(cents: Long, currency: String = BASE_CURRENCY): String {
         val absCents = kotlin.math.abs(cents)
-        val euros = BigDecimal(absCents).movePointLeft(2)
-        return "${formatter.format(euros)} $EURO_SYMBOL"
+        val units = BigDecimal(absCents).movePointLeft(2)
+        return "${formatter.format(units)} ${symbolFor(currency)}"
     }
 
     /** Formatea con signo: gastos `−`, ingresos `+`, neutro sin signo. Cero nunca lleva signo. */
-    fun formatSigned(cents: Long, isExpense: Boolean): String {
-        if (cents == 0L) return format(0)
+    fun formatSigned(cents: Long, isExpense: Boolean, currency: String = BASE_CURRENCY): String {
+        if (cents == 0L) return format(0, currency)
         val absCents = kotlin.math.abs(cents)
-        val formatted = format(absCents)
+        val formatted = format(absCents, currency)
         return when {
             isExpense -> "$MINUS_SIGN$formatted"
             cents > 0 -> "+$formatted"
@@ -50,7 +67,7 @@ object Money {
         }
     }
 
-    /** Formatea solo el número (sin €), útil para inputs. */
+    /** Formatea solo el número (sin símbolo), útil para inputs. */
     fun formatNumber(cents: Long): String {
         val euros = BigDecimal(cents).movePointLeft(2)
         return formatter.format(euros)

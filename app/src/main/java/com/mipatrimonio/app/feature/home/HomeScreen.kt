@@ -410,7 +410,7 @@ private fun RecentRow(transaction: TransactionEntity) {
         }
         Spacer(modifier = Modifier.width(8.dp))
         Text(
-            text = Money.formatSigned(transaction.amountCents, isExpense = isExpense),
+            text = Money.formatSigned(transaction.amountCents, isExpense = isExpense, currency = transaction.currency),
             color = accent,
             style = MaterialTheme.typography.titleMedium,
         )

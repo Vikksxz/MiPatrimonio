@@ -9,11 +9,13 @@ import com.mipatrimonio.app.core.model.TransactionType
 import com.mipatrimonio.app.feature.widget.WidgetUpdater
 import java.time.LocalDate
 import javax.inject.Inject
+import kotlin.math.roundToLong
 
 /**
  * Datos de un movimiento introducido a mano (T1.7) o prellenado desde OCR (T2.5).
  * El importe siempre es positivo: el signo lo da [type] (MiPatrimonio.md §6).
  * [receiptPath] es la ruta relativa del ticket cifrado en almacenamiento privado.
+ * Multimoneda (T4.6, §7.8): [rateToBase] convierte a EUR base cuando [currency] != EUR.
  */
 data class NewTransaction(
     val type: TransactionType,
@@ -21,6 +23,7 @@ data class NewTransaction(
     val merchant: String,
     val date: LocalDate,
     val currency: String = "EUR",
+    val rateToBase: Double? = null,
     val incomeKind: IncomeKind? = null,
     val categoryId: Long? = null,
     val cardId: Long? = null,
@@ -31,11 +34,11 @@ data class NewTransaction(
 
 /**
  * Construcción y validación de un movimiento (función pura, testeable sin Room).
- * Reglas de MiPatrimonio.md §6:
+ * Reglas de MiPatrimonio.md §6, §7.8 y §8.3:
  * - importe > 0;
  * - [TransactionEntity.incomeKind] solo si `type == INCOME`;
  * - [TransactionEntity.cardId] solo si `type == CARD`;
- * - `amountBaseCents == amountCents` cuando la moneda es EUR.
+ * - EUR: `amountBaseCents == amountCents`; otra moneda: `amountBaseCents = round(amountCents × rateToBase)`.
  */
 object TransactionFactory {
 
@@ -44,13 +47,13 @@ object TransactionFactory {
         createdAtMillis: Long,
     ): TransactionEntity {
         validate(input)
-
+        val currency = normalizedCurrency(input)
         return TransactionEntity(
             type = input.type,
             incomeKind = if (input.type == TransactionType.INCOME) input.incomeKind else null,
             amountCents = input.amountCents,
-            currency = input.currency,
-            amountBaseCents = input.amountCents,
+            currency = currency,
+            amountBaseCents = baseCents(input),
             date = input.date.toEpochDay(),
             merchant = input.merchant.trim(),
             note = input.note.trim(),
@@ -64,23 +67,33 @@ object TransactionFactory {
     /**
      * Aplica los cambios de [input] sobre [existing] tocando **solo** los campos
      * editables del formulario. Conserva id, fecha de creación, ticket, vínculos
-     * (recurrente/compartido) y cualquier campo futuro (p. ej. etiquetas o tipo
-     * de cambio) en lugar de reconstruir la entidad desde cero.
+     * (recurrente/compartido) y cualquier campo futuro en lugar de reconstruir la
+     * entidad desde cero.
      */
     fun applyTo(existing: TransactionEntity, input: NewTransaction): TransactionEntity {
         validate(input)
+        val currency = normalizedCurrency(input)
         return existing.copy(
             type = input.type,
             incomeKind = if (input.type == TransactionType.INCOME) input.incomeKind else null,
             amountCents = input.amountCents,
-            currency = input.currency,
-            amountBaseCents = input.amountCents,
+            currency = currency,
+            amountBaseCents = baseCents(input),
             date = input.date.toEpochDay(),
             merchant = input.merchant.trim(),
             note = input.note.trim(),
             categoryId = input.categoryId,
             cardId = if (input.type == TransactionType.CARD) input.cardId else null,
         )
+    }
+
+    private fun normalizedCurrency(input: NewTransaction): String = input.currency.trim().uppercase()
+
+    private fun baseCents(input: NewTransaction): Long {
+        if (normalizedCurrency(input) == "EUR") return input.amountCents
+        val rate = input.rateToBase
+        require(rate != null && rate > 0.0) { "El tipo de cambio es obligatorio para monedas distintas de EUR" }
+        return (input.amountCents.toDouble() * rate).roundToLong()
     }
 
     private fun validate(input: NewTransaction) {
@@ -94,9 +107,12 @@ object TransactionFactory {
         require(input.type == TransactionType.CARD || input.cardId == null) {
             "cardId solo se usa con CARD"
         }
-        require(input.currency.isNotBlank()) { "La moneda no puede estar vacía" }
-        // Multimoneda (T4.6): hasta que exista conversión solo se admite EUR.
-        require(input.currency == "EUR") { "Solo se admite EUR hasta T4.6" }
+        val currency = normalizedCurrency(input)
+        require(currency.isNotBlank()) { "La moneda no puede estar vacía" }
+        if (currency != "EUR") {
+            val rate = input.rateToBase
+            require(rate != null && rate > 0.0) { "El tipo de cambio es obligatorio para monedas distintas de EUR" }
+        }
     }
 }
 

@@ -9,10 +9,12 @@ import androidx.lifecycle.viewModelScope
 import com.mipatrimonio.app.core.database.dao.CardDao
 import com.mipatrimonio.app.core.database.dao.CategoryDao
 import com.mipatrimonio.app.core.database.dao.DocumentDao
+import com.mipatrimonio.app.core.database.dao.ExchangeRateDao
 import com.mipatrimonio.app.core.database.dao.TagDao
 import com.mipatrimonio.app.core.database.entity.CardEntity
 import com.mipatrimonio.app.core.database.entity.CategoryEntity
 import com.mipatrimonio.app.core.database.entity.DocumentEntity
+import com.mipatrimonio.app.core.database.entity.ExchangeRateEntity
 import com.mipatrimonio.app.core.database.entity.TagEntity
 import com.mipatrimonio.app.core.database.entity.TransactionEntity
 import com.mipatrimonio.app.core.model.DocumentKind
@@ -67,6 +69,7 @@ data class PayrollDraft(
 class AddTransactionViewModel @Inject constructor(
     categoryDao: CategoryDao,
     cardDao: CardDao,
+    exchangeRateDao: ExchangeRateDao,
     private val addTransaction: AddTransaction,
     private val updateTransaction: UpdateTransaction,
     private val deleteTransaction: DeleteTransaction,
@@ -75,6 +78,7 @@ class AddTransactionViewModel @Inject constructor(
     private val documentStore: EncryptedDocumentStore,
     private val documentDao: DocumentDao,
     private val tagDao: TagDao,
+    private val exchangeRates: ExchangeRateDao,
 ) : ViewModel() {
 
     val cards: StateFlow<List<CardEntity>> = cardDao.observeAll()
@@ -85,6 +89,19 @@ class AddTransactionViewModel @Inject constructor(
 
     val tags: StateFlow<List<TagEntity>> = tagDao.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val exchangeRatesFlow: StateFlow<List<ExchangeRateEntity>> = exchangeRateDao.observeAll()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun saveExchangeRate(currency: String, rateToBase: Double) {
+        val code = currency.trim().uppercase()
+        if (code.isBlank() || code == "EUR" || rateToBase <= 0.0) return
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                exchangeRates.upsert(ExchangeRateEntity(code, rateToBase, System.currentTimeMillis()))
+            }
+        }
+    }
 
     var saveFailed by mutableStateOf(false)
         private set

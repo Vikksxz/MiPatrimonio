@@ -148,12 +148,40 @@ class AddTransactionTest {
     }
 
     @Test
-    fun nonEurCurrencyIsRejectedUntilConversionExists() {
-        val input = cash().copy(currency = "USD")
+    fun nonEurCurrencyRequiresRate() {
+        val input = cash().copy(currency = "USD", rateToBase = null)
 
         assertThrows(IllegalArgumentException::class.java) {
             TransactionFactory.create(input, createdAt)
         }
+        assertThrows(IllegalArgumentException::class.java) {
+            TransactionFactory.create(cash().copy(currency = "USD", rateToBase = 0.0), createdAt)
+        }
+    }
+
+    @Test
+    fun nonEurCurrencyComputesBaseCentsWithRate() {
+        val input = cash(amountCents = 1000).copy(currency = "USD", rateToBase = 0.92)
+        val entity = TransactionFactory.create(input, createdAt)
+        assertEquals("USD", entity.currency)
+        assertEquals(1000L, entity.amountCents)
+        assertEquals(920L, entity.amountBaseCents)
+    }
+
+    @Test
+    fun nonEurCurrencyRoundsBaseCents() {
+        val input = cash(amountCents = 1001).copy(currency = "USD", rateToBase = 0.925)
+        val entity = TransactionFactory.create(input, createdAt)
+        // 1001 * 0.925 = 925.925 -> 926
+        assertEquals(926L, entity.amountBaseCents)
+    }
+
+    @Test
+    fun currencyIsNormalizedToUppercase() {
+        val input = cash(amountCents = 500).copy(currency = " usd ", rateToBase = 1.0)
+        val entity = TransactionFactory.create(input, createdAt)
+        assertEquals("USD", entity.currency)
+        assertEquals(500L, entity.amountBaseCents)
     }
 
     @Test

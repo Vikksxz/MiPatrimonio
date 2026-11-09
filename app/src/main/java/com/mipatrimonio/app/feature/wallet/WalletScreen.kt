@@ -76,6 +76,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mipatrimonio.app.R
 import com.mipatrimonio.app.core.database.entity.CardEntity
 import com.mipatrimonio.app.core.database.entity.CategoryEntity
+import com.mipatrimonio.app.core.database.entity.ExchangeRateEntity
 import com.mipatrimonio.app.core.database.entity.RecurringEntity
 import com.mipatrimonio.app.core.backup.BackupFormat
 import com.mipatrimonio.app.core.export.ExportFileSharer
@@ -115,7 +116,9 @@ fun WalletScreen(
     val cards by viewModel.cards.collectAsStateWithLifecycle()
     val recurrings by viewModel.recurrings.collectAsStateWithLifecycle()
     val expenseCategories by viewModel.expenseCategories.collectAsStateWithLifecycle()
+    val exchangeRates by viewModel.exchangeRates.collectAsStateWithLifecycle()
     val cashReminderEnabled by viewModel.cashReminderEnabled.collectAsStateWithLifecycle()
+    var exchangeRateError by remember { mutableStateOf(false) }
     var showForm by remember { mutableStateOf(false) }
     var editingCard by remember { mutableStateOf<CardEntity?>(null) }
     var deleteTarget by remember { mutableStateOf<CardEntity?>(null) }
@@ -193,6 +196,11 @@ fun WalletScreen(
                     onError = { reportError = true },
                 )
             },
+            exchangeRates = exchangeRates,
+            onSaveExchangeRate = { currency, rateText ->
+                viewModel.saveExchangeRate(currency, rateText, onError = { exchangeRateError = true })
+            },
+            onDeleteExchangeRate = viewModel::deleteExchangeRate,
             backupBusy = backupBusy,
             onCreateBackup = { showCreatePassword = true },
             onRestoreBackup = { showRestoreConfirm = true },
@@ -225,6 +233,22 @@ fun WalletScreen(
                 text = { Text(stringResource(R.string.monthly_report_error)) },
                 confirmButton = {
                     TextButton(onClick = { reportError = false }) {
+                        Text(stringResource(R.string.common_accept), color = NeonColor.neonCyan)
+                    }
+                },
+            )
+        }
+
+        if (exchangeRateError) {
+            AlertDialog(
+                onDismissRequest = { exchangeRateError = false },
+                containerColor = NeonColor.panel,
+                titleContentColor = NeonColor.ink,
+                textContentColor = NeonColor.muted,
+                title = { Text(stringResource(R.string.exchange_rates_title)) },
+                text = { Text(stringResource(R.string.exchange_rate_invalid)) },
+                confirmButton = {
+                    TextButton(onClick = { exchangeRateError = false }) {
                         Text(stringResource(R.string.common_accept), color = NeonColor.neonCyan)
                     }
                 },
@@ -391,6 +415,9 @@ fun WalletContent(
     onExportCsv: () -> Unit = {},
     onExportPdf: () -> Unit = {},
     onMonthlyReport: () -> Unit = {},
+    exchangeRates: List<ExchangeRateEntity> = emptyList(),
+    onSaveExchangeRate: (String, String) -> Unit = { _, _ -> },
+    onDeleteExchangeRate: (String) -> Unit = {},
     backupBusy: Boolean = false,
     onCreateBackup: () -> Unit = {},
     onRestoreBackup: () -> Unit = {},
@@ -466,6 +493,13 @@ fun WalletContent(
             NotificationsSection(
                 cashReminderEnabled = cashReminderEnabled,
                 onCashReminderEnabledChange = onCashReminderEnabledChange,
+            )
+        }
+        item {
+            ExchangeRatesSection(
+                rates = exchangeRates,
+                onSave = onSaveExchangeRate,
+                onDelete = onDeleteExchangeRate,
             )
         }
         item {
@@ -687,6 +721,96 @@ private fun RecurringFormSheet(
             },
         )
     }
+}
+
+@Composable
+private fun ExchangeRatesSection(
+    rates: List<ExchangeRateEntity>,
+    onSave: (String, String) -> Unit,
+    onDelete: (String) -> Unit,
+) {
+    var selectedCurrency by remember { mutableStateOf(Money.SUPPORTED_CURRENCIES.firstOrNull { it != Money.BASE_CURRENCY } ?: "USD") }
+    var rateText by remember { mutableStateOf("") }
+    NeonCard(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = stringResource(R.string.exchange_rates_title),
+                color = NeonColor.ink,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = stringResource(R.string.exchange_rates_hint),
+                color = NeonColor.muted,
+                style = MaterialTheme.typography.bodySmall,
+            )
+            if (rates.isEmpty()) {
+                Text("EUR (base)", color = NeonColor.neonCyan, style = MaterialTheme.typography.bodySmall)
+            } else {
+                rates.forEach { rate ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "1 ${rate.currency} = ${formatRateDisplay(rate.rateToBase)} EUR",
+                            color = NeonColor.ink,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(onClick = { onDelete(rate.currency) }) {
+                            Text(stringResource(R.string.exchange_rate_delete), color = NeonColor.expenseRed)
+                        }
+                    }
+                }
+            }
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Money.SUPPORTED_CURRENCIES.filter { it != Money.BASE_CURRENCY }.forEach { code ->
+                    val selected = selectedCurrency == code
+                    NeonChip(
+                        text = code,
+                        accent = if (selected) NeonColor.neonCyan else NeonColor.muted,
+                        tint = if (selected) NeonColor.neonCyan.copy(alpha = 0.18f) else NeonColor.panelAlt,
+                        labelColor = if (selected) NeonColor.neonCyan else NeonColor.chipText,
+                        selected = selected,
+                        onClick = {
+                            selectedCurrency = code
+                            rateText = rates.firstOrNull { it.currency == code }?.let { formatRateDisplay(it.rateToBase) } ?: ""
+                        },
+                    )
+                }
+            }
+            OutlinedTextField(
+                value = rateText,
+                onValueChange = { rateText = it },
+                label = { Text(stringResource(R.string.exchange_rate_value)) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = NeonColor.neonCyan,
+                    unfocusedBorderColor = NeonColor.lineInput,
+                    focusedLabelColor = NeonColor.neonCyan,
+                    unfocusedLabelColor = NeonColor.muted,
+                    focusedTextColor = NeonColor.ink,
+                    unfocusedTextColor = NeonColor.ink,
+                    cursorColor = NeonColor.neonCyan,
+                ),
+            )
+            NeonButton(onClick = { onSave(selectedCurrency, rateText); rateText = "" }, secondary = true, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.exchange_rate_save), color = NeonColor.neonCyan, style = MaterialTheme.typography.labelLarge)
+            }
+        }
+    }
+}
+
+private fun formatRateDisplay(rate: Double): String {
+    if (!rate.isFinite() || rate <= 0.0) return "0"
+    val s = String.format(java.util.Locale.ROOT, "%.6f", rate).trimEnd('0').trimEnd('.')
+    return s.replace('.', ',')
 }
 
 @Composable
