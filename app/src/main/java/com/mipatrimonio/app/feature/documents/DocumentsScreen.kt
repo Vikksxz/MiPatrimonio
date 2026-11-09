@@ -18,13 +18,22 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDefaults
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -60,7 +69,9 @@ import com.mipatrimonio.app.core.ui.components.NeonCard
 import com.mipatrimonio.app.core.ui.theme.MiPatrimonioTheme
 import com.mipatrimonio.app.core.ui.theme.NeonColor
 import com.mipatrimonio.app.feature.add.ReviewSheet
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -75,6 +86,7 @@ fun DocumentsScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var pendingDelete by remember { mutableStateOf<DocumentEntity?>(null) }
+    var editingDocument by remember { mutableStateOf<DocumentEntity?>(null) }
     val errorText = stringResource(R.string.documents_action_failed)
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -189,6 +201,7 @@ fun DocumentsScreen(
                             DocumentRow(
                                 document = doc,
                                 onClick = { onOpen(doc.id) },
+                                onEdit = { editingDocument = doc },
                                 onDelete = { pendingDelete = doc },
                             )
                         }
@@ -263,6 +276,18 @@ fun DocumentsScreen(
             )
         }
 
+        val toEdit = editingDocument
+        if (toEdit != null) {
+            DocumentEditDialog(
+                document = toEdit,
+                onDismiss = { editingDocument = null },
+                onSave = { title, kind, expiresAt ->
+                    viewModel.updateDocument(toEdit, title, kind, expiresAt)
+                    editingDocument = null
+                },
+            )
+        }
+
         val draft = state.pendingPayrollDraft
         if (draft != null && !state.pendingDuplicateWarning) {
             ModalBottomSheet(
@@ -286,20 +311,20 @@ fun DocumentsScreen(
 private fun DocumentRow(
     document: DocumentEntity,
     onClick: () -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    val dateText = remember(document.date) {
-        LocalDate.ofEpochDay(document.date)
-            .format(DateTimeFormatter.ofPattern("d MMM yyyy", Locale.forLanguageTag("es-ES")))
+    val fmt = remember { DateTimeFormatter.ofPattern("d MMM yyyy", Locale.forLanguageTag("es-ES")) }
+    val dateText = remember(document.date) { LocalDate.ofEpochDay(document.date).format(fmt) }
+    val expiresText = remember(document.expiresAt) {
+        document.expiresAt?.let { LocalDate.ofEpochDay(it).format(fmt) }
     }
     NeonCard(modifier = Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Column(modifier = Modifier.weight(1f).clickable(onClick = onClick)) {
                 Text(
                     text = document.title,
                     color = NeonColor.ink,
@@ -312,6 +337,20 @@ private fun DocumentRow(
                     text = "${document.kind.label()} · $dateText",
                     color = NeonColor.neonGreen,
                     style = MaterialTheme.typography.bodySmall,
+                )
+                if (expiresText != null) {
+                    Text(
+                        text = stringResource(R.string.document_expires_row, expiresText),
+                        color = NeonColor.neonAmber,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+            IconButton(onClick = onEdit) {
+                Icon(
+                    imageVector = Icons.Filled.Edit,
+                    contentDescription = stringResource(R.string.document_edit),
+                    tint = NeonColor.neonCyan,
                 )
             }
             IconButton(onClick = onDelete) {
@@ -336,3 +375,103 @@ private fun DocumentKind.label(): String = stringResource(
         DocumentKind.OTHER -> R.string.document_kind_other
     }
 )
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun DocumentEditDialog(
+    document: DocumentEntity,
+    onDismiss: () -> Unit,
+    onSave: (title: String, kind: DocumentKind, expiresAt: Long?) -> Unit,
+) {
+    var title by remember(document.id) { mutableStateOf(document.title) }
+    var kind by remember(document.id) { mutableStateOf(document.kind) }
+    var expiresAt by remember(document.id) { mutableStateOf(document.expiresAt) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    val fmt = remember { DateTimeFormatter.ofPattern("d MMM yyyy", Locale.forLanguageTag("es-ES")) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = NeonColor.panel,
+        titleContentColor = NeonColor.ink,
+        textContentColor = NeonColor.muted,
+        title = { Text(stringResource(R.string.document_edit)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text(stringResource(R.string.review_merchant)) },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = NeonColor.neonCyan,
+                        unfocusedBorderColor = NeonColor.lineInput,
+                        focusedTextColor = NeonColor.ink,
+                        unfocusedTextColor = NeonColor.ink,
+                        cursorColor = NeonColor.neonCyan,
+                        focusedLabelColor = NeonColor.neonCyan,
+                        unfocusedLabelColor = NeonColor.muted,
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(stringResource(R.string.document_kind_label), color = NeonColor.muted, style = MaterialTheme.typography.labelMedium)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    DocumentKind.entries.forEach { k ->
+                        FilterChip(
+                            selected = kind == k,
+                            onClick = { kind = k },
+                            label = { Text(k.label()) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = NeonColor.neonCyan.copy(alpha = 0.2f),
+                                selectedLabelColor = NeonColor.neonCyan,
+                                labelColor = NeonColor.chipText,
+                            ),
+                        )
+                    }
+                }
+                Text(stringResource(R.string.document_expiry), color = NeonColor.muted, style = MaterialTheme.typography.labelMedium)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = expiresAt?.let { LocalDate.ofEpochDay(it).format(fmt) } ?: stringResource(R.string.document_expiry_none),
+                        color = NeonColor.ink,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = { showDatePicker = true }) {
+                        Text(stringResource(R.string.document_expiry_pick), color = NeonColor.neonCyan)
+                    }
+                }
+                if (expiresAt != null) {
+                    TextButton(onClick = { expiresAt = null }) {
+                        Text(stringResource(R.string.document_expiry_clear), color = NeonColor.expenseRed)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(title.trim().ifBlank { document.title }, kind, expiresAt) }) {
+                Text(stringResource(R.string.common_save), color = NeonColor.neonCyan)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.common_cancel), color = NeonColor.muted)
+            }
+        },
+    )
+
+    if (showDatePicker) {
+        val initial = (expiresAt ?: LocalDate.now().toEpochDay())
+        val pickerState = rememberDatePickerState(initialSelectedDateMillis = LocalDate.ofEpochDay(initial).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    pickerState.selectedDateMillis?.let { expiresAt = Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate().toEpochDay() }
+                    showDatePicker = false
+                }) { Text(stringResource(R.string.common_accept), color = NeonColor.neonCyan) }
+            },
+            dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.common_cancel), color = NeonColor.muted) } },
+            colors = DatePickerDefaults.colors(containerColor = NeonColor.panel),
+        ) { DatePicker(state = pickerState) }
+    }
+}

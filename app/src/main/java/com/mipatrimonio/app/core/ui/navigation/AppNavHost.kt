@@ -14,6 +14,7 @@ import com.mipatrimonio.app.feature.documents.DocumentsScreen
 import com.mipatrimonio.app.feature.home.HomeScreen
 import com.mipatrimonio.app.feature.analysis.AnalysisScreen
 import com.mipatrimonio.app.feature.savings.SavingsScreen
+import com.mipatrimonio.app.feature.home.HomeSettingsScreen
 import com.mipatrimonio.app.feature.shared.SharedExpensesScreen
 import com.mipatrimonio.app.feature.transactions.TransactionsScreen
 import com.mipatrimonio.app.feature.wallet.WalletScreen
@@ -50,10 +51,14 @@ fun AppNavHost(
             WalletScreen(
                 onOpenDocuments = { navController.navigate(Routes.DOCUMENTS) },
                 onOpenShared = { navController.navigate(Routes.SHARED) },
+                onOpenHomeSettings = { navController.navigate(Routes.HOME_SETTINGS) },
             )
         }
         composable(Routes.SHARED) {
             SharedExpensesScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.HOME_SETTINGS) {
+            HomeSettingsScreen(onBack = { navController.popBackStack() })
         }
         composable(Routes.DOCUMENTS) {
             DocumentsScreen(

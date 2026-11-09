@@ -11,6 +11,7 @@ import com.mipatrimonio.app.core.settings.SettingsRepository
 import com.mipatrimonio.app.feature.alerts.AlertsWorker
 import com.mipatrimonio.app.feature.recurring.RecurringWorker
 import com.mipatrimonio.app.feature.reminders.CashReminderWorker
+import com.mipatrimonio.app.feature.documents.DocumentExpiryWorker
 import com.mipatrimonio.app.feature.reports.MonthlyReportWorker
 import com.mipatrimonio.app.feature.widget.WidgetUpdateWorker
 import kotlinx.coroutines.CoroutineScope
@@ -49,6 +50,7 @@ class MiPatrimonioApp : Application(), Configuration.Provider {
         scheduleAlertsWorker()
         scheduleMonthlyReportWorker()
         scheduleCashReminderIfEnabled()
+        DocumentExpiryWorker.schedule(this)
         WidgetUpdateWorker.schedule(this)
     }
 
