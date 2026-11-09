@@ -95,10 +95,21 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+    /** Último informe mensual auto-generado (YYYYMM del mes informado), 0 si ninguno. */
+    suspend fun lastMonthlyReportMonth(): Int =
+        context.settingsDataStore.data.first()[KEY_LAST_MONTHLY_REPORT] ?: 0
+
+    suspend fun setLastMonthlyReportMonth(yyyymm: Int) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_LAST_MONTHLY_REPORT] = yyyymm
+        }
+    }
+
     private companion object {
         val KEY_LOCK_ENABLED = booleanPreferencesKey("lock_enabled")
         val KEY_LOCK_TIMEOUT_MINUTES = intPreferencesKey("lock_timeout_minutes")
         val KEY_HIDE_CONTENT = booleanPreferencesKey("hide_content")
         val KEY_CASH_REMINDER_ENABLED = booleanPreferencesKey("cash_reminder_enabled")
+        val KEY_LAST_MONTHLY_REPORT = intPreferencesKey("last_monthly_report_month")
     }
 }

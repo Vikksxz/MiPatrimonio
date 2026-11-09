@@ -122,6 +122,7 @@ fun WalletScreen(
     var showRecurringForm by remember { mutableStateOf(false) }
     var editingRecurring by remember { mutableStateOf<RecurringEntity?>(null) }
     var exportError by remember { mutableStateOf(false) }
+    var reportError by remember { mutableStateOf(false) }
 
     val backupBusy by viewModel.backupBusy.collectAsStateWithLifecycle()
     var backupMessage by remember { mutableStateOf<String?>(null) }
@@ -184,6 +185,14 @@ fun WalletScreen(
                     onError = { exportError = true },
                 )
             },
+            onMonthlyReport = {
+                viewModel.generateMonthlyReport(
+                    onReady = { file, mime ->
+                        ExportFileSharer.share(context, file, mime, context.getString(R.string.monthly_report_share))
+                    },
+                    onError = { reportError = true },
+                )
+            },
             backupBusy = backupBusy,
             onCreateBackup = { showCreatePassword = true },
             onRestoreBackup = { showRestoreConfirm = true },
@@ -200,6 +209,22 @@ fun WalletScreen(
                 text = { Text(stringResource(R.string.export_error)) },
                 confirmButton = {
                     TextButton(onClick = { exportError = false }) {
+                        Text(stringResource(R.string.common_accept), color = NeonColor.neonCyan)
+                    }
+                },
+            )
+        }
+
+        if (reportError) {
+            AlertDialog(
+                onDismissRequest = { reportError = false },
+                containerColor = NeonColor.panel,
+                titleContentColor = NeonColor.ink,
+                textContentColor = NeonColor.muted,
+                title = { Text(stringResource(R.string.monthly_report_section_title)) },
+                text = { Text(stringResource(R.string.monthly_report_error)) },
+                confirmButton = {
+                    TextButton(onClick = { reportError = false }) {
                         Text(stringResource(R.string.common_accept), color = NeonColor.neonCyan)
                     }
                 },
@@ -365,6 +390,7 @@ fun WalletContent(
     onCashReminderEnabledChange: (Boolean) -> Unit = {},
     onExportCsv: () -> Unit = {},
     onExportPdf: () -> Unit = {},
+    onMonthlyReport: () -> Unit = {},
     backupBusy: Boolean = false,
     onCreateBackup: () -> Unit = {},
     onRestoreBackup: () -> Unit = {},
@@ -446,6 +472,7 @@ fun WalletContent(
             ExportSection(
                 onExportCsv = onExportCsv,
                 onExportPdf = onExportPdf,
+                onMonthlyReport = onMonthlyReport,
             )
         }
         item {
@@ -666,6 +693,7 @@ private fun RecurringFormSheet(
 private fun ExportSection(
     onExportCsv: () -> Unit,
     onExportPdf: () -> Unit,
+    onMonthlyReport: () -> Unit,
 ) {
     NeonCard(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -686,6 +714,18 @@ private fun ExportSection(
             NeonButton(onClick = onExportPdf, secondary = true, modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = stringResource(R.string.export_pdf),
+                    color = NeonColor.neonCyan,
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
+            Text(
+                text = stringResource(R.string.monthly_report_section_hint),
+                color = NeonColor.muted,
+                style = MaterialTheme.typography.bodySmall,
+            )
+            NeonButton(onClick = onMonthlyReport, secondary = true, modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = stringResource(R.string.monthly_report_generate),
                     color = NeonColor.neonCyan,
                     style = MaterialTheme.typography.labelLarge,
                 )
