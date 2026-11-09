@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -35,6 +36,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxState
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -50,6 +52,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -357,7 +360,7 @@ private fun SwipeableTransactionRow(
     SwipeToDismissBox(
         state = dismissState,
         enableDismissFromStartToEnd = false,
-        backgroundContent = { DeleteBackground() },
+        backgroundContent = { DeleteBackground(dismissState) },
         onDismiss = { value ->
             if (value == SwipeToDismissBoxValue.EndToStart) onDelete()
         },
@@ -366,13 +369,20 @@ private fun SwipeableTransactionRow(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun RowScope.DeleteBackground() {
+private fun RowScope.DeleteBackground(dismissState: SwipeToDismissBoxState) {
+    val isDeleting = dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart
+    val revealAlpha by animateFloatAsState(
+        targetValue = if (isDeleting) 1f else 0f,
+        label = "deleteReveal",
+    )
+
     Row(
         modifier = Modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(8.dp))
-            .background(NeonColor.expenseRed.copy(alpha = 0.18f))
+            .background(NeonColor.expenseRed.copy(alpha = 0.18f * revealAlpha))
             .padding(end = 20.dp),
         horizontalArrangement = Arrangement.End,
         verticalAlignment = Alignment.CenterVertically,
@@ -382,7 +392,9 @@ private fun RowScope.DeleteBackground() {
             // Decorativo: la acción de borrar ya se anuncia desde la fila y la hoja.
             contentDescription = null,
             tint = NeonColor.expenseRed,
-            modifier = Modifier.size(24.dp),
+            modifier = Modifier
+                .size(24.dp)
+                .graphicsLayer { alpha = revealAlpha },
         )
     }
 }
@@ -400,7 +412,7 @@ private fun TransactionRow(
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
+            .padding(vertical = 8.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(

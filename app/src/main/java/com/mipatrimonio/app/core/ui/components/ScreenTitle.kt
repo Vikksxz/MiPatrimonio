@@ -1,11 +1,13 @@
 package com.mipatrimonio.app.core.ui.components
 
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import com.mipatrimonio.app.core.ui.theme.NeonColor
 
 /**
@@ -20,7 +22,7 @@ fun ScreenTitle(
 ) {
     Text(
         text = text.uppercase(),
-        modifier = modifier,
+        modifier = modifier.padding(top = 6.dp),
         color = color,
         style = MaterialTheme.typography.headlineLarge,
         maxLines = 1,

@@ -210,6 +210,8 @@
     <string name="home_block_recent">Últimos movimientos</string>
     <string name="wallet_customize_home">Personalizar Inicio</string>
     <string name="wallet_customize_home_hint">Orden y visibilidad de los bloques</string>
+    <string name="settings_title">Configuración</string>
+    <string name="settings_open">Configuración</string>
 
     <!-- Vencimiento de documentos (T4.8, §16) -->
     <string name="channel_documents">Documentos</string>

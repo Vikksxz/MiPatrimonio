@@ -396,45 +396,55 @@ private fun PlanRow(
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
 ) {
-    NeonCard(modifier = Modifier.fillMaxWidth().clickable { onEdit() }) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            val activeDesc = stringResource(R.string.savings_set_active)
-            RadioButton(
-                selected = isActive,
-                onClick = onSetActive,
-                modifier = Modifier.semantics { contentDescription = activeDesc },
-                colors = RadioButtonDefaults.colors(selectedColor = NeonColor.neonCyan, unselectedColor = NeonColor.muted),
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onEdit)
+            .padding(vertical = 6.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val activeDesc = stringResource(R.string.savings_set_active)
+        RadioButton(
+            selected = isActive,
+            onClick = onSetActive,
+            modifier = Modifier
+                .size(36.dp)
+                .semantics { contentDescription = activeDesc },
+            colors = RadioButtonDefaults.colors(selectedColor = NeonColor.neonCyan, unselectedColor = NeonColor.muted),
+        )
+        Spacer(Modifier.width(4.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = item.plan.name,
+                style = MaterialTheme.typography.bodyMedium,
+                color = NeonColor.ink,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.width(4.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = item.plan.name, style = MaterialTheme.typography.bodyLarge, color = NeonColor.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(
-                    text = stringResource(R.string.savings_saved_of_target, Money.format(item.contributedCents), Money.format(item.plan.targetCents)),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = NeonColor.muted,
-                )
-            }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                val upDesc = stringResource(R.string.savings_move_up)
-                IconButton(
-                    onClick = onMoveUp,
-                    enabled = canMoveUp,
-                    modifier = Modifier.size(44.dp).semantics { contentDescription = upDesc },
-                ) {
-                    Text("▲", color = if (canMoveUp) NeonColor.neonCyan else NeonColor.lineInput, style = MaterialTheme.typography.labelSmall)
-                }
-                val downDesc = stringResource(R.string.savings_move_down)
-                IconButton(
-                    onClick = onMoveDown,
-                    enabled = canMoveDown,
-                    modifier = Modifier.size(44.dp).semantics { contentDescription = downDesc },
-                ) {
-                    Text("▼", color = if (canMoveDown) NeonColor.neonCyan else NeonColor.lineInput, style = MaterialTheme.typography.labelSmall)
-                }
-            }
+            Text(
+                text = stringResource(R.string.savings_saved_of_target, Money.format(item.contributedCents), Money.format(item.plan.targetCents)),
+                style = MaterialTheme.typography.bodySmall,
+                color = NeonColor.muted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        val upDesc = stringResource(R.string.savings_move_up)
+        IconButton(
+            onClick = onMoveUp,
+            enabled = canMoveUp,
+            modifier = Modifier.size(36.dp).semantics { contentDescription = upDesc },
+        ) {
+            Text("▲", color = if (canMoveUp) NeonColor.neonCyan else NeonColor.lineInput, style = MaterialTheme.typography.labelSmall)
+        }
+        val downDesc = stringResource(R.string.savings_move_down)
+        IconButton(
+            onClick = onMoveDown,
+            enabled = canMoveDown,
+            modifier = Modifier.size(36.dp).semantics { contentDescription = downDesc },
+        ) {
+            Text("▼", color = if (canMoveDown) NeonColor.neonCyan else NeonColor.lineInput, style = MaterialTheme.typography.labelSmall)
         }
     }
 }
