@@ -95,6 +95,12 @@ interface TransactionDao {
     @Query("UPDATE transactions SET categoryId = :toId WHERE categoryId = :fromId")
     suspend fun updateCategory(fromId: Long, toId: Long?)
 
+    @Query("SELECT * FROM transactions WHERE sharedExpenseId = :sharedExpenseId LIMIT 1")
+    suspend fun getBySharedExpenseId(sharedExpenseId: Long): TransactionEntity?
+
+    @Query("DELETE FROM transactions WHERE sharedExpenseId = :sharedExpenseId")
+    suspend fun deleteBySharedExpenseId(sharedExpenseId: Long)
+
     @Query("DELETE FROM transactions")
     suspend fun deleteAll()
 }

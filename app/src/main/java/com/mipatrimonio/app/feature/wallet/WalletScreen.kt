@@ -110,6 +110,7 @@ import com.mipatrimonio.app.core.ui.theme.NeonType
 fun WalletScreen(
     viewModel: WalletViewModel = hiltViewModel(),
     onOpenDocuments: () -> Unit = {},
+    onOpenShared: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -168,6 +169,7 @@ fun WalletScreen(
                 showForm = true
             },
             onOpenDocuments = onOpenDocuments,
+            onOpenShared = onOpenShared,
             onAddRecurring = { editingRecurring = null; showRecurringForm = true },
             onEditRecurring = { editingRecurring = it; showRecurringForm = true },
             cashReminderEnabled = cashReminderEnabled,
@@ -406,6 +408,7 @@ fun WalletContent(
     onAdd: () -> Unit,
     onEdit: (CardEntity) -> Unit,
     onOpenDocuments: () -> Unit = {},
+    onOpenShared: () -> Unit = {},
     modifier: Modifier = Modifier,
     recurrings: List<RecurringEntity> = emptyList(),
     onAddRecurring: () -> Unit = {},
@@ -438,6 +441,12 @@ fun WalletContent(
             NeonCard(modifier = Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onOpenDocuments)) {
                 Text(text = stringResource(R.string.wallet_documents), color = NeonColor.ink, style = MaterialTheme.typography.titleMedium)
                 Text(text = stringResource(R.string.wallet_documents_hint), color = NeonColor.neonGreen, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        item {
+            NeonCard(modifier = Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onOpenShared)) {
+                Text(text = stringResource(R.string.wallet_shared), color = NeonColor.ink, style = MaterialTheme.typography.titleMedium)
+                Text(text = stringResource(R.string.wallet_shared_hint), color = NeonColor.neonViolet, style = MaterialTheme.typography.bodySmall)
             }
         }
 

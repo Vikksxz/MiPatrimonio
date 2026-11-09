@@ -16,6 +16,7 @@ import kotlin.math.roundToLong
  * El importe siempre es positivo: el signo lo da [type] (MiPatrimonio.md §6).
  * [receiptPath] es la ruta relativa del ticket cifrado en almacenamiento privado.
  * Multimoneda (T4.6, §7.8): [rateToBase] convierte a EUR base cuando [currency] != EUR.
+ * [sharedExpenseId] enlaza el movimiento con un gasto compartido (T4.7).
  */
 data class NewTransaction(
     val type: TransactionType,
@@ -29,6 +30,7 @@ data class NewTransaction(
     val cardId: Long? = null,
     val note: String = "",
     val receiptPath: String? = null,
+    val sharedExpenseId: Long? = null,
     val tagIds: List<Long> = emptyList(),
 )
 
@@ -60,6 +62,7 @@ object TransactionFactory {
             categoryId = input.categoryId,
             cardId = if (input.type == TransactionType.CARD) input.cardId else null,
             receiptPath = input.receiptPath?.trim()?.takeIf { it.isNotBlank() },
+            sharedExpenseId = input.sharedExpenseId,
             createdAt = createdAtMillis,
         )
     }
