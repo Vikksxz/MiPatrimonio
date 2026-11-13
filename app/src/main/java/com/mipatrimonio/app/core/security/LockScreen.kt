@@ -5,6 +5,9 @@ import android.content.ContextWrapper
 import android.os.Build
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,7 +34,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -42,6 +44,7 @@ import androidx.fragment.app.FragmentActivity
 import com.mipatrimonio.app.R
 import com.mipatrimonio.app.core.ui.components.NeonButton
 import com.mipatrimonio.app.core.ui.components.NeonButtonText
+import com.mipatrimonio.app.core.ui.motion.rememberAnimationsEnabled
 import com.mipatrimonio.app.core.ui.theme.MiPatrimonioTheme
 import com.mipatrimonio.app.core.ui.theme.NeonColor
 
@@ -126,76 +129,88 @@ private fun LockContent(
     onUnlockClick: () -> Unit = {},
     onContinueClick: () -> Unit = {},
 ) {
-    Column(
+    val animationsEnabled = rememberAnimationsEnabled()
+    var visible by remember { mutableStateOf(!animationsEnabled) }
+    LaunchedEffect(Unit) { visible = true }
+
+    Box(
         modifier = modifier
             .fillMaxSize()
-            .background(NeonColor.bg)
-            .padding(horizontal = 28.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .background(NeonColor.bg),
+        contentAlignment = Alignment.Center,
     ) {
-        Box(
-            modifier = Modifier
-                .size(72.dp)
-                .background(
-                    brush = Brush.horizontalGradient(
-                        listOf(NeonColor.neonCyan, NeonColor.neonViolet),
+        AnimatedVisibility(
+            visible = visible,
+            enter = fadeIn(animationSpec = tween(durationMillis = if (animationsEnabled) 350 else 0)),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 28.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(72.dp)
+                        .background(
+                            color = NeonColor.panelAlt,
+                            shape = CircleShape,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Lock,
+                        contentDescription = null,
+                        tint = NeonColor.neonCyan,
+                        modifier = Modifier.size(32.dp),
+                    )
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+                Text(
+                    text = stringResource(R.string.app_name),
+                    color = NeonColor.ink,
+                    style = MaterialTheme.typography.headlineMedium,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = stringResource(
+                        if (unavailable) R.string.lock_unavailable_title else R.string.lock_locked,
                     ),
-                    shape = CircleShape,
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Lock,
-                // Decorativo: el texto de al lado explica el estado.
-                contentDescription = null,
-                tint = NeonColor.bg,
-                modifier = Modifier.size(34.dp),
-            )
-        }
-        Spacer(modifier = Modifier.height(20.dp))
-        Text(
-            text = stringResource(R.string.app_name),
-            color = NeonColor.ink,
-            style = MaterialTheme.typography.headlineMedium,
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = stringResource(
-                if (unavailable) R.string.lock_unavailable_title else R.string.lock_locked,
-            ),
-            color = NeonColor.ink,
-            style = MaterialTheme.typography.titleMedium,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = stringResource(
-                if (unavailable) R.string.lock_unavailable_message else R.string.lock_message,
-            ),
-            color = NeonColor.muted,
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center,
-        )
-        if (showError) {
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = stringResource(R.string.lock_error),
-                color = NeonColor.expenseRed,
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-            )
-        }
-        Spacer(modifier = Modifier.height(28.dp))
-        NeonButton(
-            onClick = if (unavailable) onContinueClick else onUnlockClick,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            NeonButtonText(
-                text = stringResource(
-                    if (unavailable) R.string.lock_continue else R.string.lock_unlock,
-                ),
-            )
+                    color = NeonColor.ink,
+                    style = MaterialTheme.typography.titleMedium,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = stringResource(
+                        if (unavailable) R.string.lock_unavailable_message else R.string.lock_message,
+                    ),
+                    color = NeonColor.muted,
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                )
+                if (showError) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = stringResource(R.string.lock_error),
+                        color = NeonColor.neonAmber,
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                Spacer(modifier = Modifier.height(28.dp))
+                NeonButton(
+                    onClick = if (unavailable) onContinueClick else onUnlockClick,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    NeonButtonText(
+                        text = stringResource(
+                            if (unavailable) R.string.lock_continue else R.string.lock_unlock,
+                        ),
+                    )
+                }
+            }
         }
     }
 }

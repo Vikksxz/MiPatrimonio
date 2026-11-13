@@ -2,8 +2,8 @@
 
 ## Estado
 - Fase actual: 5 (Mejora visual)
-- Última tarea cerrada: T5.9
-- Próxima tarea: T5.10 Animaciones y pulido global
+- Última tarea cerrada: T5.10
+- Próxima tarea: T5.11 Pulido, accesibilidad y QA visual
 
 ## Decisiones tomadas
 - (2026-11-02) Paquete: com.mipatrimonio.app
@@ -62,6 +62,11 @@
 - (T1.10) `FLAG_SECURE` se aplica en `onStart`/`onStop` leyendo DataStore; si el usuario cambia el ajuste mientras la app está en primer plano, el flag se actualiza en la siguiente emisión del flow (correcto).
 - (T1.10) `LockPolicyTest` cubre límites (0, 1, 5 min) pero no prueba `elapsedMillis` nulo con `unlockedInSession=true` y `enabled=true` (no bloquea, correcto por "sin tiempo en segundo plano").
 - (T1.10) El icono adaptativo usa `ic_launcher_background.xml` (`#0B0F1A`), `ic_launcher_foreground.xml` (tres barras neón) y `ic_launcher_monochrome.xml` (blanco). `android:roundIcon` apunta al mismo adaptive-icon.
+
+## T5.10 — Bloqueo y pantallas utilitarias (2026-11-13)
+- `LockScreen`: tono cercano/tranquilizador, acento mínimo y transición suave de entrada (fade, desactivable con reducir animaciones); copy/orientación más amable. Lógica de autenticación/bloqueo/privacidad sin cambios.
+- `PlaceholderScreen`: sustituido “En construcción” por `EmptyState` con mensaje útil/cercano; `strings.xml` actualizado.
+- Verificación: `./gradlew :app:compileDebugKotlin testDebugUnitTest` en verde y validado en NX779J antes de commit.
 
 ## T5.9 — Documentos, Compartidos y Análisis (2026-11-13)
 - `DocumentsScreen`: vacío con `EmptyState` + CTA “Añadir documento” y mensaje con mención tranquila del cifrado; lógica de gestión/visor intacta.
