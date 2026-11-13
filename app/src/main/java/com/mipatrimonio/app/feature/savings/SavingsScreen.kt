@@ -376,7 +376,7 @@ private fun ActivePlanCard(
                     NeonButtonText(text = stringResource(R.string.savings_contribute), secondary = true)
                 }
                 NeonButton(onClick = onWithdraw, secondary = true, accent = NeonColor.neonAmber, modifier = Modifier.weight(1f)) {
-                    Text(text = stringResource(R.string.savings_withdraw), color = NeonColor.neonAmber, style = MaterialTheme.typography.labelLarge)
+                    NeonButtonText(text = stringResource(R.string.savings_withdraw), secondary = true, accent = NeonColor.neonAmber)
                 }
             }
         }
@@ -496,7 +496,7 @@ private fun PlanEditSheet(
 
         if (isEdit && onDelete != null) {
             NeonButton(onClick = { showDeleteConfirm = true }, secondary = true, accent = NeonColor.expenseRed, modifier = Modifier.fillMaxWidth()) {
-                Text(text = stringResource(R.string.savings_delete_plan), color = NeonColor.expenseRed, style = MaterialTheme.typography.labelLarge)
+                NeonButtonText(text = stringResource(R.string.savings_delete_plan), secondary = true, accent = NeonColor.expenseRed)
             }
         }
     }

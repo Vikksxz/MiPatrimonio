@@ -26,7 +26,7 @@ import com.mipatrimonio.app.core.ui.theme.NeonShape
  * NeonButton (sección 5.3).
  * Primario: degradado horizontal neonCyan → neonViolet, texto #070A12, negrita,
  * alto mínimo 48 dp y radio 14 dp.
- * Secundario: fondo transparente, borde y texto del acento indicado.
+ * Secundario: fondo tintado sutil, borde y texto del acento indicado.
  */
 @Composable
 fun NeonButton(
@@ -38,16 +38,17 @@ fun NeonButton(
 ) {
     val shape = RoundedCornerShape(NeonShape.buttonRadius)
     val backgroundModifier = if (secondary) {
-        Modifier.background(color = Color.Transparent)
+        Modifier.background(color = accent.copy(alpha = 0.10f), shape = shape)
     } else {
         Modifier.background(
             brush = Brush.horizontalGradient(
                 listOf(NeonColor.neonCyan, NeonColor.neonViolet),
             ),
+            shape = shape,
         )
     }
     val borderModifier = if (secondary) {
-        Modifier.border(width = 1.dp, color = accent)
+        Modifier.border(width = 1.dp, color = accent.copy(alpha = 0.7f), shape = shape)
     } else {
         Modifier
     }
