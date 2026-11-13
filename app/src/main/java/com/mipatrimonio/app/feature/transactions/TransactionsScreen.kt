@@ -406,6 +406,16 @@ private fun SwipeableTransactionRow(
     modifier: Modifier = Modifier,
 ) {
     val dismissState = rememberSwipeToDismissBoxState()
+    var dismissHandled by remember { mutableStateOf(false) }
+
+    // Al restaurar un elemento, el estado de dismiss puede reaparecer como descartado;
+    // lo reseteamos para evitar un borrado inmediato en bucle.
+    LaunchedEffect(transaction.id) {
+        if (dismissState.currentValue != SwipeToDismissBoxValue.Settled) {
+            dismissState.snapTo(SwipeToDismissBoxValue.Settled)
+        }
+        dismissHandled = false
+    }
 
     SwipeToDismissBox(
         state = dismissState,
@@ -413,7 +423,10 @@ private fun SwipeableTransactionRow(
         modifier = modifier,
         backgroundContent = { DeleteBackground(dismissState) },
         onDismiss = { value ->
-            if (value == SwipeToDismissBoxValue.EndToStart) onDelete()
+            if (!dismissHandled && value == SwipeToDismissBoxValue.EndToStart) {
+                dismissHandled = true
+                onDelete()
+            }
         },
     ) {
         TransactionRow(transaction = transaction, onClick = onClick)
