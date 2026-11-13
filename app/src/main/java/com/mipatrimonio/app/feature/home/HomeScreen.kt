@@ -1,6 +1,5 @@
 package com.mipatrimonio.app.feature.home
 
-import android.provider.Settings
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -28,14 +27,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -57,6 +54,7 @@ import com.mipatrimonio.app.core.ui.components.ProgressNeonBar
 import com.mipatrimonio.app.core.ui.components.ScreenTitle
 import com.mipatrimonio.app.core.ui.components.accentColor
 import com.mipatrimonio.app.core.ui.components.label
+import com.mipatrimonio.app.core.ui.motion.rememberAnimationsEnabled
 import com.mipatrimonio.app.core.ui.theme.MiPatrimonioTheme
 import com.mipatrimonio.app.core.ui.theme.NeonColor
 import com.mipatrimonio.app.core.ui.theme.NeonShape
@@ -469,12 +467,7 @@ private fun BudgetUrgencyRow(b: HomeBudgetSummary) {
         (b.spentCents.toDouble() / b.limitCents.toDouble()).toFloat().coerceIn(0f, 1f)
     } else 0f
 
-    val context = LocalContext.current
-    val animationsEnabled = remember(context) {
-        runCatching {
-            Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
-        }.getOrDefault(1f) != 0f
-    }
+    val animationsEnabled = rememberAnimationsEnabled()
     val urgentPulse = if (animationsEnabled && b.level != BudgetLevel.OK) {
         val t = rememberInfiniteTransition(label = "budgetUrgency")
         val p by t.animateFloat(

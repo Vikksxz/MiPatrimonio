@@ -2,8 +2,8 @@
 
 ## Estado
 - Fase actual: 5 (Mejora visual)
-- Última tarea cerrada: T5.0
-- Próxima tarea: T5.1 Fundaciones de tema y movimiento
+- Última tarea cerrada: T5.1
+- Próxima tarea: T5.2 Componentes comunes y ritmo
 
 ## Decisiones tomadas
 - (2026-11-02) Paquete: com.mipatrimonio.app
@@ -62,6 +62,13 @@
 - (T1.10) `FLAG_SECURE` se aplica en `onStart`/`onStop` leyendo DataStore; si el usuario cambia el ajuste mientras la app está en primer plano, el flag se actualiza en la siguiente emisión del flow (correcto).
 - (T1.10) `LockPolicyTest` cubre límites (0, 1, 5 min) pero no prueba `elapsedMillis` nulo con `unlockedInSession=true` y `enabled=true` (no bloquea, correcto por "sin tiempo en segundo plano").
 - (T1.10) El icono adaptativo usa `ic_launcher_background.xml` (`#0B0F1A`), `ic_launcher_foreground.xml` (tres barras neón) y `ic_launcher_monochrome.xml` (blanco). `android:roundIcon` apunta al mismo adaptive-icon.
+
+## T5.1 — Fundaciones de tema y movimiento (2026-11-13)
+- Añadido `core/ui/motion/Motion.kt`: `rememberAnimationsEnabled()` (centraliza `ANIMATOR_DURATION_SCALE`), `MotionDurations` (150/240/320/400/800 ms) y `gentleSpring()` para transiciones suaves desactivables.
+- Refactor de detección de animaciones en `ProgressNeonBar` y `HomeScreen` (presupuesto/pulso de urgencia) para usar la utilidad común.
+- Tipografía: `fontFeatureSettings = "tnum"` en estilos `display*` (cifras/saldos protagonistas) y helper `NeonType.tabular(style)` para aplicar cifras tabulares en importes/porcentajes al tocar pantallas/componentes.
+- Neutros derivados: ninguno añadido (según decisión T5.0); paleta base/mapeo por tipo intactos.
+- Verificación: `./gradlew :app:compileDebugKotlin testDebugUnitTest` en verde.
 
 ## T5.0 — Preparación y decisiones de diseño (auditoría `unslop` + `mipatrimonio-design`, 2026-11-13)
 

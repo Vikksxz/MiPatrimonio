@@ -1,6 +1,5 @@
 package com.mipatrimonio.app.core.ui.components
 
-import android.provider.Settings
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -18,7 +17,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -31,12 +29,13 @@ import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.mipatrimonio.app.core.ui.motion.MotionDurations
+import com.mipatrimonio.app.core.ui.motion.rememberAnimationsEnabled
 import com.mipatrimonio.app.core.ui.theme.MiPatrimonioTheme
 import com.mipatrimonio.app.core.ui.theme.NeonColor
 import kotlin.math.roundToInt
@@ -56,16 +55,11 @@ fun ProgressNeonBar(
     trackHeight: Dp = 14.dp,
     contentDescriptionOverride: String? = null,
 ) {
-    val context = LocalContext.current
-    val animationsEnabled = remember(context) {
-        runCatching {
-            Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
-        }.getOrDefault(1f) != 0f
-    }
+    val animationsEnabled = rememberAnimationsEnabled()
     val clamped = progress.coerceIn(0f, 1f)
     val animatedProgress by animateFloatAsState(
         targetValue = clamped,
-        animationSpec = if (animationsEnabled) tween(durationMillis = 800) else snap(),
+        animationSpec = if (animationsEnabled) tween(durationMillis = MotionDurations.Progress) else snap(),
         label = "progressWidth",
     )
     val percent = (clamped * 100f).roundToInt()

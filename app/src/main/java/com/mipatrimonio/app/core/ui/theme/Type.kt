@@ -54,6 +54,9 @@ object NeonType {
 
     /** Letter-spacing de Orbitron, ~0.04em sobre 22 sp. */
     val orbitronLetterSpacing = 0.9.sp
+
+    /** Cifras tabulares para importes, saldos y porcentajes (evita "baile" al cambiar). */
+    fun tabular(style: TextStyle): TextStyle = style.copy(fontFeatureSettings = "tnum")
 }
 
 val NeonTypography = Typography(
@@ -64,6 +67,7 @@ val NeonTypography = Typography(
         fontSize = 40.sp,
         lineHeight = 46.sp,
         letterSpacing = 0.8.sp,
+        fontFeatureSettings = "tnum",
     ),
     displayMedium = TextStyle(
         fontFamily = Orbitron,
@@ -71,6 +75,7 @@ val NeonTypography = Typography(
         fontSize = NeonType.displayAmount,
         lineHeight = 36.sp,
         letterSpacing = NeonType.orbitronLetterSpacing,
+        fontFeatureSettings = "tnum",
     ),
     displaySmall = TextStyle(
         fontFamily = Orbitron,
@@ -78,6 +83,7 @@ val NeonTypography = Typography(
         fontSize = 26.sp,
         lineHeight = 32.sp,
         letterSpacing = 0.8.sp,
+        fontFeatureSettings = "tnum",
     ),
     // Títulos de pantalla en Orbitron
     headlineLarge = TextStyle(
