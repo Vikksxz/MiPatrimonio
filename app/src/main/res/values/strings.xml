@@ -463,6 +463,7 @@
     <string name="analysis_free_at_month_end">Libre al mes</string>
     <string name="analysis_other_category">Otros gastos</string>
     <string name="common_back">Atrás</string>
+    <string name="progress_description">Progreso %1$d por ciento</string>
 
     <!-- T2.2: documentos -->
     <string name="documents_title">Documentos</string>

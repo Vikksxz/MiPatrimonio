@@ -29,11 +29,13 @@ import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.mipatrimonio.app.R
 import com.mipatrimonio.app.core.ui.motion.MotionDurations
 import com.mipatrimonio.app.core.ui.motion.rememberAnimationsEnabled
 import com.mipatrimonio.app.core.ui.theme.MiPatrimonioTheme
@@ -63,7 +65,7 @@ fun ProgressNeonBar(
         label = "progressWidth",
     )
     val percent = (clamped * 100f).roundToInt()
-    val description = contentDescriptionOverride ?: "Progreso $percent por ciento"
+    val description = contentDescriptionOverride ?: stringResource(R.string.progress_description, percent)
     val shape = RoundedCornerShape(8.dp)
 
     Box(

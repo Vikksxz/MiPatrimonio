@@ -495,7 +495,7 @@ private fun PlanRow(
             selected = isActive,
             onClick = onSetActive,
             modifier = Modifier
-                .size(36.dp)
+                .size(48.dp)
                 .semantics { contentDescription = activeDesc },
             colors = RadioButtonDefaults.colors(selectedColor = NeonColor.neonCyan, unselectedColor = NeonColor.muted),
         )
@@ -520,7 +520,7 @@ private fun PlanRow(
         IconButton(
             onClick = onMoveUp,
             enabled = canMoveUp,
-            modifier = Modifier.size(36.dp).semantics { contentDescription = upDesc },
+            modifier = Modifier.size(48.dp).semantics { contentDescription = upDesc },
         ) {
             Text("▲", color = if (canMoveUp) NeonColor.neonCyan else NeonColor.lineInput, style = MaterialTheme.typography.labelSmall)
         }
@@ -528,7 +528,7 @@ private fun PlanRow(
         IconButton(
             onClick = onMoveDown,
             enabled = canMoveDown,
-            modifier = Modifier.size(36.dp).semantics { contentDescription = downDesc },
+            modifier = Modifier.size(48.dp).semantics { contentDescription = downDesc },
         ) {
             Text("▼", color = if (canMoveDown) NeonColor.neonCyan else NeonColor.lineInput, style = MaterialTheme.typography.labelSmall)
         }

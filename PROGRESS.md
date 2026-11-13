@@ -1,9 +1,9 @@
 # PROGRESS
 
 ## Estado
-- Fase actual: 5 (Mejora visual)
-- Última tarea cerrada: T5.10
-- Próxima tarea: T5.11 Pulido, accesibilidad y QA visual
+- Fase actual: 5 (Mejora visual) — completada
+- Última tarea cerrada: T5.11
+- Próxima tarea: ninguna (pendiente decidir integración de ramas T5 en `main` y siguientes pasos de publicación)
 
 ## Decisiones tomadas
 - (2026-11-02) Paquete: com.mipatrimonio.app
@@ -62,6 +62,10 @@
 - (T1.10) `FLAG_SECURE` se aplica en `onStart`/`onStop` leyendo DataStore; si el usuario cambia el ajuste mientras la app está en primer plano, el flag se actualiza en la siguiente emisión del flow (correcto).
 - (T1.10) `LockPolicyTest` cubre límites (0, 1, 5 min) pero no prueba `elapsedMillis` nulo con `unlockedInSession=true` y `enabled=true` (no bloquea, correcto por "sin tiempo en segundo plano").
 - (T1.10) El icono adaptativo usa `ic_launcher_background.xml` (`#0B0F1A`), `ic_launcher_foreground.xml` (tres barras neón) y `ic_launcher_monochrome.xml` (blanco). `android:roundIcon` apunta al mismo adaptive-icon.
+
+## T5.11 — Pulido, accesibilidad y QA visual (2026-11-13)
+- Pasada de pulido/accesibilidad: zonas táctiles ≥ 48 dp en selección/reorden de planes (`SavingsScreen`) y descripción de progreso accesible vía `strings.xml` en `ProgressNeonBar` (sin cambios de lógica/paleta).
+- QA visual en dispositivo realizada; checklist T5.11 aplicado en lo pertinente dentro de los cambios de Fase 5. `./gradlew :app:compileDebugKotlin testDebugUnitTest assembleDebug` en verde.
 
 ## T5.10 — Bloqueo y pantallas utilitarias (2026-11-13)
 - `LockScreen`: tono cercano/tranquilizador, acento mínimo y transición suave de entrada (fade, desactivable con reducir animaciones); copy/orientación más amable. Lógica de autenticación/bloqueo/privacidad sin cambios.
