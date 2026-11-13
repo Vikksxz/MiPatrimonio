@@ -21,7 +21,8 @@
 
     <!-- Ahorro (T3.1) -->
     <string name="savings_active_plan">Plan activo</string>
-    <string name="savings_no_active_plan">No hay un plan activo. Crea uno y márcalo como activo.</string>
+    <string name="savings_no_active_plan">Aún no tienes un plan activo</string>
+    <string name="savings_no_active_plan_hint">Crea un plan y márcalo como activo para verlo aquí</string>
     <string name="savings_saved_of_target">%1$s / %2$s</string>
     <string name="savings_target_readonly">Importe objetivo (solo lectura)</string>
     <string name="savings_edit_plan">Editar plan</string>
@@ -72,7 +73,8 @@
     <string name="period_yearly">Anual</string>
     <string name="savings_plans_title">Planes</string>
     <string name="savings_create_plan">Crear plan de ahorro</string>
-    <string name="savings_no_plans">Aún no tienes planes de ahorro.</string>
+    <string name="savings_no_plans">Aún no tienes planes de ahorro</string>
+    <string name="savings_no_plans_hint">Crear tu primer plan te ayuda a darle un objetivo a tu ahorro</string>
     <string name="savings_set_active">Activo</string>
     <string name="savings_priority">Prioridad %1$d</string>
     <string name="savings_move_up">Subir prioridad</string>
@@ -256,7 +258,8 @@
 
     <!-- Presupuestos (T3.4) -->
     <string name="budgets_title">Presupuestos por categoría</string>
-    <string name="budgets_empty">Sin presupuestos. Añade un límite por categoría.</string>
+    <string name="budgets_empty">Aún no tienes presupuestos</string>
+    <string name="budgets_empty_hint">Pon un límite por categoría para llevar el control con calma</string>
     <string name="budgets_add">Añadir presupuesto</string>
     <string name="budgets_edit">Editar presupuesto</string>
     <string name="budgets_category">Categoría</string>
@@ -267,6 +270,9 @@
     <string name="budgets_delete">Eliminar presupuesto</string>
     <string name="budgets_delete_confirm">¿Eliminar este presupuesto?</string>
     <string name="budgets_no_categories">No hay categorías de gasto disponibles</string>
+    <string name="budgets_status_ok">Dentro del límite</string>
+    <string name="budgets_status_warning">Cerca del límite</string>
+    <string name="budgets_status_over">Límite superado</string>
     <string name="savings_sheet_create">Crear plan de ahorro</string>
     <string name="savings_sheet_edit">Editar plan</string>
     <string name="savings_plan_name">Nombre</string>

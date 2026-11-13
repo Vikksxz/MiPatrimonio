@@ -1,7 +1,8 @@
 package com.mipatrimonio.app.feature.savings
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,8 +18,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -38,16 +39,17 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -61,19 +63,25 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mipatrimonio.app.R
 import com.mipatrimonio.app.core.database.entity.CategoryEntity
 import com.mipatrimonio.app.core.money.Money
+import com.mipatrimonio.app.core.ui.components.AnimatedAmount
+import com.mipatrimonio.app.core.ui.components.EmptyState
 import com.mipatrimonio.app.core.ui.components.NeonButton
 import com.mipatrimonio.app.core.ui.components.NeonButtonText
 import com.mipatrimonio.app.core.ui.components.NeonCard
 import com.mipatrimonio.app.core.ui.components.ProgressNeonBar
 import com.mipatrimonio.app.core.ui.components.ScreenTitle
+import com.mipatrimonio.app.core.ui.motion.MotionDurations
+import com.mipatrimonio.app.core.ui.motion.rememberAnimationsEnabled
+import com.mipatrimonio.app.core.ui.motion.rememberStaggeredEnter
 import com.mipatrimonio.app.core.ui.theme.MiPatrimonioTheme
 import com.mipatrimonio.app.core.ui.theme.NeonColor
 import com.mipatrimonio.app.core.ui.theme.NeonShape
+import com.mipatrimonio.app.core.ui.theme.NeonType
 import com.mipatrimonio.app.domain.usecase.BudgetLevel
 import com.mipatrimonio.app.domain.usecase.EstimateSavings
 import com.mipatrimonio.app.domain.usecase.SavingsStatus
-import java.time.YearMonth
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -199,24 +207,27 @@ internal fun SavingsContent(
         val active = state.activePlan
         if (active != null) {
             item(key = "active-${active.plan.id}") {
+                val (alpha, offsetY) = rememberStaggeredEnter(index = 0)
                 ActivePlanCard(
                     item = active,
                     onEdit = { onEditPlan(active.plan.id) },
                     onQuotaDelta = { delta -> onChangeQuota(active.plan.id, delta) },
                     onContribute = { onContribute(active.plan.id) },
                     onWithdraw = { onWithdraw(active.plan.id) },
+                    modifier = Modifier.graphicsLayer {
+                        this.alpha = alpha
+                        translationY = offsetY.toFloat()
+                    },
                 )
             }
         } else {
             item(key = "no-active") {
-                NeonCard(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = stringResource(R.string.savings_no_active_plan),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = NeonColor.muted,
-                        modifier = Modifier.padding(16.dp),
-                    )
-                }
+                EmptyState(
+                    title = stringResource(R.string.savings_no_active_plan),
+                    message = stringResource(R.string.savings_no_active_plan_hint),
+                    actionLabel = stringResource(R.string.savings_create_plan),
+                    onAction = onCreatePlan,
+                )
             }
         }
 
@@ -236,20 +247,20 @@ internal fun SavingsContent(
 
         if (state.plans.isEmpty()) {
             item {
-                Text(
-                    text = stringResource(R.string.savings_no_plans),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = NeonColor.muted,
+                EmptyState(
+                    title = stringResource(R.string.savings_no_plans),
+                    message = stringResource(R.string.savings_no_plans_hint),
+                    actionLabel = stringResource(R.string.savings_create_plan),
+                    onAction = onCreatePlan,
                 )
             }
         } else {
-            items(items = state.plans, key = { it.plan.id }) { item ->
-                val index = state.plans.indexOfFirst { it.plan.id == item.plan.id }
+            itemsIndexed(items = state.plans, key = { _, it -> it.plan.id }) { index, item ->
                 PlanRow(
                     item = item,
                     isActive = item.plan.id == active?.plan?.id,
                     canMoveUp = index > 0,
-                    canMoveDown = index >= 0 && index < state.plans.lastIndex,
+                    canMoveDown = index < state.plans.lastIndex,
                     onSetActive = { onSetActive(item.plan.id) },
                     onEdit = { onEditPlan(item.plan.id) },
                     onMoveUp = { onMovePlan(item.plan.id, true) },
@@ -275,15 +286,24 @@ internal fun SavingsContent(
         }
         if (state.budgets.isEmpty()) {
             item {
-                Text(
-                    text = stringResource(R.string.budgets_empty),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = NeonColor.muted,
+                EmptyState(
+                    title = stringResource(R.string.budgets_empty),
+                    message = stringResource(R.string.budgets_empty_hint),
+                    actionLabel = stringResource(R.string.budgets_add),
+                    onAction = onAddBudget,
                 )
             }
         } else {
-            items(items = state.budgets, key = { "budget-${it.budget.id}" }) { item ->
-                BudgetRow(item = item, onEdit = { onEditBudget(item.budget.id) })
+            itemsIndexed(items = state.budgets, key = { _, item -> "budget-${item.budget.id}" }) { index, item ->
+                val (alpha, offsetY) = rememberStaggeredEnter(index = index.coerceAtMost(6))
+                BudgetRow(
+                    item = item,
+                    onEdit = { onEditBudget(item.budget.id) },
+                    modifier = Modifier.graphicsLayer {
+                        this.alpha = alpha
+                        translationY = offsetY.toFloat()
+                    },
+                )
             }
         }
         item {
@@ -302,36 +322,94 @@ private fun ActivePlanCard(
     onQuotaDelta: (Long) -> Unit,
     onContribute: () -> Unit,
     onWithdraw: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val plan = item.plan
     val estimate = item.estimate
     val progress = if (plan.targetCents > 0L) {
         (item.contributedCents.toDouble() / plan.targetCents.toDouble()).toFloat().coerceIn(0f, 1f)
     } else 0f
+    val animationsEnabled = rememberAnimationsEnabled()
 
-    NeonCard(glowColor = NeonColor.neonGreen, modifier = Modifier.fillMaxWidth()) {
+    // Celebración discreta al alcanzar meta (desactivable).
+    val glowAlpha = remember(estimate.goalReached, animationsEnabled) { Animatable(if (estimate.goalReached) 0.18f else 0.12f) }
+    LaunchedEffect(estimate.goalReached, animationsEnabled) {
+        if (estimate.goalReached && animationsEnabled) {
+            glowAlpha.animateTo(0.28f, animationSpec = tween(durationMillis = MotionDurations.Long))
+            glowAlpha.animateTo(0.20f, animationSpec = tween(durationMillis = MotionDurations.Long))
+        } else {
+            glowAlpha.snapTo(if (estimate.goalReached) 0.20f else 0.12f)
+        }
+    }
+
+    NeonCard(glowColor = NeonColor.neonGreen.copy(alpha = glowAlpha.value), modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(text = plan.name, style = MaterialTheme.typography.titleMedium, color = NeonColor.ink, fontWeight = FontWeight.Bold)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = plan.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = NeonColor.ink,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                )
+                if (estimate.goalReached) {
+                    Text(
+                        text = stringResource(R.string.savings_reaches_now),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = NeonColor.neonGreen,
+                    )
+                }
+            }
 
             ProgressNeonBar(progress = progress, modifier = Modifier.fillMaxWidth())
 
-            Text(
-                text = stringResource(R.string.savings_saved_of_target, Money.format(item.contributedCents), Money.format(plan.targetCents)),
-                style = MaterialTheme.typography.bodyMedium,
-                color = NeonColor.ink,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AnimatedAmount(
+                        cents = item.contributedCents,
+                        color = NeonColor.ink,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        text = " / ",
+                        style = NeonType.tabular(MaterialTheme.typography.bodyMedium),
+                        color = NeonColor.muted,
+                    )
+                    AnimatedAmount(
+                        cents = plan.targetCents,
+                        color = NeonColor.muted,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
 
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Column {
                     Text(text = stringResource(R.string.savings_target_readonly), style = MaterialTheme.typography.labelSmall, color = NeonColor.muted)
-                    Text(text = Money.format(plan.targetCents), style = MaterialTheme.typography.bodyMedium, color = NeonColor.ink)
+                    AnimatedAmount(cents = plan.targetCents, color = NeonColor.ink, style = MaterialTheme.typography.bodyMedium)
                 }
                 TextButton(onClick = onEdit) {
                     Text(stringResource(R.string.savings_edit_plan), color = NeonColor.neonCyan)
                 }
             }
 
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(text = stringResource(R.string.savings_monthly_quota), style = MaterialTheme.typography.bodyMedium, color = NeonColor.ink)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val decDesc = stringResource(R.string.savings_decrease_quota)
@@ -339,7 +417,11 @@ private fun ActivePlanCard(
                         onClick = { onQuotaDelta(-EstimateSavings.QUOTA_STEP_CENTS) },
                         modifier = Modifier.size(44.dp).semantics { contentDescription = decDesc },
                     ) { Text(text = "−", color = NeonColor.neonCyan, style = MaterialTheme.typography.titleLarge) }
-                    Text(text = Money.format(plan.monthlyQuotaCents), style = MaterialTheme.typography.bodyMedium, color = NeonColor.ink, modifier = Modifier.padding(horizontal = 4.dp))
+                    AnimatedAmount(
+                        cents = plan.monthlyQuotaCents,
+                        color = NeonColor.ink,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
                     val incDesc = stringResource(R.string.savings_increase_quota)
                     IconButton(
                         onClick = { onQuotaDelta(EstimateSavings.QUOTA_STEP_CENTS) },
@@ -351,7 +433,11 @@ private fun ActivePlanCard(
             val reachesText = if (estimate.goalReached) {
                 stringResource(R.string.savings_reaches_now)
             } else {
-                val monthLabel = if (estimate.monthsEstimated == 1) stringResource(R.string.savings_months_one) else stringResource(R.string.savings_months_other)
+                val monthLabel = if (estimate.monthsEstimated == 1) {
+                    stringResource(R.string.savings_months_one)
+                } else {
+                    stringResource(R.string.savings_months_other)
+                }
                 stringResource(R.string.savings_reaches_in, estimate.monthsEstimated, monthLabel, estimate.targetYearMonth.toMonthYearLabel())
             }
             Text(text = reachesText, style = MaterialTheme.typography.bodySmall, color = NeonColor.muted)
@@ -608,26 +694,56 @@ private fun SavingsTextField(
 // --- Presupuestos (T3.4) ---
 
 @Composable
-private fun BudgetRow(item: BudgetItemUi, onEdit: () -> Unit) {
+private fun BudgetRow(
+    item: BudgetItemUi,
+    onEdit: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val catName = item.category?.name ?: stringResource(R.string.budgets_category)
-    val barColor = when (item.status.level) {
-        BudgetLevel.OK -> NeonColor.neonCyan
-        BudgetLevel.WARNING -> NeonColor.neonAmber
-        BudgetLevel.OVER -> NeonColor.expenseRed
+    val (barColor, statusLabel) = when (item.status.level) {
+        BudgetLevel.OK -> NeonColor.neonCyan to stringResource(R.string.budgets_status_ok)
+        BudgetLevel.WARNING -> NeonColor.neonAmber to stringResource(R.string.budgets_status_warning)
+        BudgetLevel.OVER -> NeonColor.expenseRed to stringResource(R.string.budgets_status_over)
     }
-    val progress = if (item.budget.limitCents > 0L) {
+    val targetProgress = if (item.budget.limitCents > 0L) {
         (item.status.spentCents.toDouble() / item.budget.limitCents.toDouble()).toFloat().coerceIn(0f, 1f)
     } else 0f
-    NeonCard(modifier = Modifier.fillMaxWidth().clickable { onEdit() }) {
+    val animationsEnabled = rememberAnimationsEnabled()
+    val animatedProgress = remember(item.budget.id, animationsEnabled) { Animatable(if (animationsEnabled) 0f else targetProgress) }
+    LaunchedEffect(targetProgress, animationsEnabled) {
+        if (!animationsEnabled) animatedProgress.snapTo(targetProgress)
+        else animatedProgress.animateTo(targetProgress, animationSpec = tween(durationMillis = MotionDurations.Long))
+    }
+
+    NeonCard(modifier = modifier.fillMaxWidth().clickable { onEdit() }) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(text = catName, style = MaterialTheme.typography.bodyLarge, color = NeonColor.ink, modifier = Modifier.weight(1f))
-                Text(text = stringResource(R.string.budgets_percent, item.status.percent), style = MaterialTheme.typography.labelMedium, color = barColor)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = catName,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = NeonColor.ink,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = stringResource(R.string.budgets_percent, item.status.percent),
+                    style = NeonType.tabular(MaterialTheme.typography.labelMedium),
+                    color = barColor,
+                )
             }
-            BudgetBar(progress = progress, color = barColor)
+            // Estado comprensible sin depender solo del color.
+            Text(
+                text = statusLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = barColor,
+            )
+            BudgetBar(progress = animatedProgress.value, color = barColor)
             Text(
                 text = stringResource(R.string.budgets_spent_of_limit, Money.format(item.status.spentCents), Money.format(item.budget.limitCents)),
-                style = MaterialTheme.typography.bodySmall,
+                style = NeonType.tabular(MaterialTheme.typography.bodySmall),
                 color = NeonColor.muted,
             )
         }
@@ -719,7 +835,7 @@ private fun BudgetEditSheet(
 
         if (existingId != null && onDelete != null) {
             NeonButton(onClick = { showDeleteConfirm = true }, secondary = true, accent = NeonColor.expenseRed, modifier = Modifier.fillMaxWidth()) {
-                Text(text = stringResource(R.string.budgets_delete), color = NeonColor.expenseRed, style = MaterialTheme.typography.labelLarge)
+                NeonButtonText(text = stringResource(R.string.budgets_delete), secondary = true, accent = NeonColor.expenseRed)
             }
         }
     }

@@ -2,8 +2,8 @@
 
 ## Estado
 - Fase actual: 5 (Mejora visual)
-- Última tarea cerrada: T5.5
-- Próxima tarea: T5.6 Ahorro y presupuestos
+- Última tarea cerrada: T5.6
+- Próxima tarea: T5.7 Flujo de alta (Añadir/Revisión/Escaneo)
 
 ## Decisiones tomadas
 - (2026-11-02) Paquete: com.mipatrimonio.app
@@ -62,6 +62,12 @@
 - (T1.10) `FLAG_SECURE` se aplica en `onStart`/`onStop` leyendo DataStore; si el usuario cambia el ajuste mientras la app está en primer plano, el flag se actualiza en la siguiente emisión del flow (correcto).
 - (T1.10) `LockPolicyTest` cubre límites (0, 1, 5 min) pero no prueba `elapsedMillis` nulo con `unlockedInSession=true` y `enabled=true` (no bloquea, correcto por "sin tiempo en segundo plano").
 - (T1.10) El icono adaptativo usa `ic_launcher_background.xml` (`#0B0F1A`), `ic_launcher_foreground.xml` (tres barras neón) y `ic_launcher_monochrome.xml` (blanco). `android:roundIcon` apunta al mismo adaptive-icon.
+
+## T5.6 — Ahorro y presupuestos (2026-11-13)
+- `SavingsScreen`: plan activo protagonista con `AnimatedAmount` (ahorrado/objetivo/cuota), `ProgressNeonBar` y mensajes orientativos; entrada suave y celebración discreta al alcanzar meta (glow/refuerzo desactivable con “reducir animaciones”).
+- Vacíos con `EmptyState`+CTA: sin plan activo/sin planes → “Crear plan de ahorro”; sin presupuestos → “Añadir presupuesto”. Copy en `strings.xml` más cálido/orientativo y hints añadidos.
+- Presupuestos: barras con reveal animado (respeta reducir animaciones) y estado comprensible sin depender solo del color (etiquetas “Dentro del límite / Cerca del límite / Límite superado”), porcentajes/importes con cifras tabulares. Lista de planes compacta mantenida.
+- Verificación: `./gradlew :app:compileDebugKotlin testDebugUnitTest` en verde y validado en NX779J antes de commit.
 
 ## T5.5 — Movimientos (2026-11-13)
 - `TransactionsScreen`: estados vacíos con `EmptyState` reutilizable — sin movimientos muestra CTA “Añadir movimiento” (propagado `onAdd` desde `AppRoot`/`AppNavHost`), y sin resultados muestra CTA “Limpiar filtros” (borra búsqueda, tipo y etiqueta).
