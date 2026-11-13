@@ -89,14 +89,15 @@ fun NeonChip(
 
     Row(
         modifier = modifier
-            .defaultMinSize(minHeight = 44.dp)
+            .defaultMinSize(minHeight = 48.dp)
             .clip(shape)
             .background(
                 color = if (selected) tint else NeonColor.panelAlt,
             )
             .border(
-                width = 1.dp,
+                width = if (selected) 2.dp else 1.dp,
                 color = if (selected) accent else NeonColor.lineInput,
+                shape = shape,
             )
             .then(interactiveModifier)
             .semantics { this.selected = selected }

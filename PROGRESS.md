@@ -2,8 +2,8 @@
 
 ## Estado
 - Fase actual: 5 (Mejora visual)
-- Última tarea cerrada: T5.1
-- Próxima tarea: T5.2 Componentes comunes y ritmo
+- Última tarea cerrada: T5.2
+- Próxima tarea: T5.3 Transiciones y navegación
 
 ## Decisiones tomadas
 - (2026-11-02) Paquete: com.mipatrimonio.app
@@ -62,6 +62,13 @@
 - (T1.10) `FLAG_SECURE` se aplica en `onStart`/`onStop` leyendo DataStore; si el usuario cambia el ajuste mientras la app está en primer plano, el flag se actualiza en la siguiente emisión del flow (correcto).
 - (T1.10) `LockPolicyTest` cubre límites (0, 1, 5 min) pero no prueba `elapsedMillis` nulo con `unlockedInSession=true` y `enabled=true` (no bloquea, correcto por "sin tiempo en segundo plano").
 - (T1.10) El icono adaptativo usa `ic_launcher_background.xml` (`#0B0F1A`), `ic_launcher_foreground.xml` (tres barras neón) y `ic_launcher_monochrome.xml` (blanco). `android:roundIcon` apunta al mismo adaptive-icon.
+
+## T5.2 — Componentes comunes y ritmo (2026-11-13)
+- Nuevos componentes/utilidades: `core/ui/components/EmptyState.kt` (icono+mensaje+cita CTA, `@Preview`), `AnimatedAmount.kt` (céntimos `Long`, `Money.format/formatSigned`, cifras tabulares, respeta reducir animaciones), `NeonGlow.kt` (`Modifier.neonGlow` radial barato).
+- `core/ui/motion/Motion.kt`: añadidos `staggerDelayMillis` y `rememberStaggeredEnter` (fade+offset, desactivable).
+- `NeonButtonText`: parámetro `accent` para secundarios (texto/icono coherente con el botón). `NeonChip`: selección más clara (borde 2 dp) y `minHeight` 48 dp. `NeonCard` sigue sin glow por defecto (glow opcional solo momentos).
+- `core/ui/theme/Spacing.kt`: tokens `NeonSpacing` (escala 4 dp) para normalizar ritmo en pantallas siguientes.
+- Verificación: `./gradlew :app:compileDebugKotlin testDebugUnitTest` en verde.
 
 ## T5.1 — Fundaciones de tema y movimiento (2026-11-13)
 - Añadido `core/ui/motion/Motion.kt`: `rememberAnimationsEnabled()` (centraliza `ANIMATOR_DURATION_SCALE`), `MotionDurations` (150/240/320/400/800 ms) y `gentleSpring()` para transiciones suaves desactivables.

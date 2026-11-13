@@ -74,11 +74,12 @@ fun NeonButtonText(
     text: String,
     secondary: Boolean = false,
     modifier: Modifier = Modifier,
+    accent: Color = NeonColor.neonCyan,
 ) {
     Text(
         text = text,
         modifier = modifier,
-        color = if (secondary) NeonColor.neonCyan else NeonColor.bg,
+        color = if (secondary) accent else NeonColor.bg,
         style = MaterialTheme.typography.labelLarge,
     )
 }
