@@ -382,18 +382,20 @@ private fun LegendRow(type: TransactionType, amount: Long) {
 /** Últimos movimientos (§8.1): barra vertical de color del tipo, fecha · tipo e importe. */
 @Composable
 private fun RecentSection(recent: List<TransactionEntity>) {
-    Text(
-        text = stringResource(R.string.home_recent_title),
-        color = NeonColor.ink,
-        style = MaterialTheme.typography.titleLarge,
-    )
-    Spacer(modifier = Modifier.height(8.dp))
-    if (recent.isEmpty()) {
-        EmptyState(message = stringResource(R.string.home_no_recent))
-        return
-    }
-    recent.forEach { transaction ->
-        RecentRow(transaction)
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = stringResource(R.string.home_recent_title),
+            color = NeonColor.ink,
+            style = MaterialTheme.typography.titleLarge,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        if (recent.isEmpty()) {
+            EmptyState(message = stringResource(R.string.home_no_recent))
+        } else {
+            recent.forEach { transaction ->
+                RecentRow(transaction)
+            }
+        }
     }
 }
 
