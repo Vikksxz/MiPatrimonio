@@ -2,8 +2,8 @@
 
 ## Estado
 - Fase actual: 5 (Mejora visual)
-- Última tarea cerrada: T5.3
-- Próxima tarea: T5.4 Inicio (Resumen)
+- Última tarea cerrada: T5.4
+- Próxima tarea: T5.5 Movimientos
 
 ## Decisiones tomadas
 - (2026-11-02) Paquete: com.mipatrimonio.app
@@ -62,6 +62,12 @@
 - (T1.10) `FLAG_SECURE` se aplica en `onStart`/`onStop` leyendo DataStore; si el usuario cambia el ajuste mientras la app está en primer plano, el flag se actualiza en la siguiente emisión del flow (correcto).
 - (T1.10) `LockPolicyTest` cubre límites (0, 1, 5 min) pero no prueba `elapsedMillis` nulo con `unlockedInSession=true` y `enabled=true` (no bloquea, correcto por "sin tiempo en segundo plano").
 - (T1.10) El icono adaptativo usa `ic_launcher_background.xml` (`#0B0F1A`), `ic_launcher_foreground.xml` (tres barras neón) y `ic_launcher_monochrome.xml` (blanco). `android:roundIcon` apunta al mismo adaptive-icon.
+
+## T5.4 — Inicio (Resumen) (2026-11-13)
+- `HomeScreen`: saldo como cifra protagonista con `AnimatedAmount`; conteo animado en ingresos/gastos, proyección, leyenda y panel de ahorro; entrada escalonada de bloques (`rememberStaggeredEnter`) y reveal suave de barra segmentada; cifras tabulares en porcentajes/valores clave.
+- Cromo calmado: sombra de tarjeta de saldo reducida, barras/filas de reciente sin halos, presupuestos sin sombras pesadas (solo color/pulso de alpha, desactivable); glow contenido en panel de plan activo (momento protagonista con `ProgressNeonBar`).
+- Microcopy/vacíos: “Lo que te queda este mes”, `home_no_recent` más cálido con guía, estado de ahorro orientativo (sin culpa, “ajustar cuota o revisar un gasto”), etiquetas de plan/proyección ajustadas.
+- Añadido `strings.home_projection_label`. Verificación: `./gradlew :app:compileDebugKotlin testDebugUnitTest` en verde. Pendiente comprobación visual en dispositivo.
 
 ## T5.3 — Transiciones y navegación (2026-11-13)
 - `AppNavHost`: transiciones de navegación (fade + slide horizontal sutil, 320 ms) aplicadas a enter/exit/pop; se desactivan (`Enter/ExitTransition.None`) cuando `rememberAnimationsEnabled()` es false. Se mantienen `popUpTo/saveState/restoreState/launchSingleTop` y flujos existentes.

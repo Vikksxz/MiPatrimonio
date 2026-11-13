@@ -1,5 +1,6 @@
 package com.mipatrimonio.app.feature.home
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -26,13 +28,16 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -46,7 +51,8 @@ import com.mipatrimonio.app.core.database.entity.TransactionEntity
 import com.mipatrimonio.app.core.model.TransactionType
 import com.mipatrimonio.app.core.money.Money
 import com.mipatrimonio.app.core.settings.HomeBlock
-import com.mipatrimonio.app.core.settings.HomeDashboardConfig
+import com.mipatrimonio.app.core.ui.components.AnimatedAmount
+import com.mipatrimonio.app.core.ui.components.EmptyState
 import com.mipatrimonio.app.core.ui.components.NeonButton
 import com.mipatrimonio.app.core.ui.components.NeonButtonText
 import com.mipatrimonio.app.core.ui.components.NeonCard
@@ -54,10 +60,14 @@ import com.mipatrimonio.app.core.ui.components.ProgressNeonBar
 import com.mipatrimonio.app.core.ui.components.ScreenTitle
 import com.mipatrimonio.app.core.ui.components.accentColor
 import com.mipatrimonio.app.core.ui.components.label
+import com.mipatrimonio.app.core.ui.motion.MotionDurations
 import com.mipatrimonio.app.core.ui.motion.rememberAnimationsEnabled
+import com.mipatrimonio.app.core.ui.motion.rememberStaggeredEnter
+import com.mipatrimonio.app.core.ui.motion.staggerDelayMillis
 import com.mipatrimonio.app.core.ui.theme.MiPatrimonioTheme
 import com.mipatrimonio.app.core.ui.theme.NeonColor
 import com.mipatrimonio.app.core.ui.theme.NeonShape
+import com.mipatrimonio.app.core.ui.theme.NeonType
 import com.mipatrimonio.app.domain.usecase.ActivePlanSummary
 import com.mipatrimonio.app.domain.usecase.BudgetLevel
 import com.mipatrimonio.app.domain.usecase.GetMonthlySummary
@@ -70,6 +80,7 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.delay
 
 private val MonthFormatter: DateTimeFormatter =
     DateTimeFormatter.ofPattern("LLLL yyyy", Locale.forLanguageTag("es-ES"))
@@ -78,8 +89,8 @@ private val ShortDateFormatter: DateTimeFormatter =
     DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag("es-ES"))
 
 /**
- * Inicio (T1.9, MiPatrimonio.md §8.1): cabecera del mes, tarjeta de saldo,
- * barra por tipo con leyenda y los cuatro últimos movimientos.
+ * Inicio (T1.9, MiPatrimonio.md §8.1; T5.4): saldo protagonista, conteos animados,
+ * bloques con entrada escalonada y cromo calmado (1–2 momentos con brillo).
  */
 @Composable
 fun HomeScreen(
@@ -131,7 +142,7 @@ fun HomeContent(
             return@Column
         }
 
-        var renderedAny = false
+        var renderIndex = 0
         state.dashboardConfig.forEach { cfg ->
             if (!cfg.visible) return@forEach
             val willRender = when (cfg.block) {
@@ -140,23 +151,31 @@ fun HomeContent(
                 HomeBlock.PROJECTION -> summary.projection?.visible == true
             }
             if (!willRender) return@forEach
-            Spacer(modifier = Modifier.height(if (renderedAny) 28.dp else 16.dp))
-            renderedAny = true
+
+            Spacer(modifier = Modifier.height(if (renderIndex == 0) 16.dp else 24.dp))
+            val (alpha, offsetY) = rememberStaggeredEnter(index = renderIndex)
+            val blockModifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer {
+                    this.alpha = alpha
+                    translationY = offsetY.toFloat()
+                }
             when (cfg.block) {
-                HomeBlock.BALANCE -> BalanceCard(summary)
-                HomeBlock.SAVINGS_PLAN -> ActiveSavingsPanel(plan = summary.activePlan, onOpenSavings = onOpenSavings)
-                HomeBlock.BREAKDOWN -> BreakdownCard(summary)
-                HomeBlock.ALERTS -> BudgetsCard(budgets = summary.budgets)
-                HomeBlock.PROJECTION -> ProjectionCard(projectedExpenseCents = summary.projection!!.projectedExpenseCents)
-                HomeBlock.RECENT -> RecentSection(recent = summary.recent)
+                HomeBlock.BALANCE -> Box(blockModifier) { BalanceCard(summary) }
+                HomeBlock.SAVINGS_PLAN -> Box(blockModifier) { ActiveSavingsPanel(plan = summary.activePlan, onOpenSavings = onOpenSavings) }
+                HomeBlock.BREAKDOWN -> Box(blockModifier) { BreakdownCard(summary) }
+                HomeBlock.ALERTS -> Box(blockModifier) { BudgetsCard(budgets = summary.budgets) }
+                HomeBlock.PROJECTION -> Box(blockModifier) { ProjectionCard(projectedExpenseCents = summary.projection!!.projectedExpenseCents) }
+                HomeBlock.RECENT -> Box(blockModifier) { RecentSection(recent = summary.recent) }
             }
+            renderIndex++
         }
 
         Spacer(modifier = Modifier.height(24.dp))
     }
 }
 
-/** Tarjeta de saldo (§8.1): degradado azul-violeta, borde y brillo cian. */
+/** Tarjeta de saldo (§8.1): protagonista por cifra, cromo calmado (brillo contenido). */
 @Composable
 private fun BalanceCard(summary: MonthlySummary) {
     val shape = RoundedCornerShape(NeonShape.panelRadius)
@@ -164,11 +183,11 @@ private fun BalanceCard(summary: MonthlySummary) {
         modifier = Modifier
             .fillMaxWidth()
             .shadow(
-                elevation = 24.dp,
+                elevation = 8.dp,
                 shape = shape,
                 clip = false,
-                ambientColor = NeonColor.neonCyan.copy(alpha = 0.25f),
-                spotColor = NeonColor.neonCyan.copy(alpha = 0.25f),
+                ambientColor = NeonColor.neonCyan.copy(alpha = 0.10f),
+                spotColor = NeonColor.neonCyan.copy(alpha = 0.10f),
             )
             .background(
                 brush = Brush.linearGradient(
@@ -188,13 +207,13 @@ private fun BalanceCard(summary: MonthlySummary) {
                 color = NeonColor.muted,
                 style = MaterialTheme.typography.bodyMedium,
             )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = formatBalance(summary.availableCents),
+            Spacer(modifier = Modifier.height(8.dp))
+            AnimatedAmount(
+                cents = summary.availableCents,
+                signed = summary.availableCents < 0L,
+                isExpense = summary.availableCents < 0L,
                 color = NeonColor.neonCyan,
                 style = MaterialTheme.typography.displayMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
             )
             Spacer(modifier = Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -225,10 +244,10 @@ private fun MiniPanel(
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(NeonShape.inputRadius))
-            .background(NeonColor.panelAlt)
+            .background(NeonColor.panelAlt.copy(alpha = 0.7f))
             .border(
                 width = 1.dp,
-                color = NeonColor.balanceBorder.copy(alpha = 0.6f),
+                color = NeonColor.balanceBorder.copy(alpha = 0.45f),
                 shape = RoundedCornerShape(NeonShape.inputRadius),
             )
             .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -239,17 +258,15 @@ private fun MiniPanel(
             style = MaterialTheme.typography.labelMedium,
         )
         Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = Money.format(amount),
+        AnimatedAmount(
+            cents = amount,
             color = color,
             style = MaterialTheme.typography.titleMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
         )
     }
 }
 
-/** Barra segmentada por tipo con brillo y leyenda de cuatro filas (§7.1). */
+/** Barra segmentada por tipo con leyenda (T5.4: cromo calmado, reveal suave). */
 @Composable
 private fun BreakdownCard(summary: MonthlySummary) {
     NeonCard(modifier = Modifier.fillMaxWidth()) {
@@ -280,12 +297,23 @@ private fun SegmentedBar(summary: MonthlySummary) {
         cardCents = summary.cardCents,
         subscriptionCents = summary.subscriptionCents,
     )
+    val animationsEnabled = rememberAnimationsEnabled()
+    val reveal = remember { Animatable(if (animationsEnabled) 0f else 1f) }
+    LaunchedEffect(animationsEnabled) {
+        if (!animationsEnabled) {
+            reveal.snapTo(1f)
+        } else {
+            delay(staggerDelayMillis(1).toLong())
+            reveal.animateTo(1f, animationSpec = tween(durationMillis = MotionDurations.Long))
+        }
+    }
     val shape = RoundedCornerShape(5.dp)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(10.dp),
+            .height(10.dp)
+            .graphicsLayer { alpha = 0.6f + 0.4f * reveal.value },
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         segments.forEachIndexed { index, type ->
@@ -293,16 +321,9 @@ private fun SegmentedBar(summary: MonthlySummary) {
             Box(
                 modifier = Modifier
                     .weight(weights[index])
-                    .fillMaxSize()
-                    .shadow(
-                        elevation = 8.dp,
-                        shape = shape,
-                        clip = false,
-                        ambientColor = color,
-                        spotColor = color,
-                    )
+                    .fillMaxHeight()
                     .clip(shape)
-                    .background(color),
+                    .background(color.copy(alpha = 0.9f)),
             )
         }
     }
@@ -313,9 +334,15 @@ private fun SegmentedBar(summary: MonthlySummary) {
 private fun ProjectionCard(projectedExpenseCents: Long) {
     NeonCard(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = stringResource(R.string.home_projection, Money.format(projectedExpenseCents)),
+            text = stringResource(R.string.home_projection_label),
             color = NeonColor.muted,
             style = MaterialTheme.typography.bodyMedium,
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        AnimatedAmount(
+            cents = projectedExpenseCents,
+            color = NeonColor.ink,
+            style = MaterialTheme.typography.titleLarge,
         )
     }
 }
@@ -344,15 +371,15 @@ private fun LegendRow(type: TransactionType, amount: Long) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        Text(
-            text = Money.format(amount),
+        AnimatedAmount(
+            cents = amount,
             color = color,
             style = MaterialTheme.typography.titleSmall,
         )
     }
 }
 
-/** Últimos movimientos (§8.1): barra vertical de color del tipo, fecha · tipo y importe. */
+/** Últimos movimientos (§8.1): barra vertical de color del tipo, fecha · tipo e importe. */
 @Composable
 private fun RecentSection(recent: List<TransactionEntity>) {
     Text(
@@ -362,11 +389,7 @@ private fun RecentSection(recent: List<TransactionEntity>) {
     )
     Spacer(modifier = Modifier.height(8.dp))
     if (recent.isEmpty()) {
-        Text(
-            text = stringResource(R.string.home_no_recent),
-            color = NeonColor.muted,
-            style = MaterialTheme.typography.bodyMedium,
-        )
+        EmptyState(message = stringResource(R.string.home_no_recent))
         return
     }
     recent.forEach { transaction ->
@@ -390,13 +413,6 @@ private fun RecentRow(transaction: TransactionEntity) {
             modifier = Modifier
                 .width(6.dp)
                 .height(40.dp)
-                .shadow(
-                    elevation = 8.dp,
-                    shape = shape,
-                    clip = false,
-                    ambientColor = accent,
-                    spotColor = accent,
-                )
                 .clip(shape)
                 .background(accent),
         )
@@ -422,24 +438,23 @@ private fun RecentRow(transaction: TransactionEntity) {
             )
         }
         Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = Money.formatSigned(transaction.amountCents, isExpense = isExpense, currency = transaction.currency),
+        AnimatedAmount(
+            cents = transaction.amountCents,
+            currency = transaction.currency,
+            signed = true,
+            isExpense = isExpense,
             color = accent,
             style = MaterialTheme.typography.titleMedium,
         )
     }
 }
 
-/** Saldo con `−` solo cuando es negativo; en positivo o cero, sin signo. */
-private fun formatBalance(cents: Long): String =
-    if (cents < 0L) Money.formatSigned(cents, isExpense = true) else Money.format(cents)
-
 private fun formatMonth(month: YearMonth): String = month.atDay(1).format(MonthFormatter)
 
 private fun formatShortDate(epochDay: Long): String =
     LocalDate.ofEpochDay(epochDay).format(ShortDateFormatter)
 
-/** Presupuestos en Inicio (T3.4): barras con sensación de urgencia al completarse. */
+/** Presupuestos en Inicio (T3.4, T5.4): barras legibles, cromo calmado. */
 @Composable
 private fun BudgetsCard(budgets: List<HomeBudgetSummary>) {
     NeonCard(modifier = Modifier.fillMaxWidth()) {
@@ -458,10 +473,10 @@ private fun BudgetsCard(budgets: List<HomeBudgetSummary>) {
 
 @Composable
 private fun BudgetUrgencyRow(b: HomeBudgetSummary) {
-    val (barColor, glowColor) = when (b.level) {
-        BudgetLevel.OK -> NeonColor.neonCyan to NeonColor.neonCyan.copy(alpha = 0.20f)
-        BudgetLevel.WARNING -> NeonColor.neonAmber to NeonColor.neonAmber.copy(alpha = 0.45f)
-        BudgetLevel.OVER -> NeonColor.expenseRed to NeonColor.expenseRed.copy(alpha = 0.55f)
+    val barColor = when (b.level) {
+        BudgetLevel.OK -> NeonColor.neonCyan
+        BudgetLevel.WARNING -> NeonColor.neonAmber
+        BudgetLevel.OVER -> NeonColor.expenseRed
     }
     val progress = if (b.limitCents > 0L) {
         (b.spentCents.toDouble() / b.limitCents.toDouble()).toFloat().coerceIn(0f, 1f)
@@ -471,10 +486,10 @@ private fun BudgetUrgencyRow(b: HomeBudgetSummary) {
     val urgentPulse = if (animationsEnabled && b.level != BudgetLevel.OK) {
         val t = rememberInfiniteTransition(label = "budgetUrgency")
         val p by t.animateFloat(
-            initialValue = 0.7f,
+            initialValue = 0.75f,
             targetValue = 1f,
             animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = if (b.level == BudgetLevel.OVER) 700 else 1100, easing = LinearEasing),
+                animation = tween(durationMillis = if (b.level == BudgetLevel.OVER) 900 else 1200, easing = LinearEasing),
                 repeatMode = RepeatMode.Reverse,
             ),
             label = "pulse",
@@ -483,12 +498,12 @@ private fun BudgetUrgencyRow(b: HomeBudgetSummary) {
     } else 1f
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text(text = b.categoryName, color = NeonColor.ink, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
             Text(
                 text = "${b.percent}% · ${Money.format(b.spentCents)}/${Money.format(b.limitCents)}",
                 color = barColor,
-                style = MaterialTheme.typography.labelSmall,
+                style = NeonType.tabular(MaterialTheme.typography.labelSmall),
             )
         }
         Spacer(modifier = Modifier.height(4.dp))
@@ -497,13 +512,6 @@ private fun BudgetUrgencyRow(b: HomeBudgetSummary) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(10.dp)
-                .shadow(
-                    elevation = if (b.level == BudgetLevel.OVER) 10.dp else if (b.level == BudgetLevel.WARNING) 6.dp else 2.dp,
-                    shape = shape,
-                    clip = false,
-                    ambientColor = glowColor.copy(alpha = glowColor.alpha * urgentPulse),
-                    spotColor = glowColor.copy(alpha = glowColor.alpha * urgentPulse),
-                )
                 .clip(shape)
                 .background(NeonColor.track),
         ) {
@@ -518,7 +526,7 @@ private fun BudgetUrgencyRow(b: HomeBudgetSummary) {
     }
 }
 
-/** Panel del plan activo en Inicio (§8.1, T3.1). */
+/** Panel del plan activo en Inicio (§8.1, T3.1, T5.4): momento protagonista (glow contenido). */
 @Composable
 private fun ActiveSavingsPanel(plan: ActivePlanSummary?, onOpenSavings: () -> Unit) {
     if (plan == null) {
@@ -532,28 +540,30 @@ private fun ActiveSavingsPanel(plan: ActivePlanSummary?, onOpenSavings: () -> Un
     } else 0f
     val percent = (progress * 100f).roundToInt()
 
-    NeonCard(glowColor = NeonColor.neonGreen, modifier = Modifier.fillMaxWidth().clickable { onOpenSavings() }) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    NeonCard(
+        glowColor = if (progress >= 1f) NeonColor.neonGreen.copy(alpha = 0.22f) else NeonColor.neonGreen.copy(alpha = 0.14f),
+        modifier = Modifier.fillMaxWidth().clickable { onOpenSavings() },
+    ) {
+        Column(modifier = Modifier.padding(4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = stringResource(R.string.home_savings_plan_active),
                     color = NeonColor.muted,
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                 )
                 Text(
                     text = "$percent%",
                     color = NeonColor.neonCyan,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = NeonType.tabular(MaterialTheme.typography.titleMedium),
                 )
             }
             Text(text = plan.name, color = NeonColor.ink, style = MaterialTheme.typography.titleMedium)
             ProgressNeonBar(progress = progress, modifier = Modifier.fillMaxWidth())
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(
-                    text = "${Money.format(plan.contributedCents)} / ${Money.format(plan.targetCents)}",
-                    color = NeonColor.ink,
-                    style = MaterialTheme.typography.bodySmall,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AnimatedAmount(cents = plan.contributedCents, color = NeonColor.ink, style = MaterialTheme.typography.bodySmall)
+                    Text(text = " / ${Money.format(plan.targetCents)}", color = NeonColor.muted, style = NeonType.tabular(MaterialTheme.typography.bodySmall))
+                }
                 val monthsText = if (plan.estimate.goalReached) {
                     stringResource(R.string.savings_reaches_now)
                 } else {
@@ -562,10 +572,11 @@ private fun ActiveSavingsPanel(plan: ActivePlanSummary?, onOpenSavings: () -> Un
                 }
                 Text(text = monthsText, color = NeonColor.muted, style = MaterialTheme.typography.bodySmall)
             }
-            val (statusText, statusColor, statusBg) = when (plan.estimate.status) {
-                SavingsStatus.BEHIND -> Triple(stringResource(R.string.savings_status_behind), NeonColor.expenseRed, NeonColor.expenseRed.copy(alpha = 0.15f))
-                SavingsStatus.AHEAD -> Triple(stringResource(R.string.savings_status_ahead), NeonColor.neonGreen, NeonColor.neonGreen.copy(alpha = 0.15f))
-                SavingsStatus.ON_TRACK -> Triple(stringResource(R.string.savings_status_on_track), NeonColor.neonGreen, NeonColor.neonGreen.copy(alpha = 0.15f))
+            val (statusText, statusColor, statusBg) = when {
+                plan.estimate.goalReached -> Triple(stringResource(R.string.savings_reaches_now), NeonColor.neonGreen, NeonColor.neonGreen.copy(alpha = 0.12f))
+                plan.estimate.status == SavingsStatus.BEHIND -> Triple(stringResource(R.string.savings_status_behind), NeonColor.neonAmber, NeonColor.neonAmber.copy(alpha = 0.12f))
+                plan.estimate.status == SavingsStatus.AHEAD -> Triple(stringResource(R.string.savings_status_ahead), NeonColor.neonGreen, NeonColor.neonGreen.copy(alpha = 0.12f))
+                else -> Triple(stringResource(R.string.savings_status_on_track), NeonColor.neonGreen, NeonColor.neonGreen.copy(alpha = 0.12f))
             }
             Box(
                 modifier = Modifier
@@ -579,8 +590,6 @@ private fun ActiveSavingsPanel(plan: ActivePlanSummary?, onOpenSavings: () -> Un
         }
     }
 }
-
-
 
 @Preview(showBackground = true, backgroundColor = 0xFF070A12)
 @Composable
