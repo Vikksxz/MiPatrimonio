@@ -1,9 +1,9 @@
 # PROGRESS
 
 ## Estado
-- Fase actual: 4 (completada)
-- Última tarea cerrada: T4.9
-- Tarea en curso: — (Fase 1–4 completadas; T4.3 pospuesta por decisión de George)
+- Fase actual: 5 (Mejora visual)
+- Última tarea cerrada: T5.0
+- Próxima tarea: T5.1 Fundaciones de tema y movimiento
 
 ## Decisiones tomadas
 - (2026-11-02) Paquete: com.mipatrimonio.app
@@ -62,6 +62,54 @@
 - (T1.10) `FLAG_SECURE` se aplica en `onStart`/`onStop` leyendo DataStore; si el usuario cambia el ajuste mientras la app está en primer plano, el flag se actualiza en la siguiente emisión del flow (correcto).
 - (T1.10) `LockPolicyTest` cubre límites (0, 1, 5 min) pero no prueba `elapsedMillis` nulo con `unlockedInSession=true` y `enabled=true` (no bloquea, correcto por "sin tiempo en segundo plano").
 - (T1.10) El icono adaptativo usa `ic_launcher_background.xml` (`#0B0F1A`), `ic_launcher_foreground.xml` (tres barras neón) y `ic_launcher_monochrome.xml` (blanco). `android:roundIcon` apunta al mismo adaptive-icon.
+
+## T5.0 — Preparación y decisiones de diseño (auditoría `unslop` + `mipatrimonio-design`, 2026-11-13)
+
+### Diagnóstico base
+- **Veredicto:** light slop / modo pulido. Base sólida (tema/tokens/mapeo, momentos con sentido) con oportunidades en: concentración de brillo (≤2 momentos/pantalla), cromo calmado, espaciado 4 dp y alineación, jerarquía (1 cifra protagonista/pantalla), microcopy en tú/positivo/sin culpa y estados vacíos con CTA único.
+
+### Contraste (objetivo ≥ 4,5:1) — sin cambios de tokens
+| Rol | FG | Fondo | Ratio | Resultado |
+|---|---|---|---:|---|
+| `muted` | `#8FA0C4` | `bg #070A12` | 7.53:1 | OK |
+| `muted` | `#8FA0C4` | `panel #0E1424` | 6.99:1 | OK |
+| `muted` | `#8FA0C4` | `panelAlt #0A1226` | 7.09:1 | OK |
+| `chipText` | `#C7D2F0` | `bg #070A12` | 13.10:1 | OK |
+| `chipText` | `#C7D2F0` | `panel #0E1424` | 12.15:1 | OK |
+| `chipText` | `#C7D2F0` | `panelAlt #0A1226` | 12.33:1 | OK |
+| `ink` | `#E6ECFF` | `bg #070A12` | 16.78:1 | OK |
+| `ink` | `#E6ECFF` | `panel #0E1424` | 15.56:1 | OK |
+
+**Decisión:** no se modifican valores de `muted/chipText/ink`. Mantener verificación visual con fuente grande y en componentes con overlays/tintes; si en implementación aparece un caso < 4.5:1, ajustar solo con **neutro derivado** documentado en tema (sin tocar paleta base/mapeo).
+
+### Reglas de spacing y jerarquía (a aplicar desde T5.2)
+- **Escala 4 dp:** usar pasos 4/8/12/16/20/24/32 (2 dp solo ajuste óptico interno). Página 16–20 dp horizontal; padding de tarjeta 16–20 dp; gap intra-grupo 4–8 dp; inter-sección 16–24/32 dp.
+- **Alineación:** caja de icono de ancho fijo en filas, etiquetas alineadas, importes/cifras alineados a la derecha y con cifras tabulares.
+- **1 cifra protagonista por pantalla:** Inicio→saldo disponible; Ahorro→plan activo/progreso; Movimientos→contexto/total del periodo si aplica; Análisis→variación o total principal. Resto secundario/muted.
+- **Brillo y cromo:** ≤ 2 elementos con brillo por pantalla. Momentos: barra de ahorro (protagonista en Inicio) y saldo/lectura focal; cromo (nav, tarjetas secundarias, listas, filtros, hojas) calmado, sin halos decorativos. `NeonCard` sin glow por defecto.
+- **Neutros derivados:** no se introducen ahora. Si se necesitan capas extra, definir como tokens de tema derivados de `#070A12` (p. ej. superficie elevada) con contraste verificado; prohibido hex suelto y prohibido alterar paleta base/mapeo por tipo.
+
+### Inventario de microcopy y vacíos a revisar (tú, positivo, sin culpa, 1 CTA)
+
+| Área | Cadenas/elementos (referencia) | Dirección de cambio |
+|---|---|---|
+| Vacíos genéricos/listas | `transactions_empty`, `transactions_empty_hint`, `documents_empty`, `documents_empty_hint`, `savings_no_plans`, `savings_no_active_plan`, `wallet_recurring_empty_subs`, `wallet_recurring_empty_fixed`, `shared_empty`, `shared_people_empty`, `wallet_empty_title/text` | Frase cálida + CTA único contextual (“Añadir movimiento/Crear mi primer plan/Añadir tarjeta/Guardar un documento/Añadir persona o gasto”). |
+| Búsqueda/filtros | `transactions_empty` sin resultados (estado en pantalla) | “No hay movimientos con esos filtros” + CTA “Limpiar filtros”. |
+| Ahorro y presupuestos | `savings_status_behind`, `savings_notify_behind`, `savings_error_insufficient_available`, avisos 80/100% (`budget_notify_80/100`) | Orientativo, sin culpa (“Aún te queda margen”, “Puedes ajustar la cuota o revisar un gasto”). Celebrar logro/meta alcanzada cuando proceda. |
+| Inicio | `home_available`, `home_no_recent`, proyección/avisos | Tono cercano (“Lo que te queda este mes”), vacíos con guía/CTA. |
+| Alta y escaneo | `add_sheet_title/scan/manual/income*`, estados de carga/error OCR/importación/confirmaciones | Verbos cercanos (“Apuntar un gasto”, “Registrar un ingreso”, “Escanear un ticket o nómina”), errores con salida (“Prueba con otra foto”), confirmaciones tranquilas. |
+| Bloqueo/utilitarios | `lock_*`, `placeholder_under_construction` | Tono tranquilizador y útil; sustituir “En construcción” por estado útil/`EmptyState`. |
+| Documentos/compartidos | mensajes de cifrado/guardado y vacíos | Mencionar cifrado con calma (“tus datos están a salvo”), tono colaborativo en compartidos. |
+| Análisis | `analysis_no_expenses` y estados con pocos datos | “Aún no hay suficiente para comparar” con sugerencia amable. |
+
+*Nota:* mantener significado funcional y claves existentes cuando sea posible; actualizar textos en `strings.xml` (español) durante las tareas T5.4–T5.10.
+
+### Decisiones de componentes (para T5.2+)
+- `EmptyState` reutilizable (icono + frase + 1 CTA).
+- `NeonCard` sin glow por defecto; `neonGlow` radial barato solo en momentos definidos.
+- `NeonButton` secundario: texto/icono/borde siguen `accent`.
+- Cifra animada (`Long` céntimos, `Money.format`) y stagger, ambos condicionados a reducir animaciones.
+- Cifras tabulares en importes/saldos/porcentajes.
 
 ## Notas para el próximo modelo
 - (2026-11-02) T1.1 cerrada: pantalla vacía oscura compilando.
