@@ -2,8 +2,8 @@
 
 ## Estado
 - Fase actual: 5 (Mejora visual)
-- Última tarea cerrada: T5.4
-- Próxima tarea: T5.5 Movimientos
+- Última tarea cerrada: T5.5
+- Próxima tarea: T5.6 Ahorro y presupuestos
 
 ## Decisiones tomadas
 - (2026-11-02) Paquete: com.mipatrimonio.app
@@ -62,6 +62,12 @@
 - (T1.10) `FLAG_SECURE` se aplica en `onStart`/`onStop` leyendo DataStore; si el usuario cambia el ajuste mientras la app está en primer plano, el flag se actualiza en la siguiente emisión del flow (correcto).
 - (T1.10) `LockPolicyTest` cubre límites (0, 1, 5 min) pero no prueba `elapsedMillis` nulo con `unlockedInSession=true` y `enabled=true` (no bloquea, correcto por "sin tiempo en segundo plano").
 - (T1.10) El icono adaptativo usa `ic_launcher_background.xml` (`#0B0F1A`), `ic_launcher_foreground.xml` (tres barras neón) y `ic_launcher_monochrome.xml` (blanco). `android:roundIcon` apunta al mismo adaptive-icon.
+
+## T5.5 — Movimientos (2026-11-13)
+- `TransactionsScreen`: estados vacíos con `EmptyState` reutilizable — sin movimientos muestra CTA “Añadir movimiento” (propagado `onAdd` desde `AppRoot`/`AppNavHost`), y sin resultados muestra CTA “Limpiar filtros” (borra búsqueda, tipo y etiqueta).
+- Lista: entrada escalonada de cabeceras y filas (`rememberStaggeredEnter`), cabeceras de día legibles con cifras tabulares, contador contextual discreto de movimientos visibles, importes con `AnimatedAmount` (tabular, alineado a la derecha). Se mantiene swipe para borrar + deshacer y flujo de edición.
+- `strings.xml`: copy actualizado para vacíos/filtros y añadidos `transactions_add_first`, `transactions_clear_filters`, `transactions_count`.
+- Verificación: `./gradlew :app:compileDebugKotlin testDebugUnitTest` en verde. Pendiente comprobación visual en dispositivo (T5.4/T5.5).
 
 ## T5.4 — Inicio (Resumen) (2026-11-13)
 - `HomeScreen`: saldo como cifra protagonista con `AnimatedAmount`; conteo animado en ingresos/gastos, proyección, leyenda y panel de ahorro; entrada escalonada de bloques (`rememberStaggeredEnter`) y reveal suave de barra segmentada; cifras tabulares en porcentajes/valores clave.

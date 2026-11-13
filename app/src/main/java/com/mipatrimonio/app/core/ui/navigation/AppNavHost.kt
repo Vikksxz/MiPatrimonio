@@ -37,6 +37,7 @@ import com.mipatrimonio.app.feature.wallet.WalletScreen
 fun AppNavHost(
     navController: NavHostController,
     modifier: Modifier = Modifier,
+    onAdd: () -> Unit = {},
 ) {
     val animationsEnabled = rememberAnimationsEnabled()
     val duration = MotionDurations.Default
@@ -86,7 +87,10 @@ fun AppNavHost(
             )
         }
         composable(Routes.TRANSACTIONS) {
-            TransactionsScreen(onOpenAnalysis = { navController.navigate(Routes.ANALYSIS) })
+            TransactionsScreen(
+                onOpenAnalysis = { navController.navigate(Routes.ANALYSIS) },
+                onAdd = onAdd,
+            )
         }
         composable(Routes.SAVINGS) { SavingsScreen() }
         composable(Routes.WALLET) {

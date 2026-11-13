@@ -63,15 +63,17 @@ import com.mipatrimonio.app.R
 import com.mipatrimonio.app.core.database.entity.TransactionEntity
 import com.mipatrimonio.app.core.model.IncomeKind
 import com.mipatrimonio.app.core.model.TransactionType
-import com.mipatrimonio.app.core.money.Money
+import com.mipatrimonio.app.core.ui.components.AnimatedAmount
+import com.mipatrimonio.app.core.ui.components.EmptyState
 import com.mipatrimonio.app.core.ui.components.MovementChipType
-import com.mipatrimonio.app.core.ui.components.NeonCard
 import com.mipatrimonio.app.core.ui.components.NeonChip
 import com.mipatrimonio.app.core.ui.components.ScreenTitle
 import com.mipatrimonio.app.core.ui.components.accentColor
 import com.mipatrimonio.app.core.ui.components.label
+import com.mipatrimonio.app.core.ui.motion.rememberStaggeredEnter
 import com.mipatrimonio.app.core.ui.theme.MiPatrimonioTheme
 import com.mipatrimonio.app.core.ui.theme.NeonColor
+import com.mipatrimonio.app.core.ui.theme.NeonType
 import com.mipatrimonio.app.feature.add.ReviewSheet
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -89,9 +91,8 @@ private val FilterTypes = listOf(
 )
 
 /**
- * Movimientos (T1.8, MiPatrimonio.md §8.2): buscador, filtros por tipo, lista
- * agrupada por día, edición al tocar un movimiento y deslizar para borrar con
- * deshacer.
+ * Movimientos (T1.8, MiPatrimonio.md §8.2; T5.5): buscador, filtros por tipo/etiqueta,
+ * lista agrupada por día, edición al tocar un movimiento y deslizar para borrar con deshacer.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,6 +100,7 @@ fun TransactionsScreen(
     modifier: Modifier = Modifier,
     viewModel: TransactionsViewModel = hiltViewModel(),
     onOpenAnalysis: () -> Unit = {},
+    onAdd: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var editing by remember { mutableStateOf<TransactionEntity?>(null) }
@@ -117,6 +119,12 @@ fun TransactionsScreen(
             onDelete = viewModel::delete,
             onRestore = viewModel::restore,
             onOpenAnalysis = onOpenAnalysis,
+            onAdd = onAdd,
+            onClearFilters = {
+                viewModel.setQuery("")
+                viewModel.setTypeFilter(null)
+                viewModel.setTagFilter(null)
+            },
         )
 
         val current = editing
@@ -153,6 +161,8 @@ fun TransactionsContent(
     onDelete: (TransactionEntity) -> Unit = {},
     onRestore: (TransactionEntity) -> Unit = {},
     onOpenAnalysis: () -> Unit = {},
+    onAdd: () -> Unit = {},
+    onClearFilters: () -> Unit = {},
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -241,44 +251,85 @@ fun TransactionsContent(
 
             when {
                 !state.loaded -> Spacer(modifier = Modifier.weight(1f))
-                state.groups.isEmpty() && !state.hasAnyTransactions -> EmptyState(
+                state.groups.isEmpty() && !state.hasAnyTransactions -> Box(
                     modifier = Modifier.weight(1f),
-                )
-                state.groups.isEmpty() -> NoResultsState(modifier = Modifier.weight(1f))
-                else -> LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    state.groups.forEach { group ->
-                        item(key = "day-${group.epochDay}") {
-                            Text(
-                                text = formatDay(group.epochDay),
-                                color = NeonColor.muted,
-                                style = MaterialTheme.typography.labelMedium,
-                                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
-                            )
-                        }
-                        items(items = group.transactions, key = { it.id }) { transaction ->
-                            SwipeableTransactionRow(
-                                transaction = transaction,
-                                onClick = { onEdit(transaction) },
-                                onDelete = {
-                                    onDelete(transaction)
-                                    scope.launch {
-                                        val result = snackbarHostState.showSnackbar(
-                                            message = deletedMessage,
-                                            actionLabel = undoLabel,
-                                            duration = SnackbarDuration.Long,
-                                        )
-                                        if (result == SnackbarResult.ActionPerformed) {
-                                            onRestore(transaction)
+                    EmptyState(
+                        title = stringResource(R.string.transactions_empty),
+                        message = stringResource(R.string.transactions_empty_hint),
+                        actionLabel = stringResource(R.string.transactions_add_first),
+                        onAction = onAdd,
+                    )
+                }
+                state.groups.isEmpty() -> Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    EmptyState(
+                        title = stringResource(R.string.transactions_no_results),
+                        message = stringResource(R.string.transactions_no_results_hint),
+                        actionLabel = stringResource(R.string.transactions_clear_filters),
+                        onAction = onClearFilters,
+                    )
+                }
+                else -> {
+                    val visibleCount = state.groups.sumOf { it.transactions.size }
+                    Text(
+                        text = stringResource(R.string.transactions_count, visibleCount),
+                        color = NeonColor.muted,
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        var staggerIndex = 0
+                        state.groups.forEach { group ->
+                            val headerIndex = staggerIndex++
+                            item(key = "day-${group.epochDay}") {
+                                val (alpha, offsetY) = rememberStaggeredEnter(index = headerIndex)
+                                Text(
+                                    text = formatDay(group.epochDay),
+                                    color = NeonColor.muted,
+                                    style = NeonType.tabular(MaterialTheme.typography.labelMedium),
+                                    modifier = Modifier
+                                        .padding(top = 12.dp, bottom = 4.dp)
+                                        .graphicsLayer {
+                                            this.alpha = alpha
+                                            translationY = offsetY.toFloat()
+                                        },
+                                )
+                            }
+                            items(items = group.transactions, key = { it.id }) { transaction ->
+                                val rowIndex = staggerIndex++
+                                val (alpha, offsetY) = rememberStaggeredEnter(index = rowIndex)
+                                SwipeableTransactionRow(
+                                    transaction = transaction,
+                                    onClick = { onEdit(transaction) },
+                                    modifier = Modifier.graphicsLayer {
+                                        this.alpha = alpha
+                                        translationY = offsetY.toFloat()
+                                    },
+                                    onDelete = {
+                                        onDelete(transaction)
+                                        scope.launch {
+                                            val result = snackbarHostState.showSnackbar(
+                                                message = deletedMessage,
+                                                actionLabel = undoLabel,
+                                                duration = SnackbarDuration.Long,
+                                            )
+                                            if (result == SnackbarResult.ActionPerformed) {
+                                                onRestore(transaction)
+                                            }
                                         }
-                                    }
-                                },
-                            )
+                                    },
+                                )
+                            }
                         }
+                        item(key = "bottom-space") { Spacer(modifier = Modifier.height(8.dp)) }
                     }
                 }
             }
@@ -354,12 +405,14 @@ private fun SwipeableTransactionRow(
     transaction: TransactionEntity,
     onClick: () -> Unit,
     onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val dismissState = rememberSwipeToDismissBoxState()
 
     SwipeToDismissBox(
         state = dismissState,
         enableDismissFromStartToEnd = false,
+        modifier = modifier,
         backgroundContent = { DeleteBackground(dismissState) },
         onDismiss = { value ->
             if (value == SwipeToDismissBoxValue.EndToStart) onDelete()
@@ -440,57 +493,18 @@ private fun TransactionRow(
             )
         }
         Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = Money.formatSigned(transaction.amountCents, isExpense = isExpense, currency = transaction.currency),
+        AnimatedAmount(
+            cents = transaction.amountCents,
+            currency = transaction.currency,
+            signed = true,
+            isExpense = isExpense,
             color = accent,
             style = MaterialTheme.typography.titleMedium,
         )
     }
 }
 
-@Composable
-private fun EmptyState(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier.fillMaxWidth(),
-        contentAlignment = Alignment.Center,
-    ) {
-        NeonCard(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = stringResource(R.string.transactions_empty),
-                color = NeonColor.ink,
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Text(
-                text = stringResource(R.string.transactions_empty_hint),
-                color = NeonColor.muted,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-        }
-    }
-}
 
-@Composable
-private fun NoResultsState(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier.fillMaxWidth(),
-        contentAlignment = Alignment.Center,
-    ) {
-        NeonCard(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = stringResource(R.string.transactions_no_results),
-                color = NeonColor.ink,
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Text(
-                text = stringResource(R.string.transactions_no_results_hint),
-                color = NeonColor.muted,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-        }
-    }
-}
 
 private fun TransactionType.chipType(): MovementChipType = when (this) {
     TransactionType.CASH -> MovementChipType.CASH

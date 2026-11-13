@@ -163,6 +163,14 @@ fun AppRoot(
         }
     }
 
+    val openAddSheet = {
+        addMode = null
+        scanError = null
+        scanning = false
+        clearDrafts()
+        showAddSheet = true
+    }
+
     Scaffold(
         containerColor = NeonColor.bg,
         bottomBar = {
@@ -177,17 +185,15 @@ fun AppRoot(
                         }
                     }
                 },
-                onAddClick = {
-                    addMode = null
-                    scanError = null
-                    scanning = false
-                    clearDrafts()
-                    showAddSheet = true
-                },
+                onAddClick = openAddSheet,
             )
         },
     ) { innerPadding ->
-        AppNavHost(navController = navController, modifier = Modifier.padding(innerPadding))
+        AppNavHost(
+            navController = navController,
+            modifier = Modifier.padding(innerPadding),
+            onAdd = openAddSheet,
+        )
     }
 
     if (showDuplicateWarning && pendingPayrollDraft != null) {

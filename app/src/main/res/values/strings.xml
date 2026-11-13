@@ -415,16 +415,19 @@
     <string name="type_card">Tarjeta</string>
     <string name="type_subscription">Suscripciones</string>
     <string name="type_income">Ingresos</string>
-    <string name="transactions_empty">Sin movimientos todavía</string>
-    <string name="transactions_empty_hint">Pulsa + para añadir tu primer movimiento.</string>
+    <string name="transactions_empty">Aún no hay movimientos</string>
+    <string name="transactions_empty_hint">Cuando apuntes el primero, verás aquí en qué se va tu dinero</string>
     <string name="transaction_untitled">Sin concepto</string>
 
     <!-- T1.8: lista de movimientos -->
     <string name="transactions_search_hint">Buscar por comercio o nota</string>
     <string name="transactions_search_clear">Borrar búsqueda</string>
     <string name="transactions_filter_all">Todos</string>
-    <string name="transactions_no_results">Sin resultados</string>
-    <string name="transactions_no_results_hint">Prueba con otro texto o cambia el filtro.</string>
+    <string name="transactions_no_results">No hay movimientos con esos filtros</string>
+    <string name="transactions_no_results_hint">Prueba a limpiar la búsqueda o los filtros</string>
+    <string name="transactions_add_first">Añadir movimiento</string>
+    <string name="transactions_clear_filters">Limpiar filtros</string>
+    <string name="transactions_count">%1$d movimientos</string>
     <string name="transaction_deleted">Movimiento eliminado</string>
     <string name="transactions_action_failed">No se pudo completar la acción</string>
     <string name="transactions_open_analysis">Análisis</string>
