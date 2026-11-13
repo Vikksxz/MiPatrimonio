@@ -217,7 +217,7 @@ private fun ShareSheet(
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth(),
-                            ) { NeonButtonText(if (busy) stringResource(R.string.share_saving) else stringResource(R.string.review_save)) }
+                            ) { NeonButtonText(if (busy) stringResource(R.string.share_saving) else stringResource(R.string.common_save)) }
                             NeonButton(onClick = onDone, secondary = true, modifier = Modifier.fillMaxWidth()) {
                                 NeonButtonText(stringResource(R.string.common_cancel), secondary = true)
                             }

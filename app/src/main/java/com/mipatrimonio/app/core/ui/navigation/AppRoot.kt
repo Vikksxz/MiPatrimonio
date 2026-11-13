@@ -238,14 +238,37 @@ fun AppRoot(
                     Box(Modifier.fillMaxWidth().padding(vertical = 48.dp), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             CircularProgressIndicator(color = NeonColor.neonCyan)
-                            Text(stringResource(R.string.scan_processing), color = NeonColor.muted, style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                text = stringResource(R.string.scan_processing),
+                                color = NeonColor.muted,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(horizontal = 24.dp),
+                            )
                         }
                     }
                 }
                 scanError != null && addMode == "SCAN" -> {
-                    Column(Modifier.fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(scanError ?: "", color = NeonColor.expenseRed, style = MaterialTheme.typography.bodyMedium)
-                        Text(stringResource(R.string.add_sheet_scan_hint), color = NeonColor.muted, style = MaterialTheme.typography.bodySmall)
+                    Column(
+                        Modifier.fillMaxWidth().padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        Text(
+                            text = scanError ?: "",
+                            color = NeonColor.ink,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                scanError = null
+                                addMode = null
+                            },
+                            modifier = Modifier.align(Alignment.End),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.common_cancel),
+                                color = NeonColor.neonCyan,
+                            )
+                        }
                     }
                 }
                 addMode == null -> {

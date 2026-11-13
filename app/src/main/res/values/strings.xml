@@ -368,18 +368,18 @@
     <string name="common_accept">Aceptar</string>
 
     <!-- T1.7: añadir movimiento manual / T2.5: escaneo -->
-    <string name="add_sheet_scan">Escanear ticket (OCR)</string>
-    <string name="add_sheet_scan_hint">Elige una foto o PDF (ticket o nómina) para leer los datos</string>
-    <string name="add_sheet_manual">Gasto manual o en metálico</string>
-    <string name="add_sheet_manual_hint">Añade un gasto en efectivo o con tarjeta</string>
-    <string name="add_sheet_income">Ingreso</string>
-    <string name="add_sheet_income_hint">Nómina u otros ingresos</string>
+    <string name="add_sheet_scan">Escanear ticket o nómina</string>
+    <string name="add_sheet_scan_hint">Usa una foto o un PDF y te ayudo a rellenarlo</string>
+    <string name="add_sheet_manual">Apuntar un gasto</string>
+    <string name="add_sheet_manual_hint">Registra un gasto en metálico o con tarjeta</string>
+    <string name="add_sheet_income">Registrar un ingreso</string>
+    <string name="add_sheet_income_hint">Apunta una nómina u otro ingreso</string>
     <string name="scan_read_hint">Leído del ticket: revisa los datos</string>
     <string name="scan_payroll_hint">Leída la nómina: revisa los datos antes de confirmar</string>
     <string name="scan_attachment">Ticket adjunto</string>
     <string name="scan_document_attachment">Documento adjunto</string>
-    <string name="scan_processing">Leyendo el documento…</string>
-    <string name="scan_failed">No se pudo leer el archivo. Prueba con otra imagen o PDF.</string>
+    <string name="scan_processing">Un momento, estoy leyendo el documento…</string>
+    <string name="scan_failed">No he podido leerlo. Prueba con otra foto o con un PDF.</string>
     <string name="duplicate_payroll_title">Posible nómina duplicada</string>
     <string name="duplicate_payroll_message">Ya existe una nómina con la misma fecha o título. ¿Quieres continuar de todos modos?</string>
     <string name="duplicate_continue">Continuar</string>
@@ -407,10 +407,11 @@
     <string name="review_no_categories">No hay categorías disponibles</string>
     <string name="review_note">Nota</string>
     <string name="review_save">Guardar movimiento</string>
+    <string name="review_saving">Guardando…</string>
     <string name="review_save_edit">Guardar cambios</string>
     <string name="review_delete">Eliminar movimiento</string>
     <string name="review_delete_confirm">¿Eliminar este movimiento? Esta acción no se puede deshacer.</string>
-    <string name="review_save_failed">No se pudo guardar el movimiento</string>
+    <string name="review_save_failed">No he podido guardarlo. Inténtalo de nuevo.</string>
     <string name="review_error_amount">Escribe un importe mayor que 0</string>
     <string name="review_error_rate">Introduce un tipo de cambio válido (mayor que 0)</string>
     <string name="review_error_income_kind">Elige Nómina u Otros ingresos</string>
@@ -497,5 +498,5 @@
     <string name="share_other_doc">Otro documento</string>
     <string name="share_saving">Guardando…</string>
     <string name="share_saved">Guardado</string>
-    <string name="share_error">No se pudo procesar el archivo</string>
+    <string name="share_error">No he podido procesar el archivo. Inténtalo de nuevo.</string>
 </resources>

@@ -529,7 +529,11 @@ fun ReviewContent(
         ) {
             NeonButtonText(
                 text = stringResource(
-                    if (editing == null) R.string.review_save else R.string.review_save_edit,
+                    when {
+                        saving -> R.string.review_saving
+                        editing == null -> R.string.review_save
+                        else -> R.string.review_save_edit
+                    },
                 ),
             )
         }
@@ -537,7 +541,7 @@ fun ReviewContent(
         if (saveFailed) {
             Text(
                 text = stringResource(R.string.review_save_failed),
-                color = NeonColor.expenseRed,
+                color = NeonColor.neonAmber,
                 style = MaterialTheme.typography.bodySmall,
             )
         }
