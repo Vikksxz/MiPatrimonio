@@ -63,6 +63,7 @@ import com.mipatrimonio.app.R
 import com.mipatrimonio.app.core.database.entity.DocumentEntity
 import com.mipatrimonio.app.core.model.DocumentKind
 import com.mipatrimonio.app.core.model.TransactionType
+import com.mipatrimonio.app.core.ui.components.EmptyState
 import com.mipatrimonio.app.core.ui.components.NeonButton
 import com.mipatrimonio.app.core.ui.components.NeonButtonText
 import com.mipatrimonio.app.core.ui.components.NeonCard
@@ -177,17 +178,18 @@ fun DocumentsScreen(
                 }
 
                 if (state.documents.isEmpty() && !state.saving) {
-                    NeonCard(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = stringResource(R.string.documents_empty),
-                            color = NeonColor.ink,
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = stringResource(R.string.documents_empty_hint),
-                            color = NeonColor.muted,
-                            style = MaterialTheme.typography.bodyMedium,
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        EmptyState(
+                            title = stringResource(R.string.documents_empty),
+                            message = stringResource(R.string.documents_empty_hint),
+                            actionLabel = stringResource(R.string.documents_add),
+                            onAction = { picker.launch(arrayOf("application/pdf")) },
                         )
                     }
                 } else {

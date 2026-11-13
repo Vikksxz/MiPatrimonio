@@ -71,6 +71,7 @@ import com.mipatrimonio.app.core.ui.components.NeonButton
 import com.mipatrimonio.app.core.ui.components.NeonCard
 import com.mipatrimonio.app.core.ui.theme.MiPatrimonioTheme
 import com.mipatrimonio.app.core.ui.theme.NeonColor
+import com.mipatrimonio.app.core.ui.theme.NeonType
 import com.mipatrimonio.app.domain.usecase.DebtTransfer
 import com.mipatrimonio.app.domain.usecase.SharedSplit
 import java.time.Instant
@@ -151,7 +152,23 @@ fun SharedExpensesContent(
             }
             if (state.expenses.isEmpty()) {
                 item {
-                    Text(stringResource(R.string.shared_empty), color = NeonColor.muted, style = MaterialTheme.typography.bodyMedium)
+                    NeonCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(
+                            modifier = Modifier.padding(4.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.shared_empty),
+                                color = NeonColor.ink,
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                            Text(
+                                text = stringResource(R.string.shared_empty_hint),
+                                color = NeonColor.muted,
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                    }
                 }
             }
             items(state.expenses, key = { it.expense.id }) { item ->
@@ -227,20 +244,40 @@ private fun PeopleRow(people: List<PersonEntity>) {
 private fun BalancesCard(people: List<PersonEntity>, balances: Map<Long, Long>, transfers: List<DebtTransfer>) {
     val names = remember(people) { people.associate { it.id to it.name } }
     NeonCard(modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.shared_balances), color = NeonColor.ink, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             balances.forEach { (id, net) ->
                 val name = names[id] ?: id.toString()
-                val color = if (net >= 0L) NeonColor.neonGreen else NeonColor.expenseRed
-                Text("$name: ${Money.formatSigned(net, isExpense = net < 0L)}", color = color, style = MaterialTheme.typography.bodyMedium)
+                val color = when {
+                    net > 0L -> NeonColor.neonGreen
+                    net < 0L -> NeonColor.neonAmber
+                    else -> NeonColor.muted
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(name, color = NeonColor.ink, style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = Money.formatSigned(net, isExpense = net < 0L),
+                        color = color,
+                        style = NeonType.tabular(MaterialTheme.typography.bodyMedium),
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
             }
             if (transfers.isNotEmpty()) {
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(2.dp))
                 Text(stringResource(R.string.shared_who_owes), color = NeonColor.neonViolet, style = MaterialTheme.typography.labelLarge)
                 transfers.forEach { t ->
                     val from = names[t.fromPersonId] ?: t.fromPersonId.toString()
                     val to = names[t.toPersonId] ?: t.toPersonId.toString()
-                    Text(stringResource(R.string.shared_owes_format, from, to, Money.format(t.amountCents)), color = NeonColor.ink, style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        text = stringResource(R.string.shared_owes_format, from, to, Money.format(t.amountCents)),
+                        color = NeonColor.ink,
+                        style = NeonType.tabular(MaterialTheme.typography.bodyMedium),
+                    )
                 }
             }
         }
