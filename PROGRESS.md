@@ -2,8 +2,8 @@
 
 ## Estado
 - Fase actual: 5 (Mejora visual)
-- Última tarea cerrada: T5.2
-- Próxima tarea: T5.3 Transiciones y navegación
+- Última tarea cerrada: T5.3
+- Próxima tarea: T5.4 Inicio (Resumen)
 
 ## Decisiones tomadas
 - (2026-11-02) Paquete: com.mipatrimonio.app
@@ -62,6 +62,12 @@
 - (T1.10) `FLAG_SECURE` se aplica en `onStart`/`onStop` leyendo DataStore; si el usuario cambia el ajuste mientras la app está en primer plano, el flag se actualiza en la siguiente emisión del flow (correcto).
 - (T1.10) `LockPolicyTest` cubre límites (0, 1, 5 min) pero no prueba `elapsedMillis` nulo con `unlockedInSession=true` y `enabled=true` (no bloquea, correcto por "sin tiempo en segundo plano").
 - (T1.10) El icono adaptativo usa `ic_launcher_background.xml` (`#0B0F1A`), `ic_launcher_foreground.xml` (tres barras neón) y `ic_launcher_monochrome.xml` (blanco). `android:roundIcon` apunta al mismo adaptive-icon.
+
+## T5.3 — Transiciones y navegación (2026-11-13)
+- `AppNavHost`: transiciones de navegación (fade + slide horizontal sutil, 320 ms) aplicadas a enter/exit/pop; se desactivan (`Enter/ExitTransition.None`) cuando `rememberAnimationsEnabled()` es false. Se mantienen `popUpTo/saveState/restoreState/launchSingleTop` y flujos existentes.
+- `NeonTabBar`: cromo calmado (sombra/brillo de pestaña activa y botón `+` reducidos) manteniendo selección no solo por color (indicador superior + peso tipográfico + acento).
+- Hojas `ModalBottomSheet`: sin cambios de flujo; la animación del componente sigue siendo la de Material3 (mejor esfuerzo de respeto global a preferencias del sistema según plataforma).
+- Verificación: `./gradlew :app:compileDebugKotlin testDebugUnitTest` en verde.
 
 ## T5.2 — Componentes comunes y ritmo (2026-11-13)
 - Nuevos componentes/utilidades: `core/ui/components/EmptyState.kt` (icono+mensaje+cita CTA, `@Preview`), `AnimatedAmount.kt` (céntimos `Long`, `Money.format/formatSigned`, cifras tabulares, respeta reducir animaciones), `NeonGlow.kt` (`Modifier.neonGlow` radial barato).

@@ -153,7 +153,7 @@ private fun RowScope.TabItem(
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                 letterSpacing = 0.sp,
                 shadow = if (selected) {
-                    Shadow(color = NeonColor.neonCyan, blurRadius = 8f)
+                    Shadow(color = NeonColor.neonCyan.copy(alpha = 0.35f), blurRadius = 4f)
                 } else {
                     null
                 },
@@ -179,11 +179,11 @@ private fun RowScope.AddButton(onClick: () -> Unit) {
             modifier = Modifier
                 .size(56.dp)
                 .shadow(
-                    elevation = 16.dp,
+                    elevation = 8.dp,
                     shape = CircleShape,
                     clip = false,
-                    ambientColor = NeonColor.neonCyan.copy(alpha = 0.35f),
-                    spotColor = NeonColor.neonCyan.copy(alpha = 0.35f),
+                    ambientColor = NeonColor.neonCyan.copy(alpha = 0.18f),
+                    spotColor = NeonColor.neonCyan.copy(alpha = 0.18f),
                 )
                 .clip(CircleShape)
                 .background(Brush.linearGradient(listOf(NeonColor.neonCyan, NeonColor.neonViolet)))
