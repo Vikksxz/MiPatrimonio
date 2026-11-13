@@ -286,11 +286,9 @@ fun TransactionsContent(
                             .weight(1f),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        var staggerIndex = 0
-                        state.groups.forEach { group ->
-                            val headerIndex = staggerIndex++
+                        state.groups.forEachIndexed { groupIndex, group ->
                             item(key = "day-${group.epochDay}") {
-                                val (alpha, offsetY) = rememberStaggeredEnter(index = headerIndex)
+                                val (alpha, offsetY) = rememberStaggeredEnter(index = groupIndex.coerceAtMost(6))
                                 Text(
                                     text = formatDay(group.epochDay),
                                     color = NeonColor.muted,
@@ -304,7 +302,7 @@ fun TransactionsContent(
                                 )
                             }
                             items(items = group.transactions, key = { it.id }) { transaction ->
-                                val rowIndex = staggerIndex++
+                                val rowIndex = (groupIndex + 1).coerceAtMost(6)
                                 val (alpha, offsetY) = rememberStaggeredEnter(index = rowIndex)
                                 SwipeableTransactionRow(
                                     transaction = transaction,

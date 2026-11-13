@@ -10,7 +10,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import kotlin.math.roundToInt
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Utilidades de movimiento (T5.1–T5.2). Respetan "reducir animaciones" del sistema.
@@ -63,19 +65,22 @@ fun rememberStaggeredEnter(
     LaunchedEffect(index, enabled) {
         if (!enabled) {
             alpha.snapTo(1f)
-        } else {
-            val d = staggerDelayMillis(index)
-            if (d > 0) delay(d.toLong())
-            alpha.animateTo(1f, animationSpec = tween(durationMillis = MotionDurations.Default))
-        }
-    }
-    LaunchedEffect(index, enabled) {
-        if (!enabled) {
             offset.snapTo(0f)
         } else {
             val d = staggerDelayMillis(index)
             if (d > 0) delay(d.toLong())
-            offset.animateTo(0f, animationSpec = gentleSpring())
+            // Ensure visible even if one animation is interrupted.
+            alpha.snapTo(alpha.value.coerceAtLeast(0f))
+            coroutineScope {
+                val a = launch {
+                    alpha.animateTo(1f, animationSpec = tween(durationMillis = MotionDurations.Default))
+                }
+                val o = launch {
+                    offset.animateTo(0f, animationSpec = gentleSpring())
+                }
+                a.join()
+                o.join()
+            }
         }
     }
     return alpha.value to offset.value.roundToInt()
