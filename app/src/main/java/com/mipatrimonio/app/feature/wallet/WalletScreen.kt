@@ -73,6 +73,7 @@ import com.mipatrimonio.app.core.model.CardKind
 import com.mipatrimonio.app.core.model.RecurrencePeriod
 import com.mipatrimonio.app.core.model.TransactionType
 import com.mipatrimonio.app.core.money.Money
+import com.mipatrimonio.app.core.ui.components.EmptyState
 import com.mipatrimonio.app.core.ui.components.NeonButton
 import com.mipatrimonio.app.core.ui.components.NeonButtonText
 import com.mipatrimonio.app.core.ui.components.NeonCard
@@ -81,7 +82,6 @@ import com.mipatrimonio.app.core.ui.components.ScreenTitle
 import com.mipatrimonio.app.core.ui.theme.MiPatrimonioTheme
 import com.mipatrimonio.app.core.ui.theme.NeonColor
 import com.mipatrimonio.app.core.ui.theme.NeonShape
-import com.mipatrimonio.app.core.ui.theme.NeonType
 import com.mipatrimonio.app.domain.usecase.RecurringSchedule
 import java.time.Instant
 import java.time.LocalDate
@@ -234,19 +234,36 @@ fun WalletContent(
         }
 
         // Tarjetas
+        item {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.wallet_cards_section),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = NeonColor.ink,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
         if (cards.isEmpty()) {
             item {
-                NeonCard(modifier = Modifier.fillMaxWidth()) {
-                    Text(text = stringResource(R.string.wallet_empty_title), color = NeonColor.muted, style = MaterialTheme.typography.titleMedium)
-                }
+                EmptyState(
+                    title = stringResource(R.string.wallet_empty_title),
+                    message = stringResource(R.string.wallet_empty_hint),
+                    actionLabel = stringResource(R.string.wallet_add_card),
+                    onAction = onAdd,
+                )
             }
         } else {
             items(items = cards, key = { "card-${it.id}" }) { card ->
                 CardListItem(card = card, onClick = { onEdit(card) })
             }
-        }
-        item {
-            DashedAddCardButton(text = stringResource(R.string.wallet_add_card), onClick = onAdd)
+            item {
+                DashedAddCardButton(text = stringResource(R.string.wallet_add_card), onClick = onAdd)
+            }
         }
 
         // Suscripciones (T3.5)
@@ -254,7 +271,14 @@ fun WalletContent(
             SectionHeader(title = stringResource(R.string.wallet_subscriptions), onAdd = onAddRecurring)
         }
         if (subscriptions.isEmpty()) {
-            item { Text(stringResource(R.string.wallet_recurring_empty_subs), color = NeonColor.muted, style = MaterialTheme.typography.bodySmall) }
+            item {
+                Text(
+                    stringResource(R.string.wallet_recurring_empty_subs),
+                    color = NeonColor.muted,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 4.dp),
+                )
+            }
         } else {
             val annualTotal = subscriptions.sumOf { RecurringSchedule.annualCostCents(it.amountCents, it.period) }
             item {
@@ -275,7 +299,14 @@ fun WalletContent(
             SectionHeader(title = stringResource(R.string.wallet_recurring), onAdd = onAddRecurring)
         }
         if (fixed.isEmpty()) {
-            item { Text(stringResource(R.string.wallet_recurring_empty_fixed), color = NeonColor.muted, style = MaterialTheme.typography.bodySmall) }
+            item {
+                Text(
+                    stringResource(R.string.wallet_recurring_empty_fixed),
+                    color = NeonColor.muted,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 4.dp),
+                )
+            }
         } else {
             items(items = fixed, key = { "rec-${it.id}" }) { r ->
                 RecurringRow(r, dateFmt, onClick = { onEditRecurring(r) })

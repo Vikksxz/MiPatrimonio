@@ -2,8 +2,8 @@
 
 ## Estado
 - Fase actual: 5 (Mejora visual)
-- Última tarea cerrada: T5.7
-- Próxima tarea: T5.8 Cartera y Configuración
+- Última tarea cerrada: T5.8
+- Próxima tarea: T5.9 Documentos, Compartidos y Análisis
 
 ## Decisiones tomadas
 - (2026-11-02) Paquete: com.mipatrimonio.app
@@ -62,6 +62,11 @@
 - (T1.10) `FLAG_SECURE` se aplica en `onStart`/`onStop` leyendo DataStore; si el usuario cambia el ajuste mientras la app está en primer plano, el flag se actualiza en la siguiente emisión del flow (correcto).
 - (T1.10) `LockPolicyTest` cubre límites (0, 1, 5 min) pero no prueba `elapsedMillis` nulo con `unlockedInSession=true` y `enabled=true` (no bloquea, correcto por "sin tiempo en segundo plano").
 - (T1.10) El icono adaptativo usa `ic_launcher_background.xml` (`#0B0F1A`), `ic_launcher_foreground.xml` (tres barras neón) y `ic_launcher_monochrome.xml` (blanco). `android:roundIcon` apunta al mismo adaptive-icon.
+
+## T5.8 — Cartera y Configuración (2026-11-13)
+- `WalletScreen`: jerarquía más clara (Documentos, Gastos compartidos, sección Tarjetas, Suscripciones, Gastos fijos), vacío de tarjetas con `EmptyState` (nota de privacidad, sin números de tarjeta) y CTA “Añadir tarjeta”, vacíos de suscripciones/gastos fijos con copy guiado y CTA en cabecera.
+- `strings.xml`: textos más breves/cercanos y sin alarmismo en avisos, fiabilidad, exportación y copia de seguridad/restauración (manteniendo claridad de acción destructiva); añadidos `wallet_cards_section` y hints de vacío.
+- Verificación: `./gradlew :app:compileDebugKotlin testDebugUnitTest` en verde y validado en NX779J antes de commit.
 
 ## T5.7 — Flujo de alta (Añadir/Revisión/Escaneo) (2026-11-13)
 - `AddMenuSheet`: opciones con iconos/acentos y textos cercanos (“Escanear ticket o nómina”, “Apuntar un gasto”, “Registrar un ingreso”) con feedback al pulsar.

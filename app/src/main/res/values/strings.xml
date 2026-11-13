@@ -50,8 +50,8 @@
     <string name="wallet_recurring">Gastos fijos</string>
     <string name="wallet_recurring_add">Añadir</string>
     <string name="wallet_recurring_edit">Editar</string>
-    <string name="wallet_recurring_empty_subs">Sin suscripciones</string>
-    <string name="wallet_recurring_empty_fixed">Sin gastos fijos recurrentes</string>
+    <string name="wallet_recurring_empty_subs">Aún no tienes suscripciones. Añade una para llevar sus renovaciones.</string>
+    <string name="wallet_recurring_empty_fixed">Aún no tienes gastos fijos. Añade los que se repiten cada mes o periodo.</string>
     <string name="recurring_name">Nombre</string>
     <string name="recurring_amount">Importe (€)</string>
     <string name="recurring_period">Periodicidad</string>
@@ -99,14 +99,14 @@
 
     <!-- Permiso y pruebas de avisos (T3.6) -->
     <string name="notifications_section_title">Avisos</string>
-    <string name="notifications_permission_explanation">MiPatrimonio usa avisos para presupuestos, ahorro y suscripciones. Se piden solo cuando tú lo activas.</string>
+    <string name="notifications_permission_explanation">Te avisamos de presupuestos, ahorro y suscripciones. Solo si tú quieres activarlos.</string>
     <string name="notifications_enable">Activar avisos</string>
     <string name="notifications_enabled">Avisos activados</string>
     <string name="notifications_test">Enviar avisos de prueba</string>
     <string name="notifications_test_savings_body">Aviso de prueba de ahorro: todo funciona correctamente.</string>
     <string name="notifications_test_budget_body">Aviso de prueba de presupuesto: todo funciona correctamente.</string>
     <string name="notifications_reliability">Fiabilidad de avisos</string>
-    <string name="notifications_reliability_hint">En algunos móviles (como REDMAGIC OS) conviene desactivar la optimización de batería para recibir avisos en segundo plano.</string>
+    <string name="notifications_reliability_hint">En algunos móviles conviene desactivar la optimización de batería para que los avisos lleguen bien.</string>
     <string name="notifications_open_battery_settings">Abrir ajustes de batería</string>
 
     <!-- Recordatorio nocturno (T3.8) -->
@@ -117,7 +117,7 @@
 
     <!-- Exportación (T4.1, §13) -->
     <string name="export_section_title">Exportar datos</string>
-    <string name="export_section_hint">Genera un archivo con tus movimientos o un resumen mensual para compartirlo.</string>
+    <string name="export_section_hint">Llévate tus movimientos o un resumen mensual cuando lo necesites.</string>
     <string name="export_csv">Exportar movimientos (CSV)</string>
     <string name="export_pdf">Exportar resumen mensual (PDF)</string>
     <string name="export_share_csv">Compartir CSV</string>
@@ -239,17 +239,17 @@
 
     <!-- Copia local cifrada (T4.2, §13) -->
     <string name="backup_section_title">Copia de seguridad</string>
-    <string name="backup_section_hint">Guarda o restaura todos tus datos en un archivo .mpbak cifrado con contraseña.</string>
+    <string name="backup_section_hint">Guarda o recupera tus datos en un archivo cifrado con tu contraseña.</string>
     <string name="backup_create">Crear copia local</string>
     <string name="backup_restore">Restaurar copia</string>
     <string name="backup_password">Contraseña</string>
     <string name="backup_password_confirm">Confirmar contraseña</string>
-    <string name="backup_password_hint">Mínimo 8 caracteres. La app no puede recuperar la contraseña si la olvidas.</string>
+    <string name="backup_password_hint">Mínimo 8 caracteres. Guárdala bien: si la olvidas, no se puede recuperar.</string>
     <string name="backup_password_short">La contraseña debe tener al menos 8 caracteres</string>
     <string name="backup_password_mismatch">Las contraseñas no coinciden</string>
     <string name="backup_password_restore_hint">Introduce la contraseña de la copia</string>
     <string name="backup_restore_confirm_title">Restaurar copia</string>
-    <string name="backup_restore_confirm_text">Esto borrará todos tus datos actuales y los sustituirá por los de la copia. Esta acción no se puede deshacer.</string>
+    <string name="backup_restore_confirm_text">Se sustituirán los datos actuales por los de la copia. Esta acción no se puede deshacer.</string>
     <string name="backup_restore_confirm_action">Restaurar</string>
     <string name="backup_in_progress">Procesando copia…</string>
     <string name="backup_created">Copia creada correctamente</string>
@@ -329,6 +329,7 @@
 
     <!-- T1.6: Cartera / Tarjetas -->
     <string name="wallet_title">CARTERA</string>
+    <string name="wallet_cards_section">Tarjetas</string>
     <string name="wallet_empty_text">Toca una tarjeta para editarla o eliminarla. No se guardan números ni datos de la tarjeta.</string>
     <string name="wallet_add_card">Añadir tarjeta</string>
     <string name="card_form_title_new">Nueva tarjeta</string>
@@ -361,7 +362,8 @@
     <string name="bank_ing">ING</string>
     <string name="bank_revolut">Revolut</string>
     <string name="bank_other">Otro</string>
-    <string name="wallet_empty_title">Sin tarjetas todavía</string>
+    <string name="wallet_empty_title">Aún no tienes tarjetas</string>
+    <string name="wallet_empty_hint">Solo guardamos el banco y un nombre. Nunca números ni datos de la tarjeta.</string>
     <string name="card_form_error_name">Escribe un nombre para la tarjeta</string>
     <string name="card_item_action">Editar tarjeta %1$s</string>
     <string name="common_cancel">Cancelar</string>
