@@ -67,7 +67,7 @@ data class PayrollDraft(
  */
 @HiltViewModel
 class AddTransactionViewModel @Inject constructor(
-    categoryDao: CategoryDao,
+    private val categoryDao: CategoryDao,
     cardDao: CardDao,
     exchangeRateDao: ExchangeRateDao,
     private val addTransaction: AddTransaction,
@@ -266,6 +266,28 @@ class AddTransactionViewModel @Inject constructor(
         viewModelScope.launch {
             val id = withContext(Dispatchers.IO) {
                 tagDao.getByName(trimmed)?.id ?: tagDao.insert(TagEntity(name = trimmed))
+            }
+            onCreated(id)
+        }
+    }
+
+    /** Crea una categoría de ingreso (T6.2) con valores por defecto coherentes con el tema. */
+    fun createIncomeCategory(name: String, onCreated: (Long) -> Unit) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        viewModelScope.launch {
+            val id = withContext(Dispatchers.IO) {
+                categoryDao.getByName(trimmed, isIncome = true)?.id
+                    ?: categoryDao.insert(
+                        CategoryEntity(
+                            name = trimmed,
+                            colorHex = "#22D3EE",
+                            icon = "attach_money",
+                            isIncome = true,
+                            isFixed = false,
+                            isDefault = false,
+                        ),
+                    )
             }
             onCreated(id)
         }

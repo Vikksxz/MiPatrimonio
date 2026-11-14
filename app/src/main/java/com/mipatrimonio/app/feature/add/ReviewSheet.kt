@@ -17,12 +17,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -74,13 +78,8 @@ private val ReviewDateFormatter: DateTimeFormatter =
     DateTimeFormatter.ofPattern("d MMM yyyy", Locale.forLanguageTag("es-ES"))
 
 /**
- * Hoja de revisión del botón + (T1.7, MiPatrimonio.md §8.3).
- * Formulario común para gasto manual e ingreso. Se muestra dentro del
- * `ModalBottomSheet` que ya abre [AddMenuSheet].
- *
- * En T1.8 también se reutiliza como detalle/edición de un movimiento existente
- * ([editing] no nulo): precarga los datos, guarda con `UpdateTransaction` y
- * permite eliminarlo con confirmación.
+ * Hoja de revisión del botón + (T1.7, §8.3; T6.2 refactor ingresos/nota/moneda).
+ * Formulario común para gasto e ingreso. Se muestra dentro del `ModalBottomSheet` de [AddMenuSheet].
  */
 @Composable
 fun ReviewSheet(
@@ -119,6 +118,7 @@ fun ReviewSheet(
         exchangeRates = exchangeRates,
         onSaveExchangeRate = viewModel::saveExchangeRate,
         onCreateTag = { name, onCreated -> viewModel.createTag(name, onCreated) },
+        onCreateIncomeCategory = { name, onCreated -> viewModel.createIncomeCategory(name, onCreated) },
         saving = viewModel.saving,
         saveFailed = viewModel.saveFailed,
         saveErrorCode = viewModel.saveErrorCode,
@@ -157,6 +157,7 @@ fun ReviewContent(
     onDelete: (() -> Unit)? = null,
     exchangeRates: List<ExchangeRateEntity> = emptyList(),
     onSaveExchangeRate: (String, Double) -> Unit = { _, _ -> },
+    onCreateIncomeCategory: (String, (Long) -> Unit) -> Unit = { _, _ -> },
     saveErrorCode: String? = null,
 ) {
     val state = remember(initialType, editing?.id, scanDraft?.thumbnail, payrollDraft?.sourceFilePath) {
@@ -171,14 +172,32 @@ fun ReviewContent(
             if (saved != null) state.rateText = formatRate(saved)
         }
     }
-    var tagInput by remember { mutableStateOf("") }
-    val visibleCategories = categories.filter {
-        it.isIncome == (state.type == TransactionType.INCOME)
+    // Nómina: asegurar categoría de nómina por defecto si existe.
+    LaunchedEffect(state.type, state.incomeKind, categories) {
+        if (state.type == TransactionType.INCOME && state.incomeKind == IncomeKind.PAYROLL) {
+            val payrollCat = categories.firstOrNull { it.isIncome && (it.name.equals("Nómina", true) || it.isDefault) }
+                ?: categories.firstOrNull { it.isIncome }
+            if (state.categoryId == null && payrollCat != null) state.categoryId = payrollCat.id
+            if (state.merchant.isBlank()) state.merchant = "Nómina"
+        }
     }
+
+    var tagInput by remember { mutableStateOf("") }
     var showDatePicker by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showNewCategoryDialog by remember { mutableStateOf(false) }
+    var newCategoryName by remember { mutableStateOf("") }
+
     val fromOcr = (scanDraft != null || payrollDraft != null) && editing == null
-    val isPayroll = payrollDraft != null
+    val isPayrollDraft = payrollDraft != null
+    val incomeContext = isPayrollDraft || editing?.type == TransactionType.INCOME || (editing == null && initialType == TransactionType.INCOME && scanDraft == null)
+    val isIncome = state.type == TransactionType.INCOME || incomeContext
+    if (incomeContext && state.type != TransactionType.INCOME) state.type = TransactionType.INCOME
+    val isPayroll = state.type == TransactionType.INCOME && state.incomeKind == IncomeKind.PAYROLL
+    val isOtherIncome = state.type == TransactionType.INCOME && state.incomeKind == IncomeKind.OTHER
+    val incomeCategories = categories.filter { it.isIncome }
+    val expenseCategories = categories.filter { !it.isIncome }
+    val visibleExpenseCategories = if (state.type == TransactionType.INCOME) emptyList() else expenseCategories
 
     Column(
         modifier = modifier
@@ -192,7 +211,7 @@ fun ReviewContent(
             text = stringResource(
                 when {
                     editing != null -> R.string.review_title_edit
-                    state.type == TransactionType.INCOME -> R.string.review_title_income
+                    isIncome -> R.string.review_title_income
                     else -> R.string.review_title_expense
                 },
             ),
@@ -200,7 +219,7 @@ fun ReviewContent(
 
         if (fromOcr) {
             Text(
-                text = stringResource(if (isPayroll) R.string.scan_payroll_hint else R.string.scan_read_hint),
+                text = stringResource(if (isPayrollDraft) R.string.scan_payroll_hint else R.string.scan_read_hint),
                 color = NeonColor.neonCyan,
                 style = MaterialTheme.typography.bodyMedium,
             )
@@ -208,7 +227,7 @@ fun ReviewContent(
             thumb?.let { bmp ->
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        text = stringResource(if (isPayroll) R.string.scan_document_attachment else R.string.scan_attachment),
+                        text = stringResource(if (isPayrollDraft) R.string.scan_document_attachment else R.string.scan_attachment),
                         color = NeonColor.muted,
                         style = MaterialTheme.typography.labelMedium,
                     )
@@ -226,31 +245,75 @@ fun ReviewContent(
             }
         }
 
-        FormSection(title = stringResource(R.string.review_type)) {
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                listOf(
-                    TransactionType.CASH to R.string.type_cash,
-                    TransactionType.CARD to R.string.type_card,
-                    TransactionType.SUBSCRIPTION to R.string.type_subscription,
-                    TransactionType.INCOME to R.string.type_income,
-                ).forEach { (type, labelRes) ->
-                    NeonChip(
-                        text = stringResource(labelRes),
-                        type = type.chipType(),
-                        selected = state.type == type,
-                        onClick = {
-                            val changesIncome =
-                                (state.type == TransactionType.INCOME) != (type == TransactionType.INCOME)
-                            state.type = type
-                            if (changesIncome) state.categoryId = null
-                            if (type != TransactionType.CARD) state.cardId = null
-                            if (type != TransactionType.INCOME) state.showIncomeKindError = false
-                        },
+        if (incomeContext) {
+            // T6.2: pantalla de ingresos solo de ingresos (Nómina / Otros ingresos)
+            FormSection(title = stringResource(R.string.review_type)) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    listOf(
+                        IncomeKind.PAYROLL to R.string.income_kind_payroll,
+                        IncomeKind.OTHER to R.string.income_kind_other,
+                    ).forEach { (kind, labelRes) ->
+                        NeonChip(
+                            text = stringResource(labelRes),
+                            type = MovementChipType.INCOME,
+                            selected = state.incomeKind == kind,
+                            onClick = {
+                                state.incomeKind = kind
+                                state.showIncomeKindError = false
+                                state.showIncomeCategoryError = false
+                                state.showConceptError = false
+                                if (kind == IncomeKind.PAYROLL) {
+                                    state.categoryId = incomeCategories.firstOrNull { it.name.equals("Nómina", true) || it.isDefault }?.id
+                                        ?: incomeCategories.firstOrNull()?.id
+                                    if (state.merchant.isBlank()) state.merchant = "Nómina"
+                                } else {
+                                    state.categoryId = null
+                                    state.merchant = if (editing?.incomeKind == IncomeKind.OTHER) state.merchant else ""
+                                }
+                            },
+                        )
+                    }
+                }
+                if (state.showIncomeKindError) {
+                    Text(
+                        text = stringResource(R.string.review_error_income_kind),
+                        color = NeonColor.expenseRed,
+                        style = MaterialTheme.typography.bodySmall,
                     )
+                }
+                Text(
+                    text = stringResource(R.string.savings_income_linked_info),
+                    color = NeonColor.muted,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        } else {
+            FormSection(title = stringResource(R.string.review_type)) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    listOf(
+                        TransactionType.CASH to R.string.type_cash,
+                        TransactionType.CARD to R.string.type_card,
+                        TransactionType.SUBSCRIPTION to R.string.type_subscription,
+                    ).forEach { (type, labelRes) ->
+                        NeonChip(
+                            text = stringResource(labelRes),
+                            type = type.chipType(),
+                            selected = state.type == type,
+                            onClick = {
+                                state.type = type
+                                state.categoryId = null
+                                if (type != TransactionType.CARD) state.cardId = null
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -273,28 +336,36 @@ fun ReviewContent(
             )
         }
 
-        FormSection(title = stringResource(R.string.review_currency)) {
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Money.SUPPORTED_CURRENCIES.forEach { code ->
-                    val selected = state.currency == code
-                    NeonChip(
-                        text = code,
-                        accent = if (selected) NeonColor.neonCyan else NeonColor.muted,
-                        tint = if (selected) NeonColor.neonCyan.copy(alpha = 0.18f) else NeonColor.panelAlt,
-                        labelColor = if (selected) NeonColor.neonCyan else NeonColor.chipText,
-                        selected = selected,
-                        onClick = {
-                            state.currency = code
-                            state.showRateError = false
-                            if (code == Money.BASE_CURRENCY) state.rateText = ""
-                        },
-                    )
-                }
+        // T6.2: Concepto obligatorio solo en Otros ingresos, bajo importe. Oculto en Nómina.
+        if (isOtherIncome) {
+            NeonTextField(
+                value = state.merchant,
+                onValueChange = {
+                    state.merchant = it
+                    state.showConceptError = false
+                },
+                label = stringResource(R.string.review_concept),
+                isError = state.showConceptError,
+            )
+            if (state.showConceptError) {
+                Text(
+                    text = stringResource(R.string.review_error_concept),
+                    color = NeonColor.expenseRed,
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
+        }
+
+        // T6.2: Moneda en control compacto (dropdown) con estilo neón.
+        FormSection(title = stringResource(R.string.review_currency)) {
+            CurrencyDropdown(
+                selected = state.currency,
+                onSelect = { code ->
+                    state.currency = code
+                    state.showRateError = false
+                    if (code == Money.BASE_CURRENCY) state.rateText = ""
+                },
+            )
             if (state.currency != Money.BASE_CURRENCY) {
                 val hint = stringResource(R.string.review_rate_hint, state.currency)
                 NeonTextField(
@@ -317,11 +388,14 @@ fun ReviewContent(
             }
         }
 
-        NeonTextField(
-            value = state.merchant,
-            onValueChange = { state.merchant = it },
-            label = stringResource(R.string.review_merchant),
-        )
+        // Comercio/concepto para gastos y suscripciones/tarjeta/metálico (no ingreso).
+        if (!isIncome) {
+            NeonTextField(
+                value = state.merchant,
+                onValueChange = { state.merchant = it },
+                label = stringResource(R.string.review_merchant),
+            )
+        }
 
         FormSection(title = stringResource(R.string.review_date)) {
             NeonButton(
@@ -369,66 +443,77 @@ fun ReviewContent(
             }
         }
 
-        if (state.type == TransactionType.INCOME) {
-            FormSection(title = stringResource(R.string.income_kind_title)) {
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    listOf(
-                        IncomeKind.PAYROLL to R.string.income_kind_payroll,
-                        IncomeKind.OTHER to R.string.income_kind_other,
-                    ).forEach { (kind, labelRes) ->
-                        NeonChip(
-                            text = stringResource(labelRes),
-                            type = MovementChipType.INCOME,
-                            selected = state.incomeKind == kind,
-                            onClick = {
-                                state.incomeKind = kind
-                                state.showIncomeKindError = false
-                            },
-                        )
+        // T6.2: Categoría de Otros ingresos (gestionable) o categorías de gasto.
+        if (isOtherIncome) {
+            FormSection(title = stringResource(R.string.review_category)) {
+                if (incomeCategories.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.review_no_income_categories),
+                        color = NeonColor.muted,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                } else {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        incomeCategories.forEach { category ->
+                            val accent = categoryColor(category.colorHex)
+                            NeonChip(
+                                text = category.name,
+                                accent = accent,
+                                tint = accent.copy(alpha = 0.14f),
+                                labelColor = accent,
+                                selected = state.categoryId == category.id,
+                                onClick = {
+                                    state.categoryId = category.id
+                                    state.showIncomeCategoryError = false
+                                },
+                            )
+                        }
                     }
                 }
-                if (state.showIncomeKindError) {
+                if (state.showIncomeCategoryError) {
                     Text(
-                        text = stringResource(R.string.review_error_income_kind),
+                        text = stringResource(R.string.review_error_income_category),
                         color = NeonColor.expenseRed,
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
-                Text(
-                    text = stringResource(R.string.savings_income_linked_info),
-                    color = NeonColor.muted,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-        }
-
-        FormSection(title = stringResource(R.string.review_category)) {
-            if (visibleCategories.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.review_no_categories),
-                    color = NeonColor.muted,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            } else {
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                TextButton(
+                    onClick = { showNewCategoryDialog = true },
+                    modifier = Modifier.heightIn(min = 44.dp),
                 ) {
-                    visibleCategories.forEach { category ->
-                        val accent = categoryColor(category.colorHex)
-                        NeonChip(
-                            text = category.name,
-                            accent = accent,
-                            tint = accent.copy(alpha = 0.14f),
-                            labelColor = accent,
-                            selected = state.categoryId == category.id,
-                            onClick = { state.categoryId = category.id },
-                        )
+                    Text(stringResource(R.string.review_create_income_category), color = NeonColor.neonCyan)
+                }
+            }
+        } else if (!incomeContext) {
+            // Gastos: categorías de gasto.
+            FormSection(title = stringResource(R.string.review_category)) {
+                if (visibleExpenseCategories.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.review_no_categories),
+                        color = NeonColor.muted,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                } else {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        visibleExpenseCategories.forEach { category ->
+                            val accent = categoryColor(category.colorHex)
+                            NeonChip(
+                                text = category.name,
+                                accent = accent,
+                                tint = accent.copy(alpha = 0.14f),
+                                labelColor = accent,
+                                selected = state.categoryId == category.id,
+                                onClick = { state.categoryId = category.id },
+                            )
+                        }
                     }
                 }
             }
@@ -467,15 +552,7 @@ fun ReviewContent(
                     label = { Text(stringResource(R.string.review_tag_new)) },
                     singleLine = true,
                     modifier = Modifier.weight(1f),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = NeonColor.neonCyan,
-                        unfocusedBorderColor = NeonColor.lineInput,
-                        focusedLabelColor = NeonColor.neonCyan,
-                        unfocusedLabelColor = NeonColor.muted,
-                        focusedTextColor = NeonColor.ink,
-                        unfocusedTextColor = NeonColor.ink,
-                        cursorColor = NeonColor.neonCyan,
-                    ),
+                    colors = neonFieldColors(),
                 )
                 TextButton(onClick = {
                     val name = tagInput.trim()
@@ -489,47 +566,45 @@ fun ReviewContent(
             }
         }
 
-        NeonTextField(
-            value = state.note,
-            onValueChange = { state.note = it },
-            label = stringResource(R.string.review_note),
-            singleLine = false,
-            minLines = 2,
-        )
+        // T6.2: Nota eliminada de la UI (se conserva en BD/backup/export y en ediciones).
 
         NeonButton(
             onClick = {
                 if (saving) return@NeonButton
                 val amountCents = parseAmount(state.amountText)
                 val rateToBase = if (state.currency == Money.BASE_CURRENCY) null else parseRate(state.rateText)
-                if (amountCents == null) {
-                    state.showAmountError = true
-                } else if (state.currency != Money.BASE_CURRENCY && (rateToBase == null || rateToBase <= 0.0)) {
-                    state.showRateError = true
-                } else if (state.type == TransactionType.INCOME && state.incomeKind == null) {
-                    state.showIncomeKindError = true
-                } else {
-                    if (rateToBase != null) onSaveExchangeRate(state.currency, rateToBase)
-                    onSave(
-                        NewTransaction(
-                            type = state.type,
-                            amountCents = amountCents,
-                            merchant = state.merchant,
-                            date = state.date,
-                            currency = state.currency,
-                            rateToBase = rateToBase,
-                            incomeKind = if (state.type == TransactionType.INCOME) {
-                                state.incomeKind
-                            } else {
-                                null
-                            },
-                            categoryId = state.categoryId,
-                            cardId = if (state.type == TransactionType.CARD) state.cardId else null,
-                            note = state.note,
-                            receiptPath = state.receiptPath,
-                            tagIds = state.selectedTagIds.toList(),
-                        ),
-                    )
+                val conceptOk = !isOtherIncome || state.merchant.trim().isNotEmpty()
+                val otherIncomeCategoryOk = !isOtherIncome || state.categoryId != null
+                when {
+                    amountCents == null -> state.showAmountError = true
+                    state.currency != Money.BASE_CURRENCY && (rateToBase == null || rateToBase <= 0.0) -> state.showRateError = true
+                    isIncome && state.incomeKind == null -> state.showIncomeKindError = true
+                    isOtherIncome && !conceptOk -> state.showConceptError = true
+                    isOtherIncome && !otherIncomeCategoryOk -> state.showIncomeCategoryError = true
+                    else -> {
+                        if (rateToBase != null) onSaveExchangeRate(state.currency, rateToBase)
+                        val merchant = when {
+                            isPayroll -> state.merchant.trim().ifBlank { "Nómina" }
+                            isOtherIncome -> state.merchant.trim()
+                            else -> state.merchant
+                        }
+                        onSave(
+                            NewTransaction(
+                                type = state.type,
+                                amountCents = amountCents,
+                                merchant = merchant,
+                                date = state.date,
+                                currency = state.currency,
+                                rateToBase = rateToBase,
+                                incomeKind = if (isIncome) state.incomeKind else null,
+                                categoryId = state.categoryId,
+                                cardId = if (state.type == TransactionType.CARD) state.cardId else null,
+                                note = state.note, // preserva nota existente en ediciones; vacía en nuevas (UI sin campo)
+                                receiptPath = state.receiptPath,
+                                tagIds = state.selectedTagIds.toList(),
+                            ),
+                        )
+                    }
                 }
             },
             modifier = Modifier.fillMaxWidth(),
@@ -629,6 +704,51 @@ fun ReviewContent(
         )
     }
 
+    if (showNewCategoryDialog) {
+        AlertDialog(
+            onDismissRequest = { showNewCategoryDialog = false },
+            containerColor = NeonColor.panel,
+            title = {
+                Text(
+                    text = stringResource(R.string.review_new_income_category),
+                    color = NeonColor.ink,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            },
+            text = {
+                OutlinedTextField(
+                    value = newCategoryName,
+                    onValueChange = { newCategoryName = it },
+                    label = { Text(stringResource(R.string.review_category_name)) },
+                    singleLine = true,
+                    colors = neonFieldColors(),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val name = newCategoryName.trim()
+                        if (name.isNotEmpty()) {
+                            onCreateIncomeCategory(name) { id ->
+                                state.categoryId = id
+                                state.showIncomeCategoryError = false
+                            }
+                            newCategoryName = ""
+                            showNewCategoryDialog = false
+                        }
+                    },
+                ) {
+                    Text(stringResource(R.string.review_category_create), color = NeonColor.neonCyan)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNewCategoryDialog = false }) {
+                    Text(stringResource(R.string.common_cancel), color = NeonColor.muted)
+                }
+            },
+        )
+    }
+
     if (showDatePicker) {
         val pickerState = rememberDatePickerState(
             initialSelectedDateMillis = state.date
@@ -674,6 +794,69 @@ fun ReviewContent(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CurrencyDropdown(
+    selected: String,
+    onSelect: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded },
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        OutlinedTextField(
+            value = selected,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(stringResource(R.string.review_currency)) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            colors = neonFieldColors(),
+            modifier = Modifier
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                .fillMaxWidth(),
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            containerColor = NeonColor.panel,
+        ) {
+            Money.SUPPORTED_CURRENCIES.forEach { code ->
+                val isSelected = code == selected
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = code,
+                            color = if (isSelected) NeonColor.neonCyan else NeonColor.ink,
+                        )
+                    },
+                    onClick = {
+                        onSelect(code)
+                        expanded = false
+                    },
+                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun neonFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedBorderColor = NeonColor.neonCyan,
+    unfocusedBorderColor = NeonColor.lineInput,
+    focusedLabelColor = NeonColor.neonCyan,
+    unfocusedLabelColor = NeonColor.muted,
+    focusedTextColor = NeonColor.ink,
+    unfocusedTextColor = NeonColor.ink,
+    cursorColor = NeonColor.neonCyan,
+    focusedTrailingIconColor = NeonColor.neonCyan,
+    unfocusedTrailingIconColor = NeonColor.muted,
+    focusedContainerColor = NeonColor.panelAlt,
+    unfocusedContainerColor = NeonColor.panelAlt,
+)
+
 @Stable
 private class ReviewState(
     initialType: TransactionType,
@@ -697,7 +880,8 @@ private class ReviewState(
         } ?: "",
     )
     var merchant by mutableStateOf(
-        editing?.merchant ?: payrollDraft?.displayName?.removeSuffix(".pdf")?.removeSuffix(".PDF")
+        editing?.merchant
+            ?: payrollDraft?.displayName?.removeSuffix(".pdf")?.removeSuffix(".PDF")
             ?: scanDraft?.merchant.orEmpty(),
     )
     var date by mutableStateOf(
@@ -705,13 +889,14 @@ private class ReviewState(
     )
     var categoryId by mutableStateOf(editing?.categoryId)
     var cardId by mutableStateOf(editing?.cardId)
-    var note by mutableStateOf(editing?.note ?: "")
+    var note by mutableStateOf(editing?.note ?: "") // preservada (sin UI en T6.2)
     var incomeKind by mutableStateOf(editing?.incomeKind ?: if (payrollDraft != null) IncomeKind.PAYROLL else null)
     var selectedTagIds by mutableStateOf(emptySet<Long>())
-    // En escaneo el ticket/nómina se persiste al confirmar; en edición se conserva.
     val receiptPath: String? = editing?.receiptPath
     var showAmountError by mutableStateOf(false)
     var showIncomeKindError by mutableStateOf(false)
+    var showIncomeCategoryError by mutableStateOf(false)
+    var showConceptError by mutableStateOf(false)
     var showRateError by mutableStateOf(false)
 }
 
@@ -749,15 +934,7 @@ private fun NeonTextField(
         isError = isError,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         modifier = Modifier.fillMaxWidth(),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = NeonColor.neonCyan,
-            unfocusedBorderColor = NeonColor.lineInput,
-            focusedLabelColor = NeonColor.neonCyan,
-            unfocusedLabelColor = NeonColor.muted,
-            focusedTextColor = NeonColor.ink,
-            unfocusedTextColor = NeonColor.ink,
-            cursorColor = NeonColor.neonCyan,
-        ),
+        colors = neonFieldColors(),
     )
 }
 
@@ -820,10 +997,12 @@ private fun ReviewContentPreview() {
                 sampleCategory(1L, "Alimentación", "#FF6B9D", false),
                 sampleCategory(2L, "Transporte", "#22D3EE", false),
                 sampleCategory(3L, "Nómina", "#39FF88", true),
+                sampleCategory(4L, "Otros ingresos", "#22D3EE", true),
             ),
             allTags = emptyList(),
             initialTagIds = emptyList(),
             onCreateTag = { _, _ -> },
+            onCreateIncomeCategory = { _, _ -> },
             saving = false,
             saveFailed = false,
             onSave = {},

@@ -1,9 +1,9 @@
 # PROGRESS
 
 ## Estado
-- Fase actual: 6 (Ahorro trazable y refactor de ingresos) — en curso
-- Última tarea cerrada: T6.1
-- Próxima tarea: T6.2 (refactor de registro de ingresos y limpieza de campos)
+- Fase actual: 6 (Ahorro trazable y refactor de ingresos) — completada
+- Última tarea cerrada: T6.2
+- Próxima tarea: ninguna (Fase 6 completada; pendiente decidir siguientes pasos/merge a `main` si no se ha integrado y publicación)
 
 ## Decisiones tomadas
 - (2026-11-02) Paquete: com.mipatrimonio.app
@@ -12,6 +12,7 @@
 - (2026-11-02) Plataforma android-37.2 instalada en el SDK local (no venía por defecto; solo android-36)
 - (2026-11-02) Modelo de implementación: MiMo-V2.6-Flash (asume rol de implementador; revisión cruzada pendiente con otro agente)
 - (2026-11-14) T6.1: ahorro trazable (rama `t6-1-ahorro-trazable`). `PlanContributionEntity` con `sourceTransactionId`, `originType` (`INCOME|CASH_SAVINGS|LEGACY`), `archived`, `createdAt` e índices; Room v1→v2 (`MIGRATION_1_2`) y esquema `2.json`. Reglas puras en `SavingsContributionRules` (disponible, origen, vínculos, retirada). Aportación con origen obligatorio y validación `disponible − importe ≥ 0`; ingreso vinculado no borrable (solo editable) hasta eliminar vínculos, ingreso virgen borrable con aviso si dejaría disponible < 0; edición/borrado/restauración y retirada con guards para no dejar disponible/total del plan < 0. Historial por plan (eliminar/archivar visual) y vista global de aportaciones vinculadas (`LinkedContributionsViewModel`/diálogo). Backup/restore remapea `sourceTransactionId` y degrada a `LEGACY` si falta origen. `SavingsContributionRulesTest`. `compileDebugKotlin`/`testDebugUnitTest` en verde; verificado en Nubia NX779J por George. Pendiente transversal: aplicar regla de disponible en todos los flujos automáticos (recurrentes/gastos compartidos/masivos).
+- (2026-11-14) T6.2: refactor de registro de ingresos y limpieza de campos (rama `t6-2-refactor-ingresos`). `ReviewSheet` diferenciado por flujo: pantalla de **ingreso** solo con Tipo **Nómina/Otros ingresos** (sin tipos de gasto) y pantalla de **gasto** solo con Metálico/Tarjeta/Suscripciones. Nómina: concepto/merchant oculto y no obligatorio (autocompletado, categoría nómina por defecto cuando aplica). Otros ingresos: **concepto obligatorio** bajo importe y **categoría de ingreso** de selección única gestionable (vacío+CTA, creación inline con nombre e icono/color por defecto vía `AddTransactionViewModel.createIncomeCategory`). Moneda en desplegable compacto (estilo neón) con tipo de cambio cuando `!= EUR`. **Nota eliminada de la UI** (gasto/ingreso) conservando `note` en entidad/BD/backup/export y preservándola en ediciones; búsqueda mantiene coincidencia por nota para compatibilidad (hint “comercio o concepto”). `compileDebugKotlin`/`testDebugUnitTest` en verde; `:app:installDebug` y validación funcional en Nubia NX779J confirmada por George (nota ausente en UI confirmada; ajuste aplicado para separar tipos ingreso/gasto). Revisión `ui-reviewer` con capturas no ejecutada en esta sesión.
 - (2026-11-08) T1.8: la lista de Movimientos filtra y busca en `TransactionsViewModel.buildDayGroups` (función pura, testeada). Orden: fecha descendente y luego id descendente; agrupación por `date` (epochDay).
 - (2026-11-08) T1.8: la edición reutiliza `ReviewSheet` con `editing: TransactionEntity?`; el borrado de la hoja pide confirmación. `TransactionFactory.applyTo` toca solo los campos editables (`existing.copy`) y `UpdateTransaction` relee la fila con `getById` antes de actualizar, para no pisar datos cambiados desde otra pantalla ni campos futuros.
 - (2026-11-08) T1.8: deshacer = borrado inmediato + Snackbar "Deshacer" (10 s) que reinserta la entidad con su id original (`TransactionDao.restore`, `REPLACE`). El Snackbar vive en la composición de la pantalla (ver deudas).
