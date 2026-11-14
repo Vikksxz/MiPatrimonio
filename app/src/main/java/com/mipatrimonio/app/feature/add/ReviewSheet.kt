@@ -121,6 +121,7 @@ fun ReviewSheet(
         onCreateTag = { name, onCreated -> viewModel.createTag(name, onCreated) },
         saving = viewModel.saving,
         saveFailed = viewModel.saveFailed,
+        saveErrorCode = viewModel.saveErrorCode,
         onSave = { input ->
             when {
                 editing != null -> viewModel.update(editing, input, onSaved)
@@ -156,6 +157,7 @@ fun ReviewContent(
     onDelete: (() -> Unit)? = null,
     exchangeRates: List<ExchangeRateEntity> = emptyList(),
     onSaveExchangeRate: (String, Double) -> Unit = { _, _ -> },
+    saveErrorCode: String? = null,
 ) {
     val state = remember(initialType, editing?.id, scanDraft?.thumbnail, payrollDraft?.sourceFilePath) {
         ReviewState(initialType, editing, scanDraft, payrollDraft)
@@ -396,6 +398,11 @@ fun ReviewContent(
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
+                Text(
+                    text = stringResource(R.string.savings_income_linked_info),
+                    color = NeonColor.muted,
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
         }
 
@@ -539,9 +546,20 @@ fun ReviewContent(
         }
 
         if (saveFailed) {
+            val msgRes = when (saveErrorCode) {
+                "AVAILABLE_NEGATIVE" -> R.string.expense_blocked_insufficient_available
+                "INCOME_EDIT_INCONSISTENT" -> R.string.income_edit_blocked_linked
+                "INCOME_LINKED_DELETE" -> R.string.income_delete_blocked_linked
+                else -> R.string.review_save_failed
+            }
+            val msgColor = if (saveErrorCode == "AVAILABLE_NEGATIVE" || saveErrorCode == "INCOME_EDIT_INCONSISTENT" || saveErrorCode == "INCOME_LINKED_DELETE") {
+                NeonColor.expenseRed
+            } else {
+                NeonColor.neonAmber
+            }
             Text(
-                text = stringResource(R.string.review_save_failed),
-                color = NeonColor.neonAmber,
+                text = stringResource(msgRes),
+                color = msgColor,
                 style = MaterialTheme.typography.bodySmall,
             )
         }

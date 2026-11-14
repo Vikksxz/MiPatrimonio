@@ -8,12 +8,16 @@ import com.mipatrimonio.app.core.database.dao.SavingsDao
 import com.mipatrimonio.app.core.database.dao.TransactionDao
 import com.mipatrimonio.app.core.database.entity.BudgetEntity
 import com.mipatrimonio.app.core.database.entity.CategoryEntity
+import com.mipatrimonio.app.core.database.entity.ContributionOriginType
 import com.mipatrimonio.app.core.database.entity.PlanContributionEntity
 import com.mipatrimonio.app.core.database.entity.SavingsPlanEntity
+import com.mipatrimonio.app.core.database.entity.TransactionEntity
 import com.mipatrimonio.app.core.model.TransactionType
 import com.mipatrimonio.app.domain.usecase.BudgetStatus
 import com.mipatrimonio.app.domain.usecase.BudgetThresholds
 import com.mipatrimonio.app.domain.usecase.EstimateSavings
+import com.mipatrimonio.app.domain.usecase.SavingsBlockReason
+import com.mipatrimonio.app.domain.usecase.SavingsContributionRules
 import com.mipatrimonio.app.domain.usecase.SavingsEstimate
 import com.mipatrimonio.app.feature.widget.WidgetUpdater
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -40,11 +44,18 @@ data class BudgetItemUi(
     val status: BudgetStatus,
 )
 
+data class ContributionHistoryItemUi(
+    val contribution: PlanContributionEntity,
+    val planName: String,
+    val originLabel: String,
+)
+
 data class SavingsUiState(
     val plans: List<PlanItemUi> = emptyList(),
     val activePlan: PlanItemUi? = null,
     val budgets: List<BudgetItemUi> = emptyList(),
     val expenseCategories: List<CategoryEntity> = emptyList(),
+    val incomes: List<TransactionEntity> = emptyList(),
     val loaded: Boolean = false,
 )
 
@@ -57,40 +68,46 @@ class SavingsViewModel @Inject constructor(
     private val widgetUpdater: WidgetUpdater,
 ) : ViewModel() {
 
-    private val month: YearMonth = YearMonth.now()
-    private val monthFrom: Long = month.atDay(1).toEpochDay()
-    private val monthToExclusive: Long = month.plusMonths(1).atDay(1).toEpochDay()
-
     private val plansFlow = savingsDao.observePlansWithContributions()
 
-    private val budgetsFlow = combine(
-        budgetDao.observeWithCategory(),
-        transactionDao.observeByMonth(monthFrom, monthToExclusive),
-        categoryDao.observeByIncome(false),
-    ) { budgetsWithCat, monthTx, expenseCats ->
-        val spentByCategory = mutableMapOf<Long, Long>()
-        monthTx.forEach { tx ->
-            val catId = tx.categoryId ?: return@forEach
-            if (tx.type == TransactionType.INCOME) return@forEach
-            spentByCategory[catId] = (spentByCategory[catId] ?: 0L) + tx.amountBaseCents
-        }
-        val items = budgetsWithCat.map { bwc ->
-            val spent = spentByCategory[bwc.budget.categoryId] ?: 0L
-            val status = BudgetThresholds.evaluate(spent, bwc.budget.limitCents, month, bwc.budget.notified80Month, bwc.budget.notified100Month)
-            BudgetItemUi(budget = bwc.budget, category = bwc.category, status = status)
-        }.sortedBy { it.category?.name ?: "" }
-        // Persistir marcas de umbral alcanzado (una vez por mes/umbral, §7.4). T3.6 enviará notificaciones.
-        items.forEach { item ->
-            val b = item.budget
-            val s = item.status
-            if (s.newNotified80Month != b.notified80Month || s.newNotified100Month != b.notified100Month) {
-                viewModelScope.launch { budgetDao.updateNotifiedMonths(b.id, s.newNotified80Month, s.newNotified100Month) }
+    private fun currentMonth(): YearMonth = YearMonth.now()
+
+    private val budgetsFlow = run {
+        val month = currentMonth()
+        val monthFrom = month.atDay(1).toEpochDay()
+        val monthToExclusive = month.plusMonths(1).atDay(1).toEpochDay()
+        combine(
+            budgetDao.observeWithCategory(),
+            transactionDao.observeByMonth(monthFrom, monthToExclusive),
+            categoryDao.observeByIncome(false),
+        ) { budgetsWithCat, monthTx, expenseCats ->
+            val nowMonth = currentMonth()
+            val spentByCategory = mutableMapOf<Long, Long>()
+            monthTx.forEach { tx ->
+                val catId = tx.categoryId ?: return@forEach
+                if (tx.type == TransactionType.INCOME) return@forEach
+                spentByCategory[catId] = (spentByCategory[catId] ?: 0L) + tx.amountBaseCents
             }
+            val items = budgetsWithCat.map { bwc ->
+                val spent = spentByCategory[bwc.budget.categoryId] ?: 0L
+                val status = BudgetThresholds.evaluate(spent, bwc.budget.limitCents, nowMonth, bwc.budget.notified80Month, bwc.budget.notified100Month)
+                BudgetItemUi(budget = bwc.budget, category = bwc.category, status = status)
+            }.sortedBy { it.category?.name ?: "" }
+            // Persistir marcas de umbral alcanzado (una vez por mes/umbral, §7.4). T3.6 enviará notificaciones.
+            items.forEach { item ->
+                val b = item.budget
+                val s = item.status
+                if (s.newNotified80Month != b.notified80Month || s.newNotified100Month != b.notified100Month) {
+                    viewModelScope.launch { budgetDao.updateNotifiedMonths(b.id, s.newNotified80Month, s.newNotified100Month) }
+                }
+            }
+            Triple(items, expenseCats, spentByCategory)
         }
-        Triple(items, expenseCats, spentByCategory)
     }
 
-    val uiState: StateFlow<SavingsUiState> = combine(plansFlow, budgetsFlow) { all, budgetData ->
+    private val incomesFlow = transactionDao.observeIncomes()
+
+    val uiState: StateFlow<SavingsUiState> = combine(plansFlow, budgetsFlow, incomesFlow) { all, budgetData, incomes ->
         val items = all.map { pwc ->
             val contributed = pwc.contributions.sumOf { it.amountCents }
             val estimate = EstimateSavings.estimate(
@@ -110,6 +127,7 @@ class SavingsViewModel @Inject constructor(
             activePlan = active,
             budgets = budgetData.first,
             expenseCategories = budgetData.second,
+            incomes = incomes,
             loaded = true,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SavingsUiState())
@@ -179,45 +197,102 @@ class SavingsViewModel @Inject constructor(
         }
     }
 
-    /** Disponible del mes (§7.1): ingresos - gastos - aportaciones al ahorro. */
+    /** Disponible del mes actual (§7.1): ingresos - gastos - aportaciones al ahorro. */
     private suspend fun availableThisMonthCents(): Long {
+        val month = currentMonth()
         val from = month.atDay(1).toEpochDay()
         val to = month.plusMonths(1).atDay(1).toEpochDay()
         val txs = transactionDao.getByMonth(from, to)
-        var income = 0L
-        var expense = 0L
-        txs.forEach { tx ->
-            if (YearMonth.from(LocalDate.ofEpochDay(tx.date)) != month) return@forEach
-            when (tx.type) {
-                TransactionType.INCOME -> income += tx.amountBaseCents
-                TransactionType.CASH, TransactionType.CARD, TransactionType.SUBSCRIPTION -> expense += tx.amountBaseCents
-            }
-        }
         val savings = savingsDao.getMonthlyContributed(from, to) ?: 0L
-        return income - expense - savings
+        return SavingsContributionRules.availableCents(month, txs, savings)
     }
 
-    /** Aporta sin dejar el disponible en negativo (§7.1, petición George). null = OK, si no mensaje de error. */
-    suspend fun tryAddContribution(planId: Long, amountCents: Long): String? {
+    /**
+     * Aporta con origen obligatorio (T6.1): ingreso existente o "Ahorros (efectivo ya ahorrado)".
+     * sourceTransactionId != null => INCOME; null + cashSavings=true => CASH_SAVINGS.
+     * @return null si OK, o código de error (INVALID/MISSING_ORIGIN/INSUFFICIENT/INVALID_ORIGIN).
+     */
+    suspend fun tryAddContribution(
+        planId: Long,
+        amountCents: Long,
+        sourceTransactionId: Long?,
+        cashSavings: Boolean,
+    ): String? {
         if (amountCents <= 0L) return "INVALID"
+        val originType = when {
+            sourceTransactionId != null && !cashSavings -> ContributionOriginType.INCOME
+            cashSavings && sourceTransactionId == null -> ContributionOriginType.CASH_SAVINGS
+            else -> return "MISSING_ORIGIN"
+        }
+        if (originType == ContributionOriginType.INCOME) {
+            val tx = transactionDao.getById(sourceTransactionId!!)
+            if (tx == null || tx.type != TransactionType.INCOME) return "INVALID_ORIGIN"
+        }
         val available = availableThisMonthCents()
-        if (amountCents > available) return "INSUFFICIENT"
+        val validation = SavingsContributionRules.canAddContribution(amountCents, available, hasValidOrigin = true)
+        if (!validation.allowed) {
+            return when (validation.reason) {
+                SavingsBlockReason.INSUFFICIENT_AVAILABLE -> "INSUFFICIENT"
+                SavingsBlockReason.INVALID_AMOUNT -> "INVALID"
+                else -> "INSUFFICIENT"
+            }
+        }
         val todayEpochDay = LocalDate.now().toEpochDay()
-        savingsDao.insertContribution(PlanContributionEntity(planId = planId, amountCents = amountCents, date = todayEpochDay))
+        savingsDao.insertContribution(
+            PlanContributionEntity(
+                planId = planId,
+                amountCents = amountCents,
+                date = todayEpochDay,
+                sourceTransactionId = sourceTransactionId,
+                originType = originType,
+                archived = false,
+                createdAt = System.currentTimeMillis(),
+            )
+        )
         widgetUpdater.update()
         return null
     }
 
-    /** Retirada de emergencia (aportación negativa, §6). No crea movimiento en Movimientos (2a). */
+    /** Retirada de emergencia (aportación negativa, §6). Sin origen de ingreso. */
     suspend fun tryWithdraw(planId: Long, amountCents: Long): String? {
         if (amountCents <= 0L) return "INVALID"
         val contributed = savingsDao.getContributed(planId) ?: 0L
-        if (amountCents > contributed) return "EXCEEDS_SAVED"
+        val validation = SavingsContributionRules.canWithdraw(amountCents, contributed)
+        if (!validation.allowed) return "EXCEEDS_SAVED"
         val todayEpochDay = LocalDate.now().toEpochDay()
-        savingsDao.insertContribution(PlanContributionEntity(planId = planId, amountCents = -amountCents, date = todayEpochDay))
+        savingsDao.insertContribution(
+            PlanContributionEntity(
+                planId = planId,
+                amountCents = -amountCents,
+                date = todayEpochDay,
+                sourceTransactionId = null,
+                originType = ContributionOriginType.CASH_SAVINGS,
+                archived = false,
+                createdAt = System.currentTimeMillis(),
+            )
+        )
         widgetUpdater.update()
         return null
     }
+
+    /** Elimina una aportación si no deja el total ahorrado del plan en negativo. */
+    suspend fun deleteContribution(contributionId: Long): Boolean {
+        val c = savingsDao.getContributionById(contributionId) ?: return false
+        val total = savingsDao.getContributed(c.planId) ?: 0L
+        if (total - c.amountCents < 0L) return false
+        savingsDao.deleteContributionById(contributionId)
+        widgetUpdater.update()
+        return true
+    }
+
+    suspend fun setContributionArchived(contributionId: Long, archived: Boolean) {
+        savingsDao.setContributionArchived(contributionId, archived)
+    }
+
+    fun observeContributions(planId: Long) = savingsDao.observeContributions(planId)
+
+    fun observeContributionsBySource(sourceTransactionId: Long) =
+        savingsDao.observeContributionsBySource(sourceTransactionId)
 
     fun setActive(planId: Long) {
         viewModelScope.launch {

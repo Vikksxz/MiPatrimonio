@@ -35,8 +35,35 @@ interface SavingsDao {
     @Query("SELECT * FROM savings_plans WHERE id = :id")
     suspend fun getPlanById(id: Long): SavingsPlanEntity?
 
-    @Query("SELECT * FROM plan_contributions WHERE planId = :planId ORDER BY date DESC")
+    @Query("SELECT * FROM plan_contributions WHERE planId = :planId ORDER BY date DESC, id DESC")
     fun observeContributions(planId: Long): Flow<List<PlanContributionEntity>>
+
+    @Query("SELECT * FROM plan_contributions WHERE planId = :planId AND archived = 0 ORDER BY date DESC, id DESC")
+    fun observeVisibleContributions(planId: Long): Flow<List<PlanContributionEntity>>
+
+    @Query("SELECT * FROM plan_contributions WHERE sourceTransactionId = :sourceTransactionId ORDER BY date DESC, id DESC")
+    fun observeContributionsBySource(sourceTransactionId: Long): Flow<List<PlanContributionEntity>>
+
+    data class ContributionWithPlan(
+        @Embedded val contribution: PlanContributionEntity,
+        @androidx.room.ColumnInfo(name = "planName") val planName: String,
+    )
+
+    @Query(
+        "SELECT pc.*, sp.name AS planName FROM plan_contributions pc " +
+            "INNER JOIN savings_plans sp ON sp.id = pc.planId " +
+            "WHERE pc.sourceTransactionId = :sourceTransactionId ORDER BY pc.date DESC, pc.id DESC"
+    )
+    fun observeContributionsWithPlanBySource(sourceTransactionId: Long): Flow<List<ContributionWithPlan>>
+
+    @Query("SELECT COUNT(*) FROM plan_contributions WHERE sourceTransactionId = :sourceTransactionId")
+    suspend fun countLinkedContributions(sourceTransactionId: Long): Int
+
+    @Query("SELECT COALESCE(SUM(amountCents), 0) FROM plan_contributions WHERE sourceTransactionId = :sourceTransactionId")
+    suspend fun sumLinkedContributionAmountCents(sourceTransactionId: Long): Long
+
+    @Query("SELECT * FROM plan_contributions WHERE id = :id LIMIT 1")
+    suspend fun getContributionById(id: Long): PlanContributionEntity?
 
     @Query("SELECT SUM(amountCents) FROM plan_contributions WHERE planId = :planId")
     fun sumContributed(planId: Long): Flow<Long?>
@@ -55,6 +82,12 @@ interface SavingsDao {
 
     @Insert
     suspend fun insertContribution(contribution: PlanContributionEntity): Long
+
+    @Query("DELETE FROM plan_contributions WHERE id = :id")
+    suspend fun deleteContributionById(id: Long)
+
+    @Query("UPDATE plan_contributions SET archived = :archived WHERE id = :id")
+    suspend fun setContributionArchived(id: Long, archived: Boolean)
 
     @Update
     suspend fun updatePlan(plan: SavingsPlanEntity): Int

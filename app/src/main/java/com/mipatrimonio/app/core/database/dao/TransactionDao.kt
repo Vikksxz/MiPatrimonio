@@ -29,6 +29,12 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE id = :id LIMIT 1")
     suspend fun getById(id: Long): TransactionEntity?
 
+    @Query("SELECT * FROM transactions WHERE type = 'INCOME' ORDER BY date DESC, id DESC")
+    fun observeIncomes(): Flow<List<TransactionEntity>>
+
+    @Query("SELECT * FROM transactions WHERE type = 'INCOME' ORDER BY date DESC, id DESC")
+    suspend fun getIncomes(): List<TransactionEntity>
+
     /** Últimos movimientos para el resumen de Inicio (T1.9), sin filtrar por mes. */
     @Query("SELECT * FROM transactions ORDER BY date DESC, id DESC LIMIT :limit")
     fun observeRecent(limit: Int): Flow<List<TransactionEntity>>

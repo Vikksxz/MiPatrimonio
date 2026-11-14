@@ -44,6 +44,34 @@
     <string name="savings_withdraw_confirm">Confirmar retirada</string>
     <string name="savings_error_insufficient_available">No hay disponible suficiente este mes para esa aportación</string>
     <string name="savings_error_exceeds_saved">No puedes retirar más de lo ahorrado en este plan</string>
+    <string name="savings_origin_title">Origen de la aportación</string>
+    <string name="savings_origin_income">Ingreso</string>
+    <string name="savings_origin_cash_savings">Ahorros (efectivo ya ahorrado)</string>
+    <string name="savings_origin_cash_savings_hint">Dinero en efectivo que ya tenías ahorrado y quieres contabilizar.</string>
+    <string name="savings_origin_select_income">Selecciona el ingreso origen</string>
+    <string name="savings_origin_missing">Selecciona un origen para la aportación</string>
+    <string name="savings_origin_invalid">El ingreso seleccionado no es válido</string>
+    <string name="savings_origin_legacy">Manual (histórico)</string>
+    <string name="savings_no_incomes">No hay ingresos registrados. Puedes usar "Ahorros (efectivo ya ahorrado)".</string>
+    <string name="savings_income_linked_info">Si realizas aportaciones al ahorro con origen en este ingreso, no podrás borrarlo, solo editarlo.</string>
+    <string name="income_delete_blocked_linked">Este movimiento tiene aportaciones asociadas al plan de ahorro.</string>
+    <string name="income_delete_blocked_action">Ver aportaciones vinculadas</string>
+    <string name="income_delete_blocked_hint">Elimina las aportaciones vinculadas antes de poder borrar este ingreso.</string>
+    <string name="income_edit_blocked_linked">No puedes guardar este cambio: el ingreso tiene aportaciones vinculadas y el ajuste dejaría los datos en un estado inconsistente.</string>
+    <string name="income_linked_contributions_title">Aportaciones vinculadas</string>
+    <string name="income_linked_contributions_empty">No hay aportaciones vinculadas a este ingreso.</string>
+    <string name="savings_history_title">Historial de aportaciones</string>
+    <string name="savings_history_empty">Aún no hay aportaciones en este plan.</string>
+    <string name="savings_history_delete">Eliminar aportación</string>
+    <string name="savings_history_archive">Ocultar</string>
+    <string name="savings_history_unarchive">Mostrar</string>
+    <string name="savings_history_show_archived">Mostrar ocultas</string>
+    <string name="savings_history_hide_archived">Ocultar archivadas</string>
+    <string name="savings_withdraw_origin_note">La retirada se registra como ajuste (sin ingreso origen).</string>
+    <string name="expense_blocked_insufficient_available">No puedes guardar este movimiento porque dejaría el disponible por debajo de 0.</string>
+    <string name="income_delete_warning_negative_title">El disponible quedará en negativo</string>
+    <string name="income_delete_warning_negative_message">Si borras este ingreso, el disponible del mes quedará por debajo de 0. Puedes borrarlo igualmente.</string>
+    <string name="income_delete_warning_confirm">Borrar igualmente</string>
 
     <!-- Recurrentes y suscripciones (T3.5) -->
     <string name="wallet_subscriptions">Suscripciones</string>
@@ -368,6 +396,7 @@
     <string name="card_form_error_name">Escribe un nombre para la tarjeta</string>
     <string name="card_item_action">Editar tarjeta %1$s</string>
     <string name="common_cancel">Cancelar</string>
+    <string name="common_close">Cerrar</string>
     <string name="common_accept">Aceptar</string>
 
     <!-- T1.7: añadir movimiento manual / T2.5: escaneo -->

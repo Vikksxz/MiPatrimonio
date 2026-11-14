@@ -112,6 +112,7 @@ class AddTransactionViewModel @Inject constructor(
     fun reset() {
         saveFailed = false
         saving = false
+        saveErrorCode = null
     }
 
     fun save(input: NewTransaction, onSaved: (Long) -> Unit) {
@@ -149,10 +150,24 @@ class AddTransactionViewModel @Inject constructor(
         return true
     }
 
+    var saveErrorCode by mutableStateOf<String?>(null)
+        private set
+
     private fun fail(error: Throwable) {
         saving = false
         if (error is CancellationException) throw error
+        saveErrorCode = when (error) {
+            is com.mipatrimonio.app.domain.usecase.AvailableWouldBecomeNegativeException -> "AVAILABLE_NEGATIVE"
+            is com.mipatrimonio.app.domain.usecase.IncomeEditInconsistentException -> "INCOME_EDIT_INCONSISTENT"
+            is com.mipatrimonio.app.domain.usecase.IncomeHasLinkedContributionsException -> "INCOME_LINKED_DELETE"
+            else -> "GENERIC"
+        }
         saveFailed = true
+    }
+
+    fun clearSaveError() {
+        saveFailed = false
+        saveErrorCode = null
     }
 
     suspend fun recognizeLines(bitmap: Bitmap): List<String> = withContext(Dispatchers.IO) {

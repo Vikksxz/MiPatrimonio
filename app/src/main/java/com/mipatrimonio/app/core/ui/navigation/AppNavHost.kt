@@ -90,6 +90,13 @@ fun AppNavHost(
             TransactionsScreen(
                 onOpenAnalysis = { navController.navigate(Routes.ANALYSIS) },
                 onAdd = onAdd,
+                onOpenSavings = {
+                    navController.navigate(Routes.SAVINGS) {
+                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
             )
         }
         composable(Routes.SAVINGS) { SavingsScreen() }
