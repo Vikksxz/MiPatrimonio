@@ -1,6 +1,7 @@
 package com.mipatrimonio.app.domain.usecase
 
 import android.util.Log
+import com.mipatrimonio.app.core.database.dao.SavingsDao
 import com.mipatrimonio.app.core.database.dao.TagDao
 import com.mipatrimonio.app.core.database.dao.TransactionDao
 import com.mipatrimonio.app.core.database.entity.TransactionEntity
@@ -8,6 +9,7 @@ import com.mipatrimonio.app.core.model.IncomeKind
 import com.mipatrimonio.app.core.model.TransactionType
 import com.mipatrimonio.app.feature.widget.WidgetUpdater
 import java.time.LocalDate
+import java.time.YearMonth
 import javax.inject.Inject
 import kotlin.math.roundToLong
 
@@ -119,13 +121,17 @@ object TransactionFactory {
     }
 }
 
+class AvailableWouldBecomeNegativeException : IllegalStateException("available_would_be_negative")
+class IncomeEditInconsistentException : IllegalStateException("income_edit_inconsistent")
+
 /**
- * Caso de uso `AddTransaction` (T1.7): valida y guarda un movimiento manual.
- * La conversión a moneda base se ampliará en T4.6 (multimoneda).
+ * Caso de uso `AddTransaction` (T1.7, T6.1): valida y guarda un movimiento.
+ * Bloquea gastos/suscripciones que dejen el disponible < 0 (§7.1).
  */
 class AddTransaction @Inject constructor(
     private val transactionDao: TransactionDao,
     private val tagDao: TagDao,
+    private val savingsDao: SavingsDao,
     private val evaluateBudgetAlerts: EvaluateBudgetAlerts,
     private val widgetUpdater: WidgetUpdater,
 ) {
@@ -135,6 +141,11 @@ class AddTransaction @Inject constructor(
         createdAtMillis: Long = System.currentTimeMillis(),
     ): Long {
         val entity = TransactionFactory.create(input, createdAtMillis)
+        if (entity.type != TransactionType.INCOME) {
+            val month = YearMonth.from(entity.dateAsLocalDate())
+            val available = availableForMonth(month)
+            if (available - entity.amountBaseCents < 0L) throw AvailableWouldBecomeNegativeException()
+        }
         val id = transactionDao.insert(entity)
         if (input.tagIds.isNotEmpty()) tagDao.replaceTagsForTransaction(id, input.tagIds)
         if (entity.type != TransactionType.INCOME) {
@@ -147,24 +158,34 @@ class AddTransaction @Inject constructor(
         widgetUpdater.update()
         return id
     }
+
+    private suspend fun availableForMonth(month: YearMonth): Long {
+        val from = month.atDay(1).toEpochDay()
+        val to = month.plusMonths(1).atDay(1).toEpochDay()
+        val txs = transactionDao.getByMonth(from, to)
+        val savings = savingsDao.getMonthlyContributed(from, to) ?: 0L
+        return SavingsContributionRules.availableCents(month, txs, savings)
+    }
 }
 
 /**
- * Caso de uso `UpdateTransaction` (T1.8): edita un movimiento conservando id,
- * fecha de creación, ticket y vínculos (recurrente/compartido).
+ * Caso de uso `UpdateTransaction` (T1.8, T6.1): edita un movimiento respetando reglas de ahorro/disponible.
  */
 class UpdateTransaction @Inject constructor(
     private val transactionDao: TransactionDao,
     private val tagDao: TagDao,
+    private val savingsDao: SavingsDao,
     private val evaluateBudgetAlerts: EvaluateBudgetAlerts,
     private val widgetUpdater: WidgetUpdater,
 ) {
 
     suspend operator fun invoke(existing: TransactionEntity, input: NewTransaction): Long {
-        // Se relee la fila para no pisar datos cambiados por otra pantalla.
         val current = transactionDao.getById(existing.id)
             ?: error("El movimiento ya no existe")
         val updated = TransactionFactory.applyTo(current, input)
+
+        validateSavingsConstraints(current, updated)
+
         val rows = transactionDao.update(updated)
         check(rows == 1) { "El movimiento ya no existe" }
         tagDao.replaceTagsForTransaction(existing.id, input.tagIds)
@@ -178,4 +199,72 @@ class UpdateTransaction @Inject constructor(
         widgetUpdater.update()
         return existing.id
     }
+
+    private suspend fun validateSavingsConstraints(old: TransactionEntity, new: TransactionEntity) {
+        // Edición de ingreso vinculado: importe base >= total aportado con ese origen y disponible consistente.
+        if (old.type == TransactionType.INCOME || new.type == TransactionType.INCOME) {
+            val linkedCount = savingsDao.countLinkedContributions(old.id)
+            val linkedSum = savingsDao.sumLinkedContributionAmountCents(old.id)
+            if (linkedCount > 0) {
+                if (new.type != TransactionType.INCOME || new.amountBaseCents < linkedSum) {
+                    throw IncomeEditInconsistentException()
+                }
+                if (!isAvailableConsistentAfterUpdate(old, new, strict = true)) throw IncomeEditInconsistentException()
+                return
+            }
+        }
+
+        // Gastos/suscripciones/movimientos que reduzcan disponible: bloquear si empeora/cruza a < 0.
+        if (!isAvailableConsistentAfterUpdate(old, new, strict = false)) {
+            throw AvailableWouldBecomeNegativeException()
+        }
+    }
+
+    /**
+     * strict=true (ingreso vinculado): disponible tras edición no puede ser < 0.
+     * strict=false: permite mejoras/correcciones si ya estaba < 0, pero bloquea si cruza a < 0 o empeora estando < 0.
+     */
+    private suspend fun isAvailableConsistentAfterUpdate(
+        old: TransactionEntity,
+        new: TransactionEntity,
+        strict: Boolean,
+    ): Boolean {
+        val months = linkedSetOf(
+            YearMonth.from(old.dateAsLocalDate()),
+            YearMonth.from(new.dateAsLocalDate()),
+        )
+        for (month in months) {
+            val before = availableForMonth(month)
+            val after = availableForMonthAfterUpdate(month, old, new)
+            if (strict) {
+                if (after < 0L) return false
+            } else {
+                if (before >= 0L && after < 0L) return false
+                if (before < 0L && after < before) return false
+            }
+        }
+        return true
+    }
+
+    private suspend fun availableForMonthAfterUpdate(month: YearMonth, old: TransactionEntity, new: TransactionEntity): Long {
+        val from = month.atDay(1).toEpochDay()
+        val to = month.plusMonths(1).atDay(1).toEpochDay()
+        val txs = transactionDao.getByMonth(from, to).toMutableList()
+        // Reemplazar old por new en el conjunto simulado
+        val idx = txs.indexOfFirst { it.id == old.id }
+        if (idx >= 0) txs[idx] = new else txs.add(new)
+        val savings = savingsDao.getMonthlyContributed(from, to) ?: 0L
+        // Aportaciones no cambian aquí; disponible usa txs simuladas
+        return SavingsContributionRules.availableCents(month, txs, savings)
+    }
+
+    private suspend fun availableForMonth(month: YearMonth): Long {
+        val from = month.atDay(1).toEpochDay()
+        val to = month.plusMonths(1).atDay(1).toEpochDay()
+        val txs = transactionDao.getByMonth(from, to)
+        val savings = savingsDao.getMonthlyContributed(from, to) ?: 0L
+        return SavingsContributionRules.availableCents(month, txs, savings)
+    }
 }
+
+private fun TransactionEntity.dateAsLocalDate(): LocalDate = LocalDate.ofEpochDay(date)

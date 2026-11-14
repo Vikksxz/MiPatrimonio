@@ -5,6 +5,8 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.mipatrimonio.app.core.database.dao.BudgetDao
 import com.mipatrimonio.app.core.database.dao.CardDao
 import com.mipatrimonio.app.core.database.dao.CategoryDao
@@ -55,7 +57,7 @@ import com.mipatrimonio.app.core.database.seed.SeedCallback
         SharedExpenseEntity::class,
         SharedShareEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -77,6 +79,27 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null
 
+        /** T6.1: trazabilidad de aportaciones (origen, archivado, fecha de registro). */
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE `plan_contributions` ADD COLUMN `sourceTransactionId` INTEGER DEFAULT NULL"
+                )
+                db.execSQL(
+                    "ALTER TABLE `plan_contributions` ADD COLUMN `originType` TEXT NOT NULL DEFAULT 'LEGACY'"
+                )
+                db.execSQL(
+                    "ALTER TABLE `plan_contributions` ADD COLUMN `archived` INTEGER NOT NULL DEFAULT 0"
+                )
+                db.execSQL(
+                    "ALTER TABLE `plan_contributions` ADD COLUMN `createdAt` INTEGER NOT NULL DEFAULT 0"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_plan_contributions_sourceTransactionId` ON `plan_contributions` (`sourceTransactionId`)"
+                )
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val seedCallback = SeedCallback(context)
@@ -86,6 +109,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "mipatrimonio.db"
                 )
                     .addCallback(seedCallback)
+                    .addMigrations(MIGRATION_1_2)
                     .build()
                 INSTANCE = instance
                 instance

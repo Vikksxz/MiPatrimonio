@@ -335,12 +335,19 @@ data class SavingsPlanEntity(
     val createdAt: Long
 )
 
-@Entity(tableName = "plan_contributions", indices = [Index("planId")])
+@Entity(
+    tableName = "plan_contributions",
+    indices = [Index("planId"), Index("sourceTransactionId")]
+)
 data class PlanContributionEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val planId: Long,
-    val amountCents: Long,                // puede ser negativo (retirada)
-    val date: Long
+    val amountCents: Long,                // puede ser negativo (retirada/ajuste)
+    val date: Long,                       // día de la aportación (epochDay)
+    val sourceTransactionId: Long? = null,// ingreso origen (TransactionEntity, INCOME); null si no procede
+    val originType: String = "LEGACY",    // INCOME (vinculada a ingreso), CASH_SAVINGS ("Ahorros", efectivo ya ahorrado contado en la app), LEGACY (histórico sin clasificar)
+    val archived: Boolean = false,        // oculto del historial visual (informativo); no afecta totales ni vínculos
+    val createdAt: Long = 0L              // momento de registro
 )
 
 @Entity(tableName = "budgets")
@@ -390,7 +397,8 @@ Cada una con color y un icono de Material Icons. Las categorías de gasto usan c
 - Si `type == CARD`, `cardId` es opcional pero recomendado. Si se elimina una tarjeta, sus movimientos NO se borran (`cardId` pasa a `null`).
 - `amountBaseCents == amountCents` cuando `currency == "EUR"`.
 - Borrar un plan borra sus aportaciones. Borrar una categoría reasigna sus movimientos a "Otros gastos".
-- Migraciones: exportar el esquema de Room (`exportSchema = true`) y escribir migraciones explícitas, nunca `fallbackToDestructiveMigration` salvo en desarrollo.
+- `plan_contributions`: `originType == INCOME` requiere `sourceTransactionId` válido (ingreso); `CASH_SAVINGS` representa efectivo ya ahorrado contado en la app (sin ingreso origen, `sourceTransactionId == null`); `LEGACY` para aportaciones históricas previas a la trazabilidad. `archived` solo oculta en el historial visual y **no** modifica totales, disponible ni vínculos.
+- Migraciones: exportar el esquema de Room (`exportSchema = true`) y escribir migraciones explícitas, nunca `fallbackToDestructiveMigration` salvo en desarrollo. Los cambios de esquema deben reflejarse en copia/backup y restauración.
 
 ---
 
@@ -404,6 +412,8 @@ Para el mes natural actual:
 - `gastos = Σ amountBaseCents` de `CASH + CARD + SUBSCRIPTION`.
 - `aportadoAhorro = Σ aportaciones del mes` a planes.
 - `disponible = ingresos − gastos − aportadoAhorro`.
+- **Regla de no negatividad del disponible:** los flujos de alta/edición/borrado y aportación deben impedir que el `disponible` quede < 0 mediante validaciones/avisos (con excepción controlada: al borrar un ingreso “virgen” sin aportaciones vinculadas se puede avisar y permitir si quedara negativo por aportaciones/gastos existentes). Aportar solo se permite si `disponible − importe ≥ 0` (incluido 0).
+- **Trazabilidad de aportaciones:** una aportación puede estar vinculada a un ingreso (`sourceTransactionId`, `originType=INCOME`) o registrada como **Ahorros** de efectivo ya ahorrado (`originType=CASH_SAVINGS`, sin ingreso origen). Un ingreso con aportaciones vinculadas no se puede borrar (solo editar) hasta eliminar esas aportaciones; al registrar un ingreso se informa de esta condición.
 - Barra por tipo: segmentos proporcionales al gasto de `CASH`, `CARD` y `SUBSCRIPTION` (mínimo visible aunque sea 0).
 - Leyenda: los cuatro tipos con importe (el ingreso en verde).
 
@@ -474,6 +484,7 @@ Orden vertical (scroll):
 - Título "MOVIMIENTOS". Buscador por comercio/nota.
 - Chips de filtro: Todos, Metálico, Tarjeta, Suscripciones, Ingresos (+ filtros por tarjeta, categoría, etiqueta y rango de fechas en un panel).
 - Lista agrupada por día. Tocar un movimiento abre detalle/edición (con ticket adjunto si lo hay, categoría, etiquetas, nota). Deslizar para borrar (con deshacer).
+  - **Borrado/edición y ahorro:** un ingreso con aportaciones vinculadas a planes no se puede borrar (solo editar) hasta eliminar esas aportaciones; al intentar borrarlo se muestra un aviso con acceso a la lista global de aportaciones vinculadas (resaltadas) para gestionarlas. Un ingreso “virgen” (sin aportaciones vinculadas) puede borrarse aunque se avise si el disponible quedaría < 0. Editar un ingreso vinculado o registrar/editar un gasto/suscripción se bloquea con aviso si genera inconsistencia o deja el disponible < 0, según las reglas de §7.1.
 - Comparativa mes a mes y gráfico por categoría (donut/barras con `Canvas`) accesibles desde un botón "Análisis".
 
 ### 8.3 Añadir (botón +)
@@ -486,11 +497,16 @@ Hoja inferior con tres opciones: **Escanear ticket (OCR)**, **Gasto manual o en 
 - Si viene de OCR: texto "Leído del ticket: revisa los datos" y la imagen del ticket adjunta (miniatura).
 - Si el tipo es Ingreso: elegir "Nómina" u "Otros ingresos".
 - Botón "Guardar". Validación: el importe debe ser > 0. Tras guardar, navegar a Movimientos con el nuevo movimiento arriba.
+- **Ingresos y ahorro:** al guardar un ingreso se informa (CTA no bloqueante) de que, si se hacen aportaciones al ahorro con origen en él, no podrá borrarse y solo podrá editarse mientras tenga aportaciones vinculadas. La selección de origen al aportar (ingreso o **“Ahorros — efectivo ya ahorrado”**) y las restricciones de disponible se definen en §7.1 y §8.4. *(La Tarea T6.2 refinará el formulario específico de ingreso y el tratamiento de Nota/categorías de “Otros ingresos”.)*
 
 ### 8.4 Ahorro
 - Título "AHORRO".
 - **Panel del plan activo:** nombre, `ProgressNeonBar`, "ahorrado / objetivo", **Importe objetivo (solo lectura)** y botón "Editar plan" (abre la hoja de edición), cuota mensual con − / + (25 €), texto "Lo alcanzarás en N meses (mes año)", y banner de estado (verde "Vas bien" / rojo "No llegas…").
 - Botón "Aportar" para registrar una aportación al plan.
+  - **Origen obligatorio:** al aportar, el usuario elige origen: un **ingreso** existente (nómina u otros ingresos, listado desde Movimientos) o **"Ahorros (efectivo ya ahorrado)"** para contar efectivo ya reservado (sin ingreso origen). La aportación se vincula al plan y, si procede, al ingreso origen.
+  - **Validación:** solo se permite si `disponible − importe ≥ 0` (incluido 0); si no hay saldo suficiente, se bloquea con mensaje/CTA claro.
+- **Historial de aportaciones por plan (informativo):** lista de aportes/extracciones con fecha, importe (±), origen y estado. Origen: nómina (identificador/categoría de nómina), otros ingresos (concepto), **Ahorros (efectivo ya ahorrado)** o legado/manual. Permite eliminar/deshacer una aportación (para corregir o desbloquear el borrado de un ingreso vinculado) y ocultar/mostrar elementos archivados (archivado visual: no altera totales, disponible ni vínculos) con filtros/colapso.
+- **Aportaciones vinculadas a un ingreso:** vista global de todas las aportaciones vinculadas a un ingreso (en todos los planes), con resaltado al llegar desde el aviso de borrado de ese ingreso.
 - **Lista de planes** con prioridad (reordenable) y botón "Crear plan de ahorro" (degradado). Solo uno es el "activo" para la barra de Inicio (se elige con un interruptor).
 - **Hoja de crear/editar plan:** Nombre y Importe objetivo (€). Texto de ayuda: "Podrás subir o bajar el importe cuando quieras y la estimación se recalcula." Botón "Guardar plan". Al editar, también "Eliminar plan".
 - **Presupuestos por categoría:** lista con barra (colores según 7.4), importe gastado/límite, añadir/editar presupuesto.
@@ -756,6 +772,13 @@ Cada tarea termina con la app **compilando**. Marca `[x]` al completar.
 - [x] **T5.9 Documentos, Compartidos y Análisis.** Documentos: vacío con CTA y mención tranquila del cifrado. Compartidos: vacíos guiados, saldos legibles, tono colaborativo. Análisis: cifra/variación o total como protagonista, gráficos con entrada animada y jerarquía clara (una visual principal; acento en lo relevante y resto en pasos neutros/semánticos del tema), estado “aún no hay suficiente para comparar” cuando proceda. *Aceptación:* cada pantalla con vacío/estado cuidado, jerarquía legible y cifras coherentes. Implementado: `DocumentsScreen` con vacío + CTA y mención de cifrado; `SharedExpensesScreen` con vacíos guiados, tono colaborativo y saldos/transferencias más legibles (tabular); `AnalysisScreen` con gasto total protagonista, estado “Aún no hay suficiente para comparar” cuando procede, donut con entrada animada (respeta reducir animaciones) y jerarquía/cifras claras. `./gradlew :app:compileDebugKotlin testDebugUnitTest` en verde y verificado en dispositivo.
 - [x] **T5.10 Bloqueo y pantallas utilitarias.** `LockScreen` con tono cercano/tranquilizador, transición suave y acento mínimo. Sustituir `PlaceholderScreen`/“En construcción” y vacíos fríos por `EmptyState` o mensajes útiles donde aplique. *Aceptación:* seguridad/privacidad intactas; ninguna pantalla se siente abandonada. Implementado: `LockScreen` con copy tranquilo, acento mínimo y fade de entrada (respeta reducir animaciones) sin cambios en lógica de autenticación/bloqueo; `PlaceholderScreen` con `EmptyState`/mensaje útil; `strings.xml` actualizado. `./gradlew :app:compileDebugKotlin testDebugUnitTest` en verde y verificado en dispositivo.
 - [x] **T5.11 Pulido, accesibilidad y QA visual.** Reducir brillos a 1–2 por pantalla y calmar cromo (sombras/bordes/degradados solo en momentos definidos). Pasada de contraste, no depender solo del color, `contentDescription`, zonas ≥ 48 dp, fuente grande y orden lógico; verificar reducir animaciones y rendimiento (sin jank). `@Preview` en vacío/normal/extremo para componentes y pantallas clave. *Aceptación:* checklist `mipatrimonio-design`/`unslop` cumplida en lo aplicable (paleta/mapeo y modo oscuro intactos, 1 cifra protagonista y ≤2 brillos por pantalla, cromo calmado, espaciado 4 dp/alineación consistente, textos en tú/positivos, vacíos/errores con CTA, animaciones con sentido y desactivables, accesibilidad, previews), `./gradlew :app:compileDebugKotlin testDebugUnitTest assembleDebug` OK y verificación visual en dispositivo. Implementado (pasada de pulido/QA): zonas táctiles ≥ 48 dp en controles de Ahorro y descripción de progreso accesible en `strings.xml` para `ProgressNeonBar`; sin cambios de lógica/paleta. Compilación, tests y `assembleDebug` en verde y verificación visual en dispositivo realizada.
+
+### Fase 6 — Ahorro trazable y refactor de ingresos (acordado 2026-11-14)
+
+> Tareas nuevas acordadas con George. Seguir bucle completo de `AGENTS.md` (una tarea a la vez, compilar/tests, prueba en dispositivo antes de commit). Dinero en céntimos (`Long`). Trazabilidad de **aportaciones↔ingreso** (sin vincular gastos a ingresos en esta fase). No se borra historial: archivado visual informativo.
+
+- [x] **T6.1 Ahorro trazable: origen de aportaciones, historial y reglas de disponible (🔒).** Migración Room + actualización de backup/esquemas para `PlanContributionEntity` (`sourceTransactionId` nullable, `originType` INCOME|CASH_SAVINGS|LEGACY, `archived`, `createdAt`, índices). Al aportar: **origen obligatorio** (ingreso existente desde Movimientos, o **“Ahorros (efectivo ya ahorrado)”** sin ingreso origen) y validación `disponible − importe ≥ 0` (permitido solo si queda ≥ 0). Historial por plan (aportes/extracciones, origen: nómina / concepto de otros ingresos / Ahorros / legado) con eliminar/deshacer aportación, archivado visual (ocultar/mostrar, filtros/colapso, sin borrar datos ni romper totales/vínculos) y **vista global** de aportaciones vinculadas a un ingreso (en todos los planes) con resaltado al llegar desde avisos. Reglas: ingreso con aportaciones vinculadas **no se puede borrar, solo editar** (CTA al registrar; al intentar borrar → aviso + navegación a vista global); ingreso “virgen” borrable con aviso si dejaría `disponible < 0`; editar ingreso vinculado se bloquea si hay inconsistencia (importe < total aportado con ese origen o `disponible < 0`); registrar/editar gasto/suscripción/movimiento que reduzca disponible se bloquea si dejaría `disponible < 0`. Integrar con deshacer de borrado y con `amountBaseCents`/multimoneda. *Aceptación:* migración y backup compatibles, disponible nunca < 0 según reglas, borrado bloqueado cuando hay vínculos y desbloqueado al eliminarlos, historial/navegación operativos, tests unitarios (incl. casos límite: 0 exacto, varios planes, legado/CASH_SAVINGS, multimoneda, edición vinculada) y revisión `financial-auditor`; verificado en dispositivo.
+- [ ] **T6.2 Refactor de registro de ingresos y limpieza de campos (UI).** Formulario de ingreso diferenciado del de gasto: opciones principales **Nómina** y **Otros ingresos**; moneda en control compacto. “Comercio o concepto” oculto/no obligatorio en Nómina y visible + obligatorio bajo importe en Otros ingresos. Unificar tipo/categoría de “Otros ingresos” como **categorías de ingreso creadas por el usuario** (selección única, gestionables, con vacío+CTA), sin solapamiento con selector redundante. Eliminar **Nota** de la UI de ingreso y gasto (conservar en entidad/BD, backup/export por compatibilidad; mantener o retirar de búsqueda según decisión final en implementación, sin perder datos). Mantener coherencia con OCR de nómina/escaneo, validaciones, disponible y flujos existentes. *Aceptación:* registro de ingreso/gasto claro y sin regresiones (alta, edición, OCR/compartir, movimientos, análisis), textos en `strings.xml`, accesibilidad y estados vacíos/errores cuidados; revisión `ui-reviewer` con capturas y verificado en dispositivo.
 
 ---
 

@@ -253,16 +253,10 @@ class BackupManager @Inject constructor(
                 )
                 recMap[old.id] = recurringDao.insert(mapped)
             }
-            // Savings plans & contributions
+            // Savings plans (contributions restored after transactions to remap sourceTransactionId, T6.1)
             val planMap = mutableMapOf<Long, Long>()
             snapshot.savingsPlans.forEach { old ->
                 planMap[old.id] = savingsDao.insertPlan(old.copy(id = 0))
-            }
-            if (snapshot.planContributions.isNotEmpty()) {
-                savingsDao.insertAllContributions(snapshot.planContributions.mapNotNull { c ->
-                    val pid = planMap[c.planId] ?: return@mapNotNull null
-                    c.copy(id = 0, planId = pid)
-                })
             }
             // Documents (re-encrypt to Keystore)
             snapshot.documents.forEach { old ->
@@ -301,6 +295,17 @@ class BackupManager @Inject constructor(
                     receiptPath = newReceipt,
                 )
                 txMap[old.id] = transactionDao.insert(mapped)
+            }
+            // Contributions (after transactions to remap sourceTransactionId, T6.1)
+            if (snapshot.planContributions.isNotEmpty()) {
+                savingsDao.insertAllContributions(snapshot.planContributions.mapNotNull { c ->
+                    val pid = planMap[c.planId] ?: return@mapNotNull null
+                    val mappedSource = c.sourceTransactionId?.let { txMap[it] }
+                    val originType = if (c.originType == com.mipatrimonio.app.core.database.entity.ContributionOriginType.INCOME && mappedSource == null) {
+                        com.mipatrimonio.app.core.database.entity.ContributionOriginType.LEGACY
+                    } else c.originType
+                    c.copy(id = 0, planId = pid, sourceTransactionId = mappedSource, originType = originType)
+                })
             }
             // Transaction tags
             if (snapshot.transactionTags.isNotEmpty()) {

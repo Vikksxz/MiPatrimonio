@@ -183,10 +183,18 @@ object BackupSerializer {
 
     private fun contribToJson(e: PlanContributionEntity) = JSONObject().apply {
         put("id", e.id); put("planId", e.planId); put("amountCents", e.amountCents); put("date", e.date)
+        put("sourceTransactionId", e.sourceTransactionId)
+        put("originType", e.originType)
+        put("archived", e.archived)
+        put("createdAt", e.createdAt)
     }
     private fun contribFromJson(o: JSONObject) = PlanContributionEntity(
         id = o.optLong("id"), planId = o.optLong("planId"),
         amountCents = o.optLong("amountCents"), date = o.optLong("date"),
+        sourceTransactionId = o.optLongOrNull("sourceTransactionId"),
+        originType = o.optString("originType", com.mipatrimonio.app.core.database.entity.ContributionOriginType.LEGACY),
+        archived = o.optBoolean("archived", false),
+        createdAt = o.optLong("createdAt", 0L),
     )
 
     private fun budgetToJson(e: BudgetEntity) = JSONObject().apply {

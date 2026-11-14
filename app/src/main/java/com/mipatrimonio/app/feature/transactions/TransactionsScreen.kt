@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -60,9 +62,11 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mipatrimonio.app.R
+import com.mipatrimonio.app.core.database.entity.ContributionOriginType
 import com.mipatrimonio.app.core.database.entity.TransactionEntity
 import com.mipatrimonio.app.core.model.IncomeKind
 import com.mipatrimonio.app.core.model.TransactionType
+import com.mipatrimonio.app.core.money.Money
 import com.mipatrimonio.app.core.ui.components.AnimatedAmount
 import com.mipatrimonio.app.core.ui.components.EmptyState
 import com.mipatrimonio.app.core.ui.components.MovementChipType
@@ -101,6 +105,7 @@ fun TransactionsScreen(
     viewModel: TransactionsViewModel = hiltViewModel(),
     onOpenAnalysis: () -> Unit = {},
     onAdd: () -> Unit = {},
+    onOpenSavings: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var editing by remember { mutableStateOf<TransactionEntity?>(null) }
@@ -110,8 +115,13 @@ fun TransactionsScreen(
         TransactionsContent(
             state = state,
             actionFailed = viewModel.actionFailed,
+            blockedDeleteIncomeId = viewModel.blockedDeleteIncomeId,
+            pendingDeleteWarningId = viewModel.pendingDeleteWarning?.id,
             modifier = modifier,
             onActionFailureShown = viewModel::consumeActionFailed,
+            onBlockedDeleteConsumed = viewModel::consumeBlockedDelete,
+            onPendingDeleteWarningConsumed = viewModel::consumePendingDeleteWarning,
+            onConfirmPendingDeleteWarning = viewModel::confirmPendingDeleteWarning,
             onQueryChange = viewModel::setQuery,
             onTypeFilterChange = viewModel::setTypeFilter,
             onTagFilterChange = viewModel::setTagFilter,
@@ -120,6 +130,7 @@ fun TransactionsScreen(
             onRestore = viewModel::restore,
             onOpenAnalysis = onOpenAnalysis,
             onAdd = onAdd,
+            onOpenSavings = onOpenSavings,
             onClearFilters = {
                 viewModel.setQuery("")
                 viewModel.setTypeFilter(null)
@@ -153,15 +164,21 @@ fun TransactionsContent(
     state: TransactionsUiState,
     modifier: Modifier = Modifier,
     actionFailed: Boolean = false,
+    blockedDeleteIncomeId: Long? = null,
+    pendingDeleteWarningId: Long? = null,
     onActionFailureShown: () -> Unit = {},
+    onBlockedDeleteConsumed: () -> Unit = {},
+    onPendingDeleteWarningConsumed: () -> Unit = {},
+    onConfirmPendingDeleteWarning: () -> Unit = {},
     onQueryChange: (String) -> Unit = {},
     onTypeFilterChange: (TransactionType?) -> Unit = {},
     onTagFilterChange: (Long?) -> Unit = {},
     onEdit: (TransactionEntity) -> Unit = {},
-    onDelete: (TransactionEntity) -> Unit = {},
+    onDelete: (TransactionEntity, () -> Unit) -> Unit = { _, _ -> },
     onRestore: (TransactionEntity) -> Unit = {},
     onOpenAnalysis: () -> Unit = {},
     onAdd: () -> Unit = {},
+    onOpenSavings: () -> Unit = {},
     onClearFilters: () -> Unit = {},
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -306,21 +323,23 @@ fun TransactionsContent(
                                 val (alpha, offsetY) = rememberStaggeredEnter(index = rowIndex)
                                 SwipeableTransactionRow(
                                     transaction = transaction,
+                                    blocked = blockedDeleteIncomeId == transaction.id || pendingDeleteWarningId == transaction.id,
                                     onClick = { onEdit(transaction) },
                                     modifier = Modifier.graphicsLayer {
                                         this.alpha = alpha
                                         translationY = offsetY.toFloat()
                                     },
                                     onDelete = {
-                                        onDelete(transaction)
-                                        scope.launch {
-                                            val result = snackbarHostState.showSnackbar(
-                                                message = deletedMessage,
-                                                actionLabel = undoLabel,
-                                                duration = SnackbarDuration.Long,
-                                            )
-                                            if (result == SnackbarResult.ActionPerformed) {
-                                                onRestore(transaction)
+                                        onDelete(transaction) {
+                                            scope.launch {
+                                                val result = snackbarHostState.showSnackbar(
+                                                    message = deletedMessage,
+                                                    actionLabel = undoLabel,
+                                                    duration = SnackbarDuration.Long,
+                                                )
+                                                if (result == SnackbarResult.ActionPerformed) {
+                                                    onRestore(transaction)
+                                                }
                                             }
                                         }
                                     },
@@ -345,6 +364,32 @@ fun TransactionsContent(
                 contentColor = NeonColor.ink,
                 actionContentColor = NeonColor.neonCyan,
                 dismissActionContentColor = NeonColor.muted,
+            )
+        }
+
+        if (blockedDeleteIncomeId != null) {
+            LinkedContributionsDialog(
+                incomeId = blockedDeleteIncomeId,
+                onDismiss = onBlockedDeleteConsumed,
+            )
+        }
+
+        if (pendingDeleteWarningId != null) {
+            AlertDialog(
+                onDismissRequest = onPendingDeleteWarningConsumed,
+                containerColor = NeonColor.panel,
+                title = { Text(stringResource(R.string.income_delete_warning_negative_title), color = NeonColor.ink) },
+                text = { Text(stringResource(R.string.income_delete_warning_negative_message), color = NeonColor.muted) },
+                confirmButton = {
+                    TextButton(onClick = onConfirmPendingDeleteWarning) {
+                        Text(stringResource(R.string.income_delete_warning_confirm), color = NeonColor.expenseRed)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = onPendingDeleteWarningConsumed) {
+                        Text(stringResource(R.string.common_cancel), color = NeonColor.neonCyan)
+                    }
+                },
             )
         }
     }
@@ -404,13 +449,13 @@ private fun SwipeableTransactionRow(
     onClick: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
+    blocked: Boolean = false,
 ) {
     val dismissState = rememberSwipeToDismissBoxState()
     var dismissHandled by remember { mutableStateOf(false) }
 
-    // Al restaurar un elemento, el estado de dismiss puede reaparecer como descartado;
-    // lo reseteamos para evitar un borrado inmediato en bucle.
-    LaunchedEffect(transaction.id) {
+    // Al restaurar un elemento o si el borrado se bloquea, resetear el swipe.
+    LaunchedEffect(transaction.id, blocked) {
         if (dismissState.currentValue != SwipeToDismissBoxValue.Settled) {
             dismissState.snapTo(SwipeToDismissBoxValue.Settled)
         }
@@ -576,4 +621,60 @@ private fun TransactionsContentPreview() {
             ),
         )
     }
+}
+
+@Composable
+private fun LinkedContributionsDialog(
+    incomeId: Long,
+    onDismiss: () -> Unit,
+    viewModel: LinkedContributionsViewModel = hiltViewModel(),
+) {
+    LaunchedEffect(incomeId) { viewModel.setIncomeId(incomeId) }
+    val contributions by viewModel.contributions.collectAsStateWithLifecycle()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = NeonColor.panel,
+        title = { Text(stringResource(R.string.income_linked_contributions_title), color = NeonColor.ink) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.income_delete_blocked_hint), color = NeonColor.muted, style = MaterialTheme.typography.bodySmall)
+                if (contributions.isEmpty()) {
+                    Text(stringResource(R.string.income_linked_contributions_empty), color = NeonColor.muted)
+                } else {
+                    LazyColumn(modifier = Modifier.heightIn(max = 320.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(contributions, key = { it.contribution.id }) { item ->
+                            val c = item.contribution
+                            val origin = when (c.originType) {
+                                ContributionOriginType.INCOME -> stringResource(R.string.type_income)
+                                ContributionOriginType.CASH_SAVINGS -> stringResource(R.string.savings_origin_cash_savings)
+                                else -> stringResource(R.string.savings_origin_legacy)
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(item.planName, color = NeonColor.ink, style = MaterialTheme.typography.bodyMedium)
+                                    Text(
+                                        "${Money.formatSigned(kotlin.math.abs(c.amountCents), c.amountCents < 0, "EUR")} · $origin",
+                                        color = if (c.amountCents < 0) NeonColor.neonAmber else NeonColor.neonCyan,
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                }
+                                TextButton(onClick = { viewModel.deleteContribution(c.id) }) {
+                                    Text(stringResource(R.string.savings_history_delete), color = NeonColor.expenseRed)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.common_close), color = NeonColor.neonCyan)
+            }
+        },
+    )
 }

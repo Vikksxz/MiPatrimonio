@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mipatrimonio.app.core.database.dao.SavingsDao
 import com.mipatrimonio.app.core.database.dao.TagDao
 import com.mipatrimonio.app.core.database.dao.TransactionDao
 import com.mipatrimonio.app.core.database.entity.TagEntity
@@ -12,7 +13,10 @@ import com.mipatrimonio.app.core.database.entity.TransactionEntity
 import com.mipatrimonio.app.core.database.entity.TransactionTagCrossRef
 import com.mipatrimonio.app.core.model.TransactionType
 import com.mipatrimonio.app.domain.usecase.DeleteTransaction
+import com.mipatrimonio.app.domain.usecase.IncomeHasLinkedContributionsException
 import com.mipatrimonio.app.domain.usecase.RestoreTransaction
+import com.mipatrimonio.app.domain.usecase.SavingsContributionRules
+import java.time.YearMonth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
@@ -46,8 +50,9 @@ data class TransactionsUiState(
  */
 @HiltViewModel
 class TransactionsViewModel @Inject constructor(
-    transactionDao: TransactionDao,
+    private val transactionDao: TransactionDao,
     tagDao: TagDao,
+    private val savingsDao: SavingsDao,
     private val deleteTransaction: DeleteTransaction,
     private val restoreTransaction: RestoreTransaction,
 ) : ViewModel() {
@@ -58,6 +63,15 @@ class TransactionsViewModel @Inject constructor(
 
     var actionFailed by mutableStateOf(false)
         private set
+
+    var blockedDeleteIncomeId by mutableStateOf<Long?>(null)
+        private set
+
+    /** Ingreso virgen cuya eliminación dejaría disponible < 0: requiere confirmación (T6.1). */
+    var pendingDeleteWarning by mutableStateOf<TransactionEntity?>(null)
+        private set
+
+    private var pendingDeleteOnSuccess: (() -> Unit)? = null
 
     private val base = combine(transactionDao.observeAll(), query, typeFilter, tagFilter) { all, q, t, tag ->
         TxFilterInput(all, q, t, tag)
@@ -98,11 +112,59 @@ class TransactionsViewModel @Inject constructor(
         val tagFilter: Long?,
     )
 
-    fun delete(transaction: TransactionEntity) {
+    fun delete(transaction: TransactionEntity, onDeleted: () -> Unit = {}) {
         viewModelScope.launch {
-            runCatching { deleteTransaction(transaction) }
-                .onFailure { if (it is CancellationException) throw it else actionFailed = true }
+            // Pre-check: ingreso vinculado -> bloquear con gestión de aportaciones.
+            if (transaction.type == TransactionType.INCOME) {
+                val linked = savingsDao.countLinkedContributions(transaction.id)
+                if (linked > 0) {
+                    blockedDeleteIncomeId = transaction.id
+                    return@launch
+                }
+                // Ingreso virgen: avisar pero permitir si dejaría disponible < 0.
+                if (wouldDeleteIncomeMakeAvailableNegative(transaction)) {
+                    pendingDeleteWarning = transaction
+                    pendingDeleteOnSuccess = onDeleted
+                    return@launch
+                }
+            }
+            performDelete(transaction, onDeleted)
         }
+    }
+
+    fun confirmPendingDeleteWarning() {
+        val tx = pendingDeleteWarning ?: return
+        val onDeleted = pendingDeleteOnSuccess ?: {}
+        pendingDeleteWarning = null
+        pendingDeleteOnSuccess = null
+        viewModelScope.launch { performDelete(tx, onDeleted) }
+    }
+
+    fun consumePendingDeleteWarning() {
+        pendingDeleteWarning = null
+        pendingDeleteOnSuccess = null
+    }
+
+    private suspend fun performDelete(transaction: TransactionEntity, onDeleted: () -> Unit) {
+        runCatching { deleteTransaction(transaction) }
+            .onSuccess { onDeleted() }
+            .onFailure {
+                when (it) {
+                    is CancellationException -> throw it
+                    is IncomeHasLinkedContributionsException -> blockedDeleteIncomeId = it.incomeId
+                    else -> actionFailed = true
+                }
+            }
+    }
+
+    private suspend fun wouldDeleteIncomeMakeAvailableNegative(income: TransactionEntity): Boolean {
+        val month = YearMonth.from(java.time.LocalDate.ofEpochDay(income.date))
+        val from = month.atDay(1).toEpochDay()
+        val to = month.plusMonths(1).atDay(1).toEpochDay()
+        val txs = transactionDao.getByMonth(from, to).filterNot { it.id == income.id }
+        val savings = savingsDao.getMonthlyContributed(from, to) ?: 0L
+        val availableAfter = SavingsContributionRules.availableCents(month, txs, savings)
+        return availableAfter < 0L
     }
 
     /** Deshacer: reinserta el movimiento con su id original. */
@@ -116,6 +178,10 @@ class TransactionsViewModel @Inject constructor(
     /** El aviso de error ya se ha mostrado. */
     fun consumeActionFailed() {
         actionFailed = false
+    }
+
+    fun consumeBlockedDelete() {
+        blockedDeleteIncomeId = null
     }
 
     companion object {

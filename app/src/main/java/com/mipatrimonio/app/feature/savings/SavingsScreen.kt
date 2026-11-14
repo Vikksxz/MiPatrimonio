@@ -97,6 +97,7 @@ fun SavingsScreen(
     var amountDialogWithdraw by remember { mutableStateOf(false) }
     var showBudgetSheet by remember { mutableStateOf(false) }
     var editingBudgetId by remember { mutableStateOf<Long?>(null) }
+    var historyPlanId by remember { mutableStateOf<Long?>(null) }
 
     SavingsContent(
         state = state,
@@ -110,6 +111,7 @@ fun SavingsScreen(
         onMovePlan = viewModel::movePlan,
         onAddBudget = { editingBudgetId = null; showBudgetSheet = true },
         onEditBudget = { editingBudgetId = it; showBudgetSheet = true },
+        onHistory = { historyPlanId = it },
     )
 
     if (showPlanSheet) {
@@ -144,9 +146,10 @@ fun SavingsScreen(
     if (showAmountDialog && amountDialogPlanId != null) {
         AmountActionDialog(
             isWithdraw = amountDialogWithdraw,
-            onSubmit = { amountCents ->
-                if (amountDialogWithdraw) viewModel.tryWithdraw(amountDialogPlanId!!, amountCents)
-                else viewModel.tryAddContribution(amountDialogPlanId!!, amountCents)
+            incomes = state.incomes,
+            onSubmitWithdraw = { amountCents -> viewModel.tryWithdraw(amountDialogPlanId!!, amountCents) },
+            onSubmitContribution = { amountCents, sourceTransactionId, cashSavings ->
+                viewModel.tryAddContribution(amountDialogPlanId!!, amountCents, sourceTransactionId, cashSavings)
             },
             onSuccess = { showAmountDialog = false },
             onDismiss = { showAmountDialog = false },
@@ -178,6 +181,26 @@ fun SavingsScreen(
             )
         }
     }
+
+    val historyId = historyPlanId
+    if (historyId != null) {
+        val planName = state.plans.firstOrNull { it.plan.id == historyId }?.plan?.name.orEmpty()
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = { historyPlanId = null },
+            sheetState = sheetState,
+            containerColor = NeonColor.panel,
+            contentColor = NeonColor.ink,
+        ) {
+            PlanHistorySheet(
+                planId = historyId,
+                planName = planName,
+                incomes = state.incomes,
+                onDismiss = { historyPlanId = null },
+                viewModel = viewModel,
+            )
+        }
+    }
 }
 
 @Composable
@@ -193,6 +216,7 @@ internal fun SavingsContent(
     onMovePlan: (Long, Boolean) -> Unit = { _, _ -> },
     onAddBudget: () -> Unit = {},
     onEditBudget: (Long) -> Unit = {},
+    onHistory: (Long) -> Unit = {},
 ) {
     LazyColumn(
         modifier = modifier
@@ -214,6 +238,7 @@ internal fun SavingsContent(
                     onQuotaDelta = { delta -> onChangeQuota(active.plan.id, delta) },
                     onContribute = { onContribute(active.plan.id) },
                     onWithdraw = { onWithdraw(active.plan.id) },
+                    onHistory = { onHistory(active.plan.id) },
                     modifier = Modifier.graphicsLayer {
                         this.alpha = alpha
                         translationY = offsetY.toFloat()
@@ -322,6 +347,7 @@ private fun ActivePlanCard(
     onQuotaDelta: (Long) -> Unit,
     onContribute: () -> Unit,
     onWithdraw: () -> Unit,
+    onHistory: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val plan = item.plan
@@ -464,6 +490,9 @@ private fun ActivePlanCard(
                 NeonButton(onClick = onWithdraw, secondary = true, accent = NeonColor.neonAmber, modifier = Modifier.weight(1f)) {
                     NeonButtonText(text = stringResource(R.string.savings_withdraw), secondary = true, accent = NeonColor.neonAmber)
                 }
+            }
+            TextButton(onClick = onHistory, modifier = Modifier.align(Alignment.End)) {
+                Text(stringResource(R.string.savings_history_title), color = NeonColor.neonCyan)
             }
         }
     }
@@ -610,30 +639,77 @@ private fun PlanEditSheet(
 @Composable
 private fun AmountActionDialog(
     isWithdraw: Boolean,
-    onSubmit: suspend (Long) -> String?,
+    incomes: List<com.mipatrimonio.app.core.database.entity.TransactionEntity>,
+    onSubmitWithdraw: suspend (Long) -> String?,
+    onSubmitContribution: suspend (Long, Long?, Boolean) -> String?,
     onSuccess: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     var text by remember { mutableStateOf("") }
     var errorMsg by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    var useCashSavings by remember { mutableStateOf(incomes.isEmpty()) }
+    var selectedIncomeId by remember(incomes) { mutableStateOf<Long?>(null) }
     val scope = rememberCoroutineScope()
     val invalidAmount = stringResource(R.string.savings_invalid_amount)
     val insufficient = stringResource(R.string.savings_error_insufficient_available)
     val exceeds = stringResource(R.string.savings_error_exceeds_saved)
+    val missingOrigin = stringResource(R.string.savings_origin_missing)
+    val invalidOrigin = stringResource(R.string.savings_origin_invalid)
 
     AlertDialog(
         onDismissRequest = { if (!busy) onDismiss() },
         containerColor = NeonColor.panel,
         title = { Text(stringResource(if (isWithdraw) R.string.savings_withdraw else R.string.savings_contribute), color = NeonColor.ink) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.verticalScroll(rememberScrollState())) {
                 SavingsTextField(
                     value = text,
                     onValueChange = { text = it; errorMsg = null },
                     label = stringResource(if (isWithdraw) R.string.savings_withdraw_amount else R.string.savings_contribution_amount),
                     keyboardType = KeyboardType.Decimal,
                 )
+                if (!isWithdraw) {
+                    Text(stringResource(R.string.savings_origin_title), color = NeonColor.ink, style = MaterialTheme.typography.labelLarge)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().clickable(enabled = !busy) { useCashSavings = true; selectedIncomeId = null; errorMsg = null }
+                    ) {
+                        RadioButton(selected = useCashSavings, onClick = { useCashSavings = true; selectedIncomeId = null; errorMsg = null }, colors = RadioButtonDefaults.colors(selectedColor = NeonColor.neonCyan))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(stringResource(R.string.savings_origin_cash_savings), color = NeonColor.ink)
+                            Text(stringResource(R.string.savings_origin_cash_savings_hint), color = NeonColor.muted, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().clickable(enabled = !busy) { useCashSavings = false; errorMsg = null }
+                    ) {
+                        RadioButton(selected = !useCashSavings, onClick = { useCashSavings = false; errorMsg = null }, colors = RadioButtonDefaults.colors(selectedColor = NeonColor.neonCyan))
+                        Text(stringResource(R.string.savings_origin_income), color = NeonColor.ink)
+                    }
+                    if (!useCashSavings) {
+                        if (incomes.isEmpty()) {
+                            Text(stringResource(R.string.savings_no_incomes), color = NeonColor.muted, style = MaterialTheme.typography.bodySmall)
+                        } else {
+                            Text(stringResource(R.string.savings_origin_select_income), color = NeonColor.muted, style = MaterialTheme.typography.bodySmall)
+                            incomes.take(30).forEach { income ->
+                                val label = (if (income.merchant.isNotBlank()) income.merchant else stringResource(R.string.type_income)) + " · " + Money.format(income.amountCents, income.currency)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth().clickable(enabled = !busy) { selectedIncomeId = income.id; errorMsg = null }.padding(vertical = 2.dp)
+                                ) {
+                                    RadioButton(
+                                        selected = selectedIncomeId == income.id,
+                                        onClick = { selectedIncomeId = income.id; errorMsg = null },
+                                        colors = RadioButtonDefaults.colors(selectedColor = NeonColor.neonCyan),
+                                    )
+                                    Text(label, color = NeonColor.ink, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
+                }
                 if (errorMsg != null) Text(errorMsg!!, color = NeonColor.expenseRed, style = MaterialTheme.typography.bodySmall)
             }
         },
@@ -642,14 +718,18 @@ private fun AmountActionDialog(
                 onClick = {
                     val cents = try { Money.parse(text) } catch (_: Exception) { null }
                     if (cents == null || cents <= 0L) { errorMsg = invalidAmount; return@TextButton }
+                    if (!isWithdraw && !useCashSavings && selectedIncomeId == null) { errorMsg = missingOrigin; return@TextButton }
                     busy = true
                     scope.launch {
-                        val err = onSubmit(cents)
+                        val err = if (isWithdraw) onSubmitWithdraw(cents)
+                        else onSubmitContribution(cents, if (useCashSavings) null else selectedIncomeId, useCashSavings)
                         busy = false
                         when (err) {
                             null -> onSuccess()
                             "INSUFFICIENT" -> errorMsg = insufficient
                             "EXCEEDS_SAVED" -> errorMsg = exceeds
+                            "MISSING_ORIGIN" -> errorMsg = missingOrigin
+                            "INVALID_ORIGIN" -> errorMsg = invalidOrigin
                             else -> errorMsg = invalidAmount
                         }
                     }
@@ -865,5 +945,93 @@ private fun BudgetEditSheet(
 private fun SavingsScreenPreview() {
     MiPatrimonioTheme {
         SavingsContent(state = SavingsUiState(loaded = true))
+    }
+}
+
+@Composable
+private fun PlanHistorySheet(
+    planId: Long,
+    planName: String,
+    incomes: List<com.mipatrimonio.app.core.database.entity.TransactionEntity>,
+    onDismiss: () -> Unit,
+    viewModel: SavingsViewModel,
+) {
+    val contributions by remember(planId) { viewModel.observeContributions(planId) }
+        .collectAsStateWithLifecycle(initialValue = emptyList())
+    var showArchived by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val incomeById = remember(incomes) { incomes.associateBy { it.id } }
+    val visible = if (showArchived) contributions else contributions.filter { !it.archived }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(stringResource(R.string.savings_history_title), style = MaterialTheme.typography.titleMedium, color = NeonColor.ink)
+        if (planName.isNotBlank()) {
+            Text(planName, style = MaterialTheme.typography.bodySmall, color = NeonColor.muted)
+        }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            TextButton(onClick = { showArchived = !showArchived }) {
+                Text(
+                    text = stringResource(if (showArchived) R.string.savings_history_hide_archived else R.string.savings_history_show_archived),
+                    color = NeonColor.neonCyan,
+                )
+            }
+        }
+        if (visible.isEmpty()) {
+            Text(stringResource(R.string.savings_history_empty), color = NeonColor.muted)
+        } else {
+            LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(visible, key = { it.id }) { c ->
+                    val origin = when (c.originType) {
+                        com.mipatrimonio.app.core.database.entity.ContributionOriginType.CASH_SAVINGS -> stringResource(R.string.savings_origin_cash_savings)
+                        com.mipatrimonio.app.core.database.entity.ContributionOriginType.INCOME -> {
+                            val tx = c.sourceTransactionId?.let { incomeById[it] }
+                            tx?.merchant?.takeIf { it.isNotBlank() } ?: stringResource(R.string.type_income)
+                        }
+                        else -> stringResource(R.string.savings_origin_legacy)
+                    }
+                    val dateText = runCatching { java.time.LocalDate.ofEpochDay(c.date).toString() }.getOrDefault("")
+                    NeonCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = Money.formatSigned(kotlin.math.abs(c.amountCents), c.amountCents < 0, "EUR"),
+                                    color = if (c.amountCents < 0) NeonColor.neonAmber else NeonColor.neonGreen,
+                                    style = MaterialTheme.typography.titleSmall,
+                                )
+                                if (c.archived) {
+                                    Text(stringResource(R.string.savings_history_archive), color = NeonColor.muted, style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
+                            Text(origin, color = NeonColor.ink, style = MaterialTheme.typography.bodySmall)
+                            if (dateText.isNotBlank()) Text(dateText, color = NeonColor.muted, style = MaterialTheme.typography.labelSmall)
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                                TextButton(onClick = {
+                                    scope.launch { viewModel.setContributionArchived(c.id, !c.archived) }
+                                }) {
+                                    Text(
+                                        stringResource(if (c.archived) R.string.savings_history_unarchive else R.string.savings_history_archive),
+                                        color = NeonColor.neonCyan,
+                                    )
+                                }
+                                TextButton(onClick = {
+                                    scope.launch { viewModel.deleteContribution(c.id) }
+                                }) {
+                                    Text(stringResource(R.string.savings_history_delete), color = NeonColor.expenseRed)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
+            Text(stringResource(R.string.common_close), color = NeonColor.neonCyan)
+        }
     }
 }

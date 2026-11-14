@@ -1,9 +1,9 @@
 # PROGRESS
 
 ## Estado
-- Fase actual: 5 (Mejora visual) — completada
-- Última tarea cerrada: T5.11
-- Próxima tarea: ninguna (pendiente decidir integración de ramas T5 en `main` y siguientes pasos de publicación)
+- Fase actual: 6 (Ahorro trazable y refactor de ingresos) — en curso
+- Última tarea cerrada: T6.1
+- Próxima tarea: T6.2 (refactor de registro de ingresos y limpieza de campos)
 
 ## Decisiones tomadas
 - (2026-11-02) Paquete: com.mipatrimonio.app
@@ -11,6 +11,7 @@
 - (2026-11-02) compileSdk 37 (requerido por Compose BOM 2026.09.00 / Compose 1.12), targetSdk 36, minSdk 26
 - (2026-11-02) Plataforma android-37.2 instalada en el SDK local (no venía por defecto; solo android-36)
 - (2026-11-02) Modelo de implementación: MiMo-V2.6-Flash (asume rol de implementador; revisión cruzada pendiente con otro agente)
+- (2026-11-14) T6.1: ahorro trazable (rama `t6-1-ahorro-trazable`). `PlanContributionEntity` con `sourceTransactionId`, `originType` (`INCOME|CASH_SAVINGS|LEGACY`), `archived`, `createdAt` e índices; Room v1→v2 (`MIGRATION_1_2`) y esquema `2.json`. Reglas puras en `SavingsContributionRules` (disponible, origen, vínculos, retirada). Aportación con origen obligatorio y validación `disponible − importe ≥ 0`; ingreso vinculado no borrable (solo editable) hasta eliminar vínculos, ingreso virgen borrable con aviso si dejaría disponible < 0; edición/borrado/restauración y retirada con guards para no dejar disponible/total del plan < 0. Historial por plan (eliminar/archivar visual) y vista global de aportaciones vinculadas (`LinkedContributionsViewModel`/diálogo). Backup/restore remapea `sourceTransactionId` y degrada a `LEGACY` si falta origen. `SavingsContributionRulesTest`. `compileDebugKotlin`/`testDebugUnitTest` en verde; verificado en Nubia NX779J por George. Pendiente transversal: aplicar regla de disponible en todos los flujos automáticos (recurrentes/gastos compartidos/masivos).
 - (2026-11-08) T1.8: la lista de Movimientos filtra y busca en `TransactionsViewModel.buildDayGroups` (función pura, testeada). Orden: fecha descendente y luego id descendente; agrupación por `date` (epochDay).
 - (2026-11-08) T1.8: la edición reutiliza `ReviewSheet` con `editing: TransactionEntity?`; el borrado de la hoja pide confirmación. `TransactionFactory.applyTo` toca solo los campos editables (`existing.copy`) y `UpdateTransaction` relee la fila con `getById` antes de actualizar, para no pisar datos cambiados desde otra pantalla ni campos futuros.
 - (2026-11-08) T1.8: deshacer = borrado inmediato + Snackbar "Deshacer" (10 s) que reinserta la entidad con su id original (`TransactionDao.restore`, `REPLACE`). El Snackbar vive en la composición de la pantalla (ver deudas).
